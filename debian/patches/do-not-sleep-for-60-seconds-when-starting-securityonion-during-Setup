@@ -1,0 +1,42 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion40) precise; urgency=low
+ .
+   * don't sleep for 60 seconds if starting securityonion during Setup
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/etc/init/securityonion.conf
++++ securityonion-nsmnow-admin-scripts-20120724/etc/init/securityonion.conf
+@@ -13,10 +13,11 @@ script
+         SSH_CONF="$SSH_DIR/securityonion_ssh.conf"
+         if [ -f $SSH_CONF ]
+         then
+-		# Some folks are having problems with link negotiation taking too long
+-		# and the tunnel failing to come up.
++		# Some folks are having problems with link negotiation taking too long and the tunnel failing to come up.
+ 		# This is a quick and dirty fix until we come up with a better solution.
+-		sleep 60
++		# If starting the securityonion services at boot-time, sleep for 60 seconds to allow link to negotiate.
++                # If running Setup, we don't need to pause as the link should have already been negotiated.
++                pgrep sosetup >/dev/null || sleep 60
+                 # Establish persistent SSH tunnel to MASTER.
+                 KEY="$SSH_DIR/securityonion"
+                 # Upstart uses sh instead of bash so we can't use "source"

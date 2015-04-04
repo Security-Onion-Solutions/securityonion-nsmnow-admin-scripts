@@ -1,0 +1,95 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion67) precise; urgency=low
+ .
+   * Issue 501: /etc/init/securityonion.conf needs to check that variables were only declared once
+   * Issue 516: Update sysctl settings
+   * Issue 518: NSM scripts: run "broctl install" when (re)starting Bro
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/etc/sysctl.d/10-securityonion.conf
++++ securityonion-nsmnow-admin-scripts-20120724/etc/sysctl.d/10-securityonion.conf
+@@ -1,8 +1,9 @@
+-net.core.rmem_default = 8388608
+-net.core.wmem_default = 8388608
++net.core.rmem_default = 16777216
++net.core.wmem_default = 16777216
+ net.core.rmem_max = 16777216
+ net.core.wmem_max = 16777216
+ net.ipv4.tcp_rmem = 1048576 4194304 16777216
+ net.ipv4.tcp_wmem = 1048576 4194304 16777216
+-net.core.netdev_max_backlog = 100000
++net.core.netdev_max_backlog = 250000
+ net.core.bpf_jit_enable = 1
++net.core.optmem_max = 16777216
+--- securityonion-nsmnow-admin-scripts-20120724.orig/etc/init/securityonion.conf
++++ securityonion-nsmnow-admin-scripts-20120724/etc/init/securityonion.conf
+@@ -20,15 +20,15 @@ script
+                 KEY="$SSH_DIR/securityonion"
+ 
+                 # Upstart uses sh instead of bash so we can't use "source"
+-                SSH_USERNAME=`grep SSH_USERNAME $SSH_CONF | cut -d\= -f2`
+-                SERVERNAME=`grep SERVERNAME $SSH_CONF | cut -d\= -f2`
+-                ELSA=`grep ELSA /etc/nsm/securityonion.conf | cut -d\= -f2`
++                SSH_USERNAME=`grep SSH_USERNAME $SSH_CONF | cut -d\= -f2 | tail -1`
++                SERVERNAME=`grep SERVERNAME $SSH_CONF | cut -d\= -f2 | tail -1`
++                ELSA=`grep ELSA /etc/nsm/securityonion.conf | cut -d\= -f2 | tail -1`
+                 : ${ELSA:="NO"}
+                 if [ $ELSA = "YES" ]; then
+                     # We are using ELSA so we need reverse ssh tunnel
+                     # from localhost:3154 to master-node:50000+n where n
+                     # is an integer.
+-                    ELSA_PORT=`grep ELSA_PORT $SSH_CONF | cut -d\= -f2`
++                    ELSA_PORT=`grep ELSA_PORT $SSH_CONF | cut -d\= -f2 | tail -1`
+                     : ${ELSA_PORT:="UNDEF"}
+                     if [ $ELSA_PORT = "UNDEF" ] ; then
+                         # The ELSA port is not set and we need to query
+@@ -74,8 +74,8 @@ script
+                 grep XPLICO_ENABLED $SO_CONF >/dev/null || echo "XPLICO_ENABLED=yes" >> $SO_CONF
+ 
+                 # load in user config
+-		SNORBY_ENABLED=`grep SNORBY_ENABLED $SO_CONF | cut -d\= -f2`
+-		XPLICO_ENABLED=`grep XPLICO_ENABLED $SO_CONF | cut -d\= -f2`
++		SNORBY_ENABLED=`grep SNORBY_ENABLED $SO_CONF | cut -d\= -f2 | tail -1`
++		XPLICO_ENABLED=`grep XPLICO_ENABLED $SO_CONF | cut -d\= -f2 | tail -1`
+ 
+                 [ "$XPLICO_ENABLED" = "yes" ] && /etc/init.d/xplico start
+                 [ "$SNORBY_ENABLED" = "yes" ] && rm -f /opt/snorby/tmp/pids/delayed_job.pid && su www-data -c "cd /opt/snorby; bundle exec rake snorby:update RAILS_ENV=production"
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -333,6 +333,7 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "
+ 		IP=`ifconfig |grep "inet addr" | awk '{print $2}' |cut -d\: -f2 |grep -v "127.0.0.1" |head -1`
+ 		sed -i "s|^host=.*$|host=$IP|g" /opt/bro/etc/node.cfg
+ 	fi
++	/opt/bro/bin/broctl install
+ 	/opt/bro/bin/broctl start
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -338,6 +338,7 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "
+                 sed -i "s|^host=.*$|host=$IP|g" /opt/bro/etc/node.cfg
+         fi
+         /opt/bro/bin/broctl stop
++        /opt/bro/bin/broctl install
+         /opt/bro/bin/broctl start
+ fi
+ 

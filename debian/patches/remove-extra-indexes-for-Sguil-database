@@ -1,0 +1,47 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion85) precise; urgency=low
+ .
+   * remove extra indexes for Sguil database
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/lib/nsmnow/lib-nsm-server-utils
++++ securityonion-nsmnow-admin-scripts-20120724/usr/lib/nsmnow/lib-nsm-server-utils
+@@ -601,9 +601,6 @@ EOF_SGUIL_DB
+ 	mysql -N -B --user=root -e "GRANT ALL PRIVILEGES ON securityonion_db.ip2c TO 'readonly'@'localhost';"
+ 	mysql -N -B --user=root -e "GRANT FILE ON *.* TO 'readonly'@'localhost';"
+ 	mysql -N -B --user=root -e "GRANT INSERT,UPDATE,DELETE ON securityonion_db.filters TO 'readonly'@'localhost';"
+-	mysql -N -B --user=root -e "CREATE INDEX comment ON securityonion_db.history (comment(50));"
+-	mysql -N -B --user=root -e "CREATE INDEX sid ON securityonion_db.history (sid);"
+-	mysql -N -B --user=root -e "CREATE INDEX cid ON securityonion_db.history (cid);"
+ 	mysql -N -B --user=root -e "GRANT DELETE on securityonion_db.history to 'readonly'@'localhost';"
+ 	mysql -N -B --user=root -e "GRANT UPDATE on securityonion_db.user_info TO 'readonly'@'localhost';"
+ 
+@@ -854,9 +851,6 @@ EOF_SGUIL_DB
+         mysql -N -B --user=root -e "GRANT ALL PRIVILEGES ON securityonion_db.ip2c TO 'readonly'@'localhost';"
+         mysql -N -B --user=root -e "GRANT FILE ON *.* TO 'readonly'@'localhost';"
+         mysql -N -B --user=root -e "GRANT INSERT,UPDATE,DELETE ON securityonion_db.filters TO 'readonly'@'localhost';"
+-        mysql -N -B --user=root -e "CREATE INDEX comment ON securityonion_db.history (comment(50));"
+-        mysql -N -B --user=root -e "CREATE INDEX sid ON securityonion_db.history (sid);"
+-        mysql -N -B --user=root -e "CREATE INDEX cid ON securityonion_db.history (cid);"
+         mysql -N -B --user=root -e "GRANT DELETE on securityonion_db.history to 'readonly'@'localhost';"
+         mysql -N -B --user=root -e "GRANT UPDATE on securityonion_db.user_info TO 'readonly'@'localhost';"
+ 

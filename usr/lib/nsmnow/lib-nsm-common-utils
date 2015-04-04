@@ -1,0 +1,2549 @@
+#!/bin/bash
+#
+# Copyright (C) 2008-2009 SecurixLive   <dev@securixlive.com>
+# Modified by Doug Burks for Security Onion
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.  You may not use, modify or
+# distribute this program under any other version of the GNU General
+# Public License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#
+#
+# Description:
+#   Common library functions used for the NSM administration scripts.
+#
+
+# Version:
+# 20120202
+# 
+# Changelog:
+# 20111229 - Removed "kill -9" for Suricata.  Added process_restart_if_stale() function.
+# 20120106 - Changed process_status so that it doesn't delete stale PIDs
+#	     Rotate log files and keep a maximum of 10
+# 20120202 - process_restart needs to wait for process to terminate gracefully before
+#	     rotating log file
+
+#
+# GLOBAL CONSTANTS
+#
+
+NSM_VER_MAJOR=1
+NSM_VER_MINOR=6
+NSM_VER_REVISION=2
+NSM_VER_BUILD=504
+NSM_VER_LITERAL="${NSM_VER_MAJOR}.${NSM_VER_MINOR}.${NSM_VER_REVISION}"
+
+NSM_ADMIN_VER_MAJOR=1
+NSM_ADMIN_VER_MINOR=4
+NSM_ADMIN_VER_REVISION=2
+NSM_ADMIN_VER_BUILD=504
+NSM_ADMIN_VER_LITERAL="${NSM_ADMIN_VER_MAJOR}.${NSM_ADMIN_VER_MINOR}.${NSM_ADMIN_VER_REVISION}"
+
+NSM_SHARE_DIR="/usr/share/nsmnow"
+
+
+#
+# GLOBAL VARIABLES
+#
+
+VERBOSITY=0
+TIMESTAMP=0
+PROMPT_MODE="cli"
+
+
+#
+# GENERIC FUNCTIONS
+#
+
+#
+# is_arg_numeric()
+#
+# Identifies whether the supplied argument is numeric (ie containg the digits
+# 0 through to 9).
+#
+# Arguments:
+#   - string            argument to check if numeric
+#
+# Returns:
+#   Zero (0) is returned when the arguments supplied is numeric, otherwise a
+# non-zero (1) is returned.
+#
+function is_arg_numeric()
+{
+    echo "$@" | grep -q "^[0-9]\+$"
+}
+
+#
+# is_root()
+#
+# Identifies whether the user executing this script is a root user.
+#
+# Arguments:
+#   Nil.
+#
+# Returns:
+#   Zero (0) is returned when a root user is executing, otherwise a non-zero (1)
+# is returned.
+#
+is_root()
+{
+	# check if the uid is 0 (ie. root)
+	[ "$(id -ru)" -ne 0 ] && return 1
+
+	return 0;
+}
+
+#
+# check_usergroup()
+#
+# Identifies whether the specified user and group exists and creates if
+# appropriate (by default).
+#
+# Arguments:
+#   - user (string)		user to check
+#   - group (string)	group to check
+#   - create (integer)	create user/group if non-existent
+#
+# Returns:
+#   Zero (0) is returned when a user/group exist or successfully created,
+# otherwise a non-zero (1) is returned.
+#
+check_usergroup()
+{
+	# grab input variables with sane defaulting
+	USER=${1:-}
+	GROUP=${2:-}
+	CREATE=${3:-1}
+
+	# perform sanity checks (we require the user and the group)
+	[ -z "$USER" -o -z "$GROUP" ] && return 1
+
+	# check the group exists and create as appropriate
+	if [ "$(cat /etc/group | grep "^${GROUP}:" | wc -l)" -ne 1 ]
+	then
+		if [ "$CREATE" -eq 1 ]
+		then
+			groupadd "$GROUP"
+			[ ${?} -ne 0 ] && return 1
+		else
+			return 1
+		fi
+	fi
+
+	# check for user as appropriate
+	if [ "$(cat /etc/passwd | grep "^${USER}:" | wc -l)" -ne 1 ]
+	then
+		if [ "$CREATE" -eq 1 ]
+		then
+			useradd -g "$GROUP" "$USER"
+			[ ${?} -ne 0 ] && return 1
+		else
+			return 1
+		fi
+	fi
+
+	return 0;
+}
+
+
+#
+# PRINTING/LOGGING FUNCTIONS
+#
+
+#
+# print_all()
+#
+# Unifies messaging to print output based on level with timestamps as well as
+# logging if requested
+#
+# Arguments:
+#   - message (string)		message to print
+#   - level (integer)		verbosity level of message
+#
+# Returns:
+#   Prints a standardised format (including timestamp and verbosity level) of
+#   the given message to the log file. If the verbosity level of the script
+#   is greater than or equal to the verbosity of the message then it is also
+#   echoed to screen.
+#
+print_all()
+{
+	# grab input variables with sane defaulting
+	MSG_STRING=${1:-}
+	MSG_LEVEL=${2:-1}
+
+    # ensure the message level is a number
+    is_arg_numeric $MSG_LEVEL
+    if [ ${?} -ne 0 ]
+    then
+        MSG_LEVEL=1
+    fi
+
+    # indent based on level
+    INDENT=""
+    for S in $(seq $MSG_LEVEL)
+    do
+        INDENT="${INDENT}  "
+    done
+
+    # construct the messsage
+    MSG="${INDENT}${MSG_STRING}"
+
+    # check if timestamping
+    if [ ${TIMESTAMP} -eq 1 ]
+    then
+    	# get the current timestamp
+    	TIME_NOW=$(date "+%Y/%m/%d %H:%M:%S")
+        MSG="[${TIME_NOW}] ${MSG}"
+    fi
+
+    # check if we should print this to the screen
+	if [ ${MSG_LEVEL} -le ${VERBOSITY} ]
+	then
+		echo "${MSG}"
+	fi
+
+	print_log "${MSG}"
+}
+
+#
+# print_log() 
+#
+# Unifies messaging for the logging of information. The given message is echoed
+# to the global log file as defined in $LOG_PATH
+#
+# Arguments:
+#   - message (string)		message to print
+#
+# Returns:
+#   Zero (0) is returned on success with a non-zero (1) returned on any error.
+#
+print_log()
+{
+	# grab input variables with sane defaulting
+	MSG_STRING=${1:-}
+	
+	if [ -z "$LOG_PATH" ]
+	then
+        return 1
+	fi
+
+	echo $MSG_STRING >>$LOG_PATH
+	return $?
+}
+
+#
+# print_usage()
+#
+# Prints the usage of the script showing all appropriate arguments.
+#
+# Arguments:
+#   Nil.
+#
+# Returns:
+#   Nil.
+#
+print_nsmnow_usage()
+{
+	echo
+	echo "NSMnow is designed to easily install and configure and NSM environment"
+	echo "using open source tools. Bugs, comments and flames can be directed to the"
+	echo "SXL team at dev@securixlive.com"
+	echo
+	echo "NSMnow comes with ABSOLUTELY NO WARRANTY."
+	echo 
+	echo "Usage: $0 [options]"
+	echo
+	echo "Pre-check Options:"
+	echo "    -F         Force a pre-check of the NSMnow pre-requisites"
+	echo "    -S         Force a skip of the pre-check for the NSMnow pre-requisites"
+	echo
+	echo "Options:"
+	echo "    -c <file>  Define an alternative configuration <file>"
+	echo "    -i         Install NSM related applications.  If --package=app is not defined"
+	echo "               then all packages will be installed."
+#	echo "    -u         Uninstall all NSM related applications"
+	echo "    -r         Reconfigure all NSM related applications"
+#	echo "    -f         Fix all NSM related applications"
+	echo "    -l <file>  Define an alternative log <file>"
+	echo "    -v <#>     Set verbosity to level <#> (maximum of 3)."
+	echo "    -D         Download all required source tarballs only. This will also attempt"
+	echo "               to download system specific packages and libraries."
+	echo "    -y         Force all NSM default options to be accepted requiring minimal"
+	echo "               standard input from the user"
+	echo "    -V         Show version"
+	echo "    -?         Show this help"
+	echo ""
+	echo "Long Options:"
+	echo "    --package=app     Explicitly define the <app> packages that you want to"
+	echo "                      perform the actions on. Multiple directives can be"
+	echo "                      defined."
+	echo ""
+	echo "    --install         Same as -i"
+#	echo "    --uninstall       Same as -u"
+#	echo "    --fix             Same as -f"
+	echo "    --reconfigure     Same as -r"
+	echo ""
+	echo "    --download-only   Same as -D"
+	echo "    --force-yes       Same as -y"
+	echo ""
+	echo "    --version         Same as -V"
+	echo "    --help            Same as -?"
+	echo ""
+	echo "Available packages:"
+	echo "    all             - All packages (snort, sguil, barnyard2 and sancp) and"
+	echo "                      and additional dependencies (eg. Tcl, mysql)"
+	echo
+	echo "    sensor          - All sensor specific components"
+	echo "    server          - All server specific components"
+	echo "    client          - All client specific components"
+	echo
+	echo "    snort           - Snort v2.8.5.1"
+	echo "    sguilclient     - Sguil v0.7.0 (client components only)"
+	echo "    sguilsensor     - Sguil v0.7.0 (sensor components only)"
+	echo "    sguilserver     - Sguil v0.7.0 (server components only)"
+#	echo "    barnyard        - Barnyard v0.2.0"
+	echo "    barnyard2       - Barnyard v2.1.7"
+	echo "    sancp           - Sancp v1.6.1-stable"
+	echo "    sguiltools      - Sguil tools: wireshark, p0f, tcpdump and tcpflow"
+	echo 
+}
+
+#
+# print_nsmnow_version()
+#
+# Prints the version of the NSMnow scripts.
+#
+# Arguments:
+#   Nil.
+#
+# Returns:
+#   Nil.
+#
+print_nsmnow_version()
+{
+	echo
+	echo "NSMnow v${NSM_VER_LITERAL} (b${NSM_VER_BUILD})"
+	echo
+	echo "NSMnow is designed to easily install and configure an NSM environment using"
+	echo "open source tools. Bugs, comments and flames can be directed to the SXL team"
+	echo "at dev@securixlive.com"
+	echo
+	echo "NSMnow comes with ABSOLUTELY NO WARRANTY."
+	echo 
+}
+
+#
+# print_nsmadmin_version()
+#
+# Prints the version of the NSM Administration scripts to screen.
+#
+# Arguments:
+#   Nil.
+#
+# Returns:
+#   Nil.
+#
+print_nsmadmin_version()
+{
+	echo
+	echo "NSM Administration v${NSM_ADMIN_VER_LITERAL} (b${NSM_ADMIN_VER_BUILD})"
+	echo
+	echo "The NSM adminstriation scripts, a subset of the NSMnow tools, are designed"
+    echo "to easily configure and manage your NSM installation. Bugs, comments and"
+    echo "flames can be directed to the SXL team at dev@securixlive.com"
+	echo
+	echo "NSMnow comes with ABSOLUTELY NO WARRANTY."
+	echo 
+}
+
+
+#
+# PROMPT FUNCTIONS
+#
+
+#
+# setDialogBounds()
+#
+# Calculates the dimensions of the dialog box to be displayed based on the 
+# primary text, type of dialog box and any additional type specific text to
+# be displayed.
+# 
+# The parameters for dialog width and height are stored in $DIALOG_W and
+# $DIALOG_H respectively.
+#
+# Arguments:
+#   - text (string)		primary text to be displayed in the dialog
+#   - type (string)		type of dialog being displayed
+#   - extra (string)		additional type specific text to be displayed
+#
+# Returns:
+#   $DIALOG_W and $DIALOG_H will contain the dialog dimensions.
+#
+setDialogBounds()
+{
+	# grab input variables with sane defaulting
+	TEXT=${1:-}
+	TYPE=${2:-}
+	EXTRA=${3:-}
+
+	CONSOLE_SIZE=$(stty size)
+	CONSOLE_W=$(echo "$CONSOLE_SIZE" | awk '{print $2}')
+	CONSOLE_H=$(echo "$CONSOLE_SIZE" | awk '{print $1}')
+
+	# give some breathing space for min/max 
+	[ "$CONSOLE_W" -gt 0 ] && let "CONSOLE_MIN_W = $CONSOLE_W / 2 - 1"
+	[ "$CONSOLE_H" -gt 0 ] && let "CONSOLE_MIN_H = $CONSOLE_H / 2 - 1"
+	[ "$CONSOLE_W" -gt 0 ] && let "CONSOLE_MAX_W = $CONSOLE_W * 2 / 3"
+	[ "$CONSOLE_H" -gt 0 ] && let "CONSOLE_MAX_H = $CONSOLE_H * 2 / 3"
+
+	[ -z "$TYPE" ] && TYPE="text"
+
+	case $TYPE in
+		text|yesno)
+			# calculate text dimensions
+			TEXT_W=$(echo -e $TEXT | wc -L)
+			TEXT_H=$(echo -e $TEXT | wc -l)
+
+			# calculate dialog dimensions based on text
+			let "DIALOG_H = $TEXT_H + 4"
+			let "DIALOG_W = $TEXT_W + 4"
+			;;
+		check|radio)
+			# calculate list dimensions
+			LIST_W=$(echo -e $TEXT | wc -L)
+			LIST_H=$(echo -e $TEXT | wc -l)
+
+			# calculate dialog dimensions based on text
+			let "DIALOG_H = $LIST_H + 4 + 2 + 5"
+			let "DIALOG_W = $LIST_W + 4"
+			;;
+	esac	
+
+	# sanity check of dialog dimensions
+	[ "$DIALOG_W" -lt "$CONSOLE_MIN_W" ] && DIALOG_W=$CONSOLE_MIN_W
+	[ "$DIALOG_H" -lt "$CONSOLE_MIN_H" ] && DIALOG_H=$CONSOLE_MIN_H
+	[ "$DIALOG_W" -gt "$CONSOLE_MAX_W" ] && DIALOG_W=$CONSOLE_MAX_W
+	[ "$DIALOG_H" -gt "$CONSOLE_MAX_H" ] && DIALOG_H=$CONSOLE_MAX_H
+}
+
+#
+# prompt_user_checklist()
+#
+# Provides a standardised check list prompt for the user allowing for a number
+# of items to be chosen from a list of items. The prompt can be displayed in 
+# simple text (ie. CLI) or via the dialog utility (ie. DIALOG).
+#
+# Arguments:
+#   - title (string)		title of the dialog prompt
+#   - message (string)		primary message of the check box
+#   - default (string)		default return value if no input given
+#   - options (string)		check list options (space separated)
+#
+# Returns:
+#   The returned value is available in the global $PROMPT_RET variable.
+#
+prompt_user_checklist() 
+{
+	# grab input variables with sane defaulting
+	PROMPT_TITLE=${1:-}
+	PROMPT_MSG=${2:-}
+	PROMPT_RET=${3:-}
+	PROMPT_OPTIONS=${4:-}
+
+	# check if default returns are being forced
+	# additionally default no's are actually forced to "yes"
+	if [ -n "$FORCE_YES" ]
+	then
+		print_log "$PROMPT_MSG => $PROMPT_RET [FORCED]"
+		return 0;
+	fi
+
+	# sanity check the prompt mode (should be externally configured)
+	[ -z "$PROMPT_MODE" -o -z "$(which dialog)" ] && PROMPT_MODE="cli"
+
+	case $PROMPT_MODE in
+		"cli")
+			[ -n "${PROMPT_TITLE}" ] && echo -e "\n${PROMPT_TITLE}"
+			
+			CHECK_OPTIONS=""
+			for OPTION in $PROMPT_OPTIONS
+			do
+				CHECK_OPTIONS="${CHECK_OPTIONS}  - $OPTION\n"
+			done
+
+			if [ -n "$PROMPT_RET" ] 
+			then
+				echo -en "${PROMPT_MSG}\n${CHECK_OPTIONS} [$PROMPT_RET]: "
+			else
+				echo -en "${PROMPT_MSG}\n${CHECK_OPTIONS}: "
+			fi
+	
+			# get the input from STDIN (presumably the keyboard)
+			read ANS
+			
+			if [ -n "$ANS" ]
+			then
+				PROMPT_RET=$ANS
+			fi
+			;;
+
+		"dialog")
+			setDialogBounds "$PROMPT_MSG" "check" "$PROMPT_OPTIONS"
+		
+			DIALOG_PARAMS="/tmp/dialog.params"
+
+			echo "--backtitle \" $PROMPT_SCRIPT \"" >$DIALOG_PARAMS
+			echo "--title \" $PROMPT_TITLE \"" >>$DIALOG_PARAMS
+
+			CHECK_OPTIONS=""
+			for OPTION in $PROMPT_OPTIONS
+			do
+				if [ "$OPTION" == "$PROMPT_RET" ]
+				then
+					CHECK_OPTIONS="${CHECK_OPTIONS} \"${OPTION}\" \"\" on"
+				else
+					CHECK_OPTIONS="${CHECK_OPTIONS} \"${OPTION}\" \"\" off"
+				fi
+			done
+
+			echo "--checklist \"\n$PROMPT_MSG\n\" $DIALOG_H $DIALOG_W 5 $RADIO_OPTIONS" >>$DIALOG_PARAMS
+			DIALOG_ANS=$(dialog --file $DIALOG_PARAMS 2>&1 1>$(tty))
+
+			# set the return
+			if [ ${?} -eq 0 ]
+			then
+				PROMPT_RET=${DIALOG_ANS}
+			else
+				PROMPT_RET=""
+				return 1
+			fi
+			;;
+	esac
+
+	return 0;
+}
+
+#
+# prompt_user_input()
+#
+# Provides a standardised user input prompt. The prompt can be displayed in 
+# simple text (ie. CLI) or via the dialog utility (ie. DIALOG).
+#
+# Arguments:
+#   - title (string)		title of the dialog prompt
+#   - message (string)		primary message of the input box
+#   - default (string)		default return value if no input given
+#
+# Returns:
+#   The returned value is available in the global $PROMPT_RET variable.
+#
+prompt_user_input() 
+{
+	# grab input variables with sane defaulting
+	PROMPT_TITLE=${1:-}
+	PROMPT_MSG=${2:-}
+	PROMPT_RET=${3:-}
+
+	# check if default returns are being forced
+	# additionally default no's are actually forced to "yes"
+	if [ -n "$FORCE_YES" ]
+	then
+		print_log "$PROMPT_MSG => $PROMPT_RET [FORCED]"
+		return 0;
+	fi
+
+	# sanity check the prompt mode (should be externally configured)
+	[ -z "$PROMPT_MODE" -o -z "$(which dialog)" ] && PROMPT_MODE="cli"
+
+	case $PROMPT_MODE in
+		"cli")
+			[ -n "${PROMPT_TITLE}" ] && echo -e "\n${PROMPT_TITLE}"
+
+			if [ -n "$PROMPT_RET" ] 
+			then
+				echo -en "$PROMPT_MSG [$PROMPT_RET]: "
+			else
+				echo -en "$PROMPT_MSG: "
+			fi
+	
+			# get the input from STDIN (presumably the keyboard)
+			read ANS
+			
+			if [ -n "$ANS" ]
+			then
+				PROMPT_RET=$ANS
+			fi
+			;;
+
+		"dialog")
+			setDialogBounds "$PROMPT_MSG"
+		
+			DIALOG_PARAMS="/tmp/dialog.params"
+
+			echo "--backtitle \" $PROMPT_SCRIPT \"" >$DIALOG_PARAMS
+			echo "--title \" $PROMPT_TITLE \"" >>$DIALOG_PARAMS
+
+			echo "--inputbox \"\n$PROMPT_MSG\n\" $DIALOG_H $DIALOG_W \"$PROMPT_RET\"" >>$DIALOG_PARAMS
+			DIALOG_ANS=$(dialog --file $DIALOG_PARAMS 2>&1 1>$(tty))
+
+			# set the return
+			if [ ${?} -eq 0 ]
+			then
+				PROMPT_RET=${DIALOG_ANS}
+			else
+				PROMPT_RET=""
+				return 1
+			fi
+			;;
+	esac
+
+	return 0;
+}
+
+#
+# prompt_user_radiolist()
+#
+# Provides a standardised radio list prompt for the user allowing for a single
+# item to be chosen from a list of items. The prompt can be displayed in simple
+# text (ie. CLI) or via the dialog utility (ie. DIALOG).
+#
+# The default return should be an element of the radio list options, and if so,
+# will be the default item selected.
+#
+# Arguments:
+#   - title (string)		title of the dialog prompt
+#   - message (string)		primary message of the check box
+#   - default (string)		default return value if no input given
+#   - options (string)		radio list options (space separated)
+#
+# Returns:
+#   The returned value is available in the global $PROMPT_RET variable.
+#
+prompt_user_radiolist() 
+{
+	# grab input variables with sane defaulting
+	PROMPT_TITLE=${1:-}
+	PROMPT_MSG=${2:-}
+	PROMPT_RET=${3:-}
+	PROMPT_OPTIONS=${4:-}
+
+	# check if default returns are being forced
+	# additionally default no's are actually forced to "yes"
+	if [ -n "$FORCE_YES" ]
+	then
+		print_log "$PROMPT_MSG => $PROMPT_RET [FORCED]"
+		return 0;
+	fi
+
+	# sanity check the prompt mode (should be externally configured)
+	[ -z "$PROMPT_MODE" -o -z "$(which dialog)" ] && PROMPT_MODE="cli"
+
+	case $PROMPT_MODE in
+		"cli")
+			[ -n "${PROMPT_TITLE}" ] && echo -e "\n${PROMPT_TITLE}"
+			
+			RADIO_OPTIONS=""
+			for OPTION in $PROMPT_OPTIONS
+			do
+				RADIO_OPTIONS="${RADIO_OPTIONS}  - $OPTION\n"
+			done
+
+			if [ -n "$PROMPT_RET" ] 
+			then
+				echo -en "${PROMPT_MSG}\n${RADIO_OPTIONS} [$PROMPT_RET]: "
+			else
+				echo -en "${PROMPT_MSG}\n${RADIO_OPTIONS}: "
+			fi
+	
+			# get the input from STDIN (presumably the keyboard)
+			read ANS
+			
+			if [ -n "$ANS" ]
+			then
+				PROMPT_RET=$ANS
+			fi
+			;;
+
+		"dialog")
+			setDialogBounds "$PROMPT_MSG" "radio" "$PROMPT_OPTIONS"
+		
+			DIALOG_PARAMS="/tmp/dialog.params"
+
+			echo "--backtitle \" $PROMPT_SCRIPT \"" >$DIALOG_PARAMS
+			echo "--title \" $PROMPT_TITLE \"" >>$DIALOG_PARAMS
+
+			RADIO_OPTIONS=""
+			for OPTION in $PROMPT_OPTIONS
+			do
+				if [ "$OPTION" == "$PROMPT_RET" ]
+				then
+					RADIO_OPTIONS="${RADIO_OPTIONS} \"${OPTION}\" \"\" on"
+				else
+					RADIO_OPTIONS="${RADIO_OPTIONS} \"${OPTION}\" \"\" off"
+				fi
+			done
+
+			echo "--radiolist \"\n$PROMPT_MSG\n\" $DIALOG_H $DIALOG_W 5 $RADIO_OPTIONS" >>$DIALOG_PARAMS
+			DIALOG_ANS=$(dialog --file $DIALOG_PARAMS 2>&1 1>$(tty))
+
+			# set the return
+			if [ ${?} -eq 0 ]
+			then
+				PROMPT_RET=${DIALOG_ANS}
+			else
+				PROMPT_RET=""
+				return 1
+			fi
+			;;
+	esac
+
+	return 0;
+}
+
+#
+# prompt_user_password()
+#
+# Provides a standardised user input prompt for passwords. The prompt can be
+# displayed in simple text (ie. CLI) or via the dialog utility (ie. DIALOG).
+#
+# Arguments:
+#   - title (string)		title of the dialog prompt
+#   - message (string)		primary message of the input box
+#
+# Returns:
+#   The returned value is available in the global $PROMPT_RET variable. A
+# non-zero (1) on error.
+#
+prompt_user_password() 
+{
+	# grab input variables with sane defaulting
+	PROMPT_TITLE=${1:-}
+	PROMPT_MSG=${2:-}
+	PROMPT_RET=${3:-}
+	ALLOW_BLANK_PASS=${4:-0}
+	PROMPT_RET=""
+
+	# sanity check the prompt mode (should be externally configured)
+	[ -z "$PROMPT_MODE" -o -z "$(which dialog)" ] && PROMPT_MODE="cli"
+
+	case $PROMPT_MODE in
+		"cli")
+			[ -n "${PROMPT_TITLE}" ] && echo -e "\n${PROMPT_TITLE}"
+			echo -en "$PROMPT_MSG: "
+	
+			# get the input from STDIN (presumably the keyboard)
+			read -s ANS
+			echo
+		
+			if [ -z "${ANS}" -a -z "${PROMPT_RET}" -a ${ALLOW_BLANK_PASS} -eq 0 ]
+			then
+				return 1
+			fi
+
+			echo -en "Verify: "
+			echo
+
+			# verify input from STDIN (presumably the keyboard)
+			read -s ANS_VERIFY
+		
+			if [ -n "${ANS}" -a "${ANS}" == "${ANS_VERIFY}" ]
+			then
+				PROMPT_RET=$ANS
+			elif [ -z "${PROMPT_RET}" ]
+            then
+				return 1
+			fi
+			;;
+
+		"dialog")
+			setDialogBounds "$PROMPT_MSG"
+		
+			DIALOG_PARAMS="/tmp/dialog.params"
+
+			echo "--backtitle \" $PROMPT_SCRIPT \"" >$DIALOG_PARAMS
+			echo "--title \" $PROMPT_TITLE \"" >>$DIALOG_PARAMS
+			echo "--insecure --passwordbox \"\n$PROMPT_MSG\n\" $DIALOG_H $DIALOG_W" >>$DIALOG_PARAMS
+			DIALOG_ANS=$(dialog --file $DIALOG_PARAMS 2>&1 1>$(tty))
+
+			if [ -z "$DIALOG_ANS" -a "${ALLOW_BLANK_PASS}" -eq 0 ]
+			then
+				return 1
+			fi
+
+			echo "--backtitle \" $PROMPT_SCRIPT \"" >$DIALOG_PARAMS
+			echo "--title \" $PROMPT_TITLE \"" >>$DIALOG_PARAMS
+			echo "--insecure --passwordbox \"\nVerify:\n\" $DIALOG_H $DIALOG_W" >>$DIALOG_PARAMS
+			DIALOG_ANS_VERIFY=$(dialog --file $DIALOG_PARAMS 2>&1 1>$(tty))
+
+			# set the return
+			if [ ${?} -eq 0 -a "${DIALOG_ANS}" == "${DIALOG_ANS_VERIFY}" ]
+			then
+				PROMPT_RET=${DIALOG_ANS}
+			else
+				PROMPT_RET=""
+				return 1
+			fi
+			;;
+	esac
+
+	return 0;
+}
+
+#
+# prompt_user_yesno()
+#
+# Provides a standardised yes or no prompt. The prompt can be displayed in 
+# simple text (ie. CLI) or via the dialog utility (ie. DIALOG).
+#
+# Arguments:
+#   - title (string)		title of the dialog prompt
+#   - message (string)		primary message of the input box
+#   - default (string)		default return value if no input given
+#
+# Returns:
+#   The returned value is available in the global $PROMPT_RET variable.
+#
+prompt_user_yesno() 
+{
+	# grab input variables with sane defaulting
+	PROMPT_TITLE=${1:-}
+	PROMPT_MSG=${2:-}
+	PROMPT_RET=${3:-}
+
+	# check if default returns are being forced
+	if [ -n "$FORCE_YES" ]
+	then
+		print_log "$PROMPT_MSG => $PROMPT_RET [FORCED]"
+		return 0;
+	fi
+
+	# sanity check the prompt mode (should be externally configured)
+	[ -z "$PROMPT_MODE" -o -z "$(which dialog)" ] && PROMPT_MODE="cli"
+
+	case $PROMPT_MODE in
+		"cli")
+			[ -n "${PROMPT_TITLE}" ] && echo -e "\n${PROMPT_TITLE}"
+
+			if [ -n "$PROMPT_RET" ] 
+			then
+				echo -en "$PROMPT_MSG (Y/N) [$PROMPT_RET]: "
+			else
+				echo -en "$PROMPT_MSG (Y/N): "
+			fi
+	
+			# get the input from STDIN (presumably the keyboard)
+			read ANS
+			
+			[ -z "$ANS" ] && ANS=$PROMPT_RET
+
+			if [ "${ANS:0:1}" == "Y" -o "${ANS:0:1}" == "y" ]
+			then
+				PROMPT_RET="Y"
+			else
+				PROMPT_RET="N"
+			fi
+			;;
+
+		"dialog")
+			[ "$PROMPT_RET" == "N" -o "$PROMPT_RET" == "n" ] && DIALOG_OPTS="--defaultno " || DIALOG_OPTS=""
+
+			setDialogBounds "$PROMPT_MSG" "yesno"
+			dialog $DIALOG_OPTS --backtitle "$PROMPT_SCRIPT" --title " $PROMPT_TITLE " --yesno "$PROMPT_MSG" $DIALOG_H $DIALOG_W
+
+			# set the return
+			[ ${?} -eq 0 ] && PROMPT_RET="Y" || PROMPT_RET="N"
+
+			;;
+	esac
+
+	return 0;
+}
+
+
+#
+# PROCESS FUNCTIONS
+#
+
+#
+# process_start()
+#
+# Provides a standardised method to start a system app. The process is tracked
+# via a specified PID file and any output is piped to a specified log file. In
+# addition there is a degree of status prompting via the standardised console
+# utilities.
+#
+# Arguments:
+#   - binary (string)		full path of app binary
+#   - options (string)		command line options to be passed to app
+#   - pid file (string)		full path to PID file for app tracking
+#   - log file (string)		full path to log file for app logging
+#   - description (string)	description of app for status messaging
+#   - user (string)		(optional) run binary as user
+#
+# Returns:
+#   Zero (0) is returned on success with a non-zero (1) returned on any error.
+#
+process_start() 
+{
+	# grab input variables with sane defaulting
+	APP=${1:-}
+	APP_OPTIONS=${2:-}
+	PID_FILE=${3:-}
+	LOG_FILE=${4:-}
+	APP_DESC=${5:-}
+	USER=${6:-}
+
+	echo_msg_begin 1 "starting: $APP_DESC"
+
+	# set sane defaults
+	RET=0
+	STALE_PID_FOUND=""
+
+	# check if a PID file already exists
+	if [ -f $PID_FILE ]
+	then
+        	PID=$(cat $PID_FILE)
+
+		# confirm if expect is running (ie. possible stale PID)
+		if [ -z "${PID}" ] || [ $(ps -ef | grep $APP | grep $PID | grep -v grep | wc -l) -eq 0 ]
+		then
+			STALE_PID_FOUND="yes"
+			echo_msg_end 2 "stale PID file found, deleting!"
+			rm -f $PID_FILE
+		else
+			echo_msg_end 2 "already running"
+			return 0
+		fi
+	fi
+
+	# ensure pid and log directories exist before we write to them
+	for DIR in $(dirname $PID_FILE) $(dirname $LOG_FILE)
+	do
+		if [ ! -d "$DIR" ]
+		then
+			mkdir -p $DIR
+			if [ ${?} -ne 0 ]
+			then
+				echo_failure_msg 2 "unabled to create directory: $DIR"
+				return 1
+			fi
+		fi
+	done
+
+	# re-prompt if stale PID was found
+	if [ -n "${STALE_PID_FOUND}" ]
+	then
+		echo_msg_begin 2 "attempting a clean start"
+	fi
+
+	# execute application
+	echo "Executing: $APP $APP_OPTIONS" >$LOG_FILE
+	if [ "$#" -eq "6" ]; then
+
+	        # Create home dir if it doesn't already exist
+	        mkdir -p /home/$USER
+
+        	# Set permissions
+       		chown -R $USER /home/$USER
+
+		# Exec as user in user's home directory
+		eval exec su - $USER -- "$APP $APP_OPTIONS" >>$LOG_FILE 2>&1 &
+	else
+
+		# Exec as root (process will natively drop permissions after initialization)
+		eval exec $APP $APP_OPTIONS >>$LOG_FILE 2>&1 &
+
+	fi
+
+	# grab the PID which should be sufficient majority of the time
+	PID=$!
+	sleep 1
+
+	# grab any potential non standard daemon forks
+	PID_ALT=$(ps ax | grep -v grep | grep "$APP $APP_OPTIONS" | awk '{print $1}' | head -n 1)
+
+	# confirm we are running by checking PID is still valid
+	if [ "$(ps ax | awk '{print $1}' | grep $PID | grep -v grep | wc -l)" -ne 0 ]
+	then
+		echo_msg_end 0
+		echo $PID >$PID_FILE
+	# alternatively check if PID_ALT is still valid
+	elif [ -n "${PID_ALT}" ] && [ "$(ps ax | awk '{print $1}' | grep $PID_ALT | grep -v grep | wc -l)" -ne 0 ]
+	then
+		echo_msg_end 0
+		echo $PID_ALT >$PID_FILE
+	else
+		RET=1
+		echo_msg_end 1 $PROCESS
+		echo_msg 2 "${RED}check $LOG_FILE for error messages"
+	fi
+
+	return $RET
+}
+
+#
+# process_stop()
+#
+# Provides a standardised method to stop a system app. To stop a process the 
+# full path to the app binary and the associated PID file is required. In
+# addition there is a degree of status prompting via the standardised console
+# utilities.
+#
+# Arguments:
+#   - binary (string)		full path of app binary
+#   - pid file (string)		full path to PID file for app tracking
+#   - description (string)	description of app for status messaging
+#
+# Returns:
+#   Zero (0) is returned on success with a non-zero (1) returned on any error.
+#
+process_stop()
+{   
+	# grab input variables with sane defaulting
+	APP=${1:-}
+	PID_FILE=${2:-}
+	APP_DESC=${3:-}
+
+	echo_msg_begin 1 "stopping: $APP_DESC"
+
+	# check for PID file
+	if [ -f $PID_FILE ]
+	then
+		PID=$(cat $PID_FILE)
+
+		# check if PID already running
+		if [ -z "${PID}" ] || [ $(ps -ef | grep $APP | grep $PID | grep -v grep | wc -l) -eq 0 ]
+		then
+		    echo_msg_end 2 "not running"
+		    echo_msg 2 "stale PID file found, deleting!"
+		    rm -f $PID_FILE
+		else
+			kill $PID
+			if [ ${?} -eq 0 ]
+			then
+				rm -f $PID_FILE
+				echo_msg_end 0
+			else
+				echo_msg_end 1
+			fi
+		fi
+    else
+        echo_msg_end 2 "not running"
+    fi
+}
+
+#
+# process_restart()
+#
+# Provides a standardised method to restart a system app. The required options
+# are the same as process_start. The app binary path and tracking PID file need
+# to be the same as the original calling of process_start to avoid any
+# instability.
+#
+# The application is first stopped and then started again with NO overlap.
+#
+# Arguments:
+#   - binary (string)		full path of app binary
+#   - options (string)		command line options to be passed to app
+#   - pid file (string)		full path to PID file for app tracking
+#   - log file (string)		full path to log file for app logging
+#   - description (string)	description of app for status messaging
+#   - user (string)		(optional) run binary as user
+#
+# Returns:
+#   Zero (0) is returned on success with a non-zero (1) returned on any error.
+#
+process_restart()
+{
+	# grab input variables with sane defaulting
+	APP=${1:-}
+	APP_OPTIONS=${2:-}
+	PID_FILE=${3:-}
+	LOG_FILE=${4:-}
+	APP_DESC=${5:-}
+	USER=${6:-}
+
+        # check for PID file
+        if [ -f $PID_FILE ]
+        then
+		# Pull the PID out of the PID_FILE
+		# This must be done before process_stop since it deletes PID_FILE
+		PID=$(cat $PID_FILE)
+		# Ask the process to shut down
+		process_stop "$APP" "$PID_FILE" "$APP_DESC"
+		# Wait for the process to terminate gracefully
+		while [ `ps aux |grep $PID |grep -v grep |wc -l` -eq 1 ] ; do sleep 1; done
+	fi
+
+	# Rotate the log file and keep a maximum of 10	
+	[ -f "$LOG_FILE" ] && mv "$LOG_FILE" "$LOG_FILE".`date +%Y%m%d%H%M%S`
+	[ `ls "$LOG_FILE".* |wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f
+
+	# Start the process
+	if [ "$#" -eq "6" ]; then
+		process_start "$APP" "$APP_OPTIONS" "$PID_FILE" "$LOG_FILE" "$APP_DESC" "$USER"
+	else
+		process_start "$APP" "$APP_OPTIONS" "$PID_FILE" "$LOG_FILE" "$APP_DESC"
+	fi
+
+}
+
+#
+# process_restart_if_stale()
+#
+# Provides a standardised method to restart a system app if stale. The required options
+# are the same as process_start. The app binary path and tracking PID file need
+# to be the same as the original calling of process_start to avoid any
+# instability.
+#
+# The application is first stopped and then started again with NO overlap.
+#
+# Arguments:
+#   - binary (string)           full path of app binary
+#   - options (string)          command line options to be passed to app
+#   - pid file (string)         full path to PID file for app tracking
+#   - log file (string)         full path to log file for app logging
+#   - description (string)      description of app for status messaging
+#   - user (string)		(optional) run binary as user
+#
+# Returns:
+#   Zero (0) is returned on success with a non-zero (1) returned on any error.
+#
+process_restart_if_stale()
+{
+        # grab input variables with sane defaulting
+        APP=${1:-}
+        APP_OPTIONS=${2:-}
+        PID_FILE=${3:-}
+        LOG_FILE=${4:-}
+        APP_DESC=${5:-}
+	USER=${6:-}
+
+	# check for PID file
+        if [ -f $PID_FILE ]
+        then
+                PID=$(cat $PID_FILE)
+
+                # check if PID already running
+                if [ "$(ps -ef | grep $APP | grep $PID | grep -v grep | wc -l)" -eq 0 ]
+                then
+                        #echo_msg_end 1
+                        echo_msg 1 "stale PID file found, deleting!"
+                        rm -f $PID_FILE
+        		process_stop "$APP" "$PID_FILE" "$APP_DESC"
+			# Rotate the log file and keep a maximum of 10	
+			[ -f "$LOG_FILE" ] && mv "$LOG_FILE" "$LOG_FILE".`date +%Y%m%d%H%M%S`
+			[ `ls "$LOG_FILE".* |wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f
+			if [ "$#" -eq "6" ]; then
+				process_start "$APP" "$APP_OPTIONS" "$PID_FILE" "$LOG_FILE" "$APP_DESC" "$USER"
+			else
+			        process_start "$APP" "$APP_OPTIONS" "$PID_FILE" "$LOG_FILE" "$APP_DESC"
+			fi
+                        return 1
+                else
+                        #echo_msg_end 0
+                        return 0
+                fi
+        else
+                #echo_msg_end 1
+                return 1
+        fi
+}
+
+#
+# process_restart_with_overlap()
+#
+# Provides a standardised method to restart a system app with overlapping. The
+# required options and associated constraints are the same as process_restart.
+#
+# A second spawn of the application is first started and then the original one
+# stopped providing overlap.
+#
+# Arguments:
+#   - binary (string)		full path of app binary
+#   - options (string)		command line options to be passed to app
+#   - pid file (string)		full path to PID file for app tracking
+#   - log file (string)		full path to log file for app logging
+#   - description (string)	description of app for status messaging
+#
+# Returns:
+#   Zero (0) is returned on success with a non-zero (1) returned on any error.
+#
+process_restart_with_overlap()
+{
+	# grab input variables with sane defaulting
+	APP=${1:-}
+	APP_OPTIONS=${2:-}
+	PID_FILE=${3:-}
+	LOG_FILE=${4:-}
+	APP_DESC=${5:-}
+
+	echo_msg 1 "restarting with overlap: ${APP_DESC}"
+
+	if [ -f "${PID_FILE}" ]
+	then
+        	OLD_PID=$(cat $PID_FILE)
+		if [ -z "${OLD_PID}" ] || [ $(ps -ef | grep $APP | grep $OLD_PID | grep -v grep | wc -l) -eq 0 ]
+		then
+			echo_msg 2 "stale PID file found, deleting!"
+			rm -f $PID_FILE
+			process_start "$APP" "$APP_OPTIONS" "$PID_FILE" "$LOG_FILE" "$APP_DESC"
+		else
+			# Rotate the log file and keep a maximum of 10	
+			[ -f "$LOG_FILE" ] && mv "$LOG_FILE" "$LOG_FILE".`date +%Y%m%d%H%M%S`
+			[ `ls "$LOG_FILE".* |wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f
+
+			rm -f $PID_FILE
+			process_start "$APP" "$APP_OPTIONS" "$PID_FILE" "$LOG_FILE" "$APP_DESC"
+ 			echo_msg_begin 2 "stopping old process: ${APP_DESC}"
+			kill -9 $OLD_PID
+		    	if [ ${?} -eq 0 ]
+			then 
+				echo_msg_end 0
+			else
+				echo_msg_end 1
+			fi
+		fi
+    	else
+		process_start "$APP" "$APP_OPTIONS" "$PID_FILE" "$LOG_FILE" "$APP_DESC"
+	fi 
+}
+
+#
+# process_status()
+#
+# Provides a standardised method to get the running status of a system app. To 
+# find the status of a process the full path to the app binary and the
+# associated PID file is required. In addition there is a degree of status
+# prompting via the standardised console utilities.
+#
+# Arguments:
+#   - binary (string)		full path of app binary
+#   - pid file (string)		full path to PID file for app tracking
+#   - description (string)	description of app for status messaging
+#
+# Returns:
+#   Zero (0) is returned on success with a non-zero (1) returned on any error.
+#
+process_status()
+{
+	# grab input variables with sane defaulting
+	APP=${1:-}
+	PID_FILE=${2:-}
+	APP_DESC=${3:-}
+
+	echo_msg_begin 1 "$APP_DESC"
+
+	# check for PID file
+	if [ -f $PID_FILE ]
+	then
+		PID=$(cat $PID_FILE)
+
+		# check if PID already running
+		if [ "$(ps -ef | grep $APP | grep $PID | grep -v grep | wc -l)" -eq 0 ]
+		then
+			echo_msg_end 1
+			echo_msg 1 "stale PID file found, process will be restarted at the next 5-minute interval!"
+			return 1
+		else
+			echo_msg_end 0
+			return 0
+		fi
+	else
+		echo_msg_end 1
+		return 1    
+	fi
+}
+
+
+#
+# INTERFACE FUNCTIONS
+#
+
+#
+# interfaces_get()
+#
+# Processes /proc/net/dev and returns all valid NSM compatible interfaces. The 
+# compatible interfaces include: eth, bond, ath, bge and fe.
+#
+# Arguments:
+#   Nil.
+#
+# Returns:
+#   A space separated string of all compatible interfaces.
+#
+interfaces_get()
+{
+	INTERFACES=""
+
+	[ -f "/proc/net/dev" ] || return 1
+	
+	# grab the /proc/net/dev listing
+	PROC_NET_DEV=$(cat "/proc/net/dev" | egrep "(eth|bond|ath|bge|fe)[0-9]+" | awk '{print $1}')
+
+	# loop through not commented entries and extract
+	for DEV in $PROC_NET_DEV
+	do
+		INTERFACES="${INTERFACES} ${DEV%:}"
+	done
+
+	echo $INTERFACES
+}
+
+#
+# bonded_interface_exists()
+#
+# Identify if the supplied interface argument currently exists. Existence is
+# determined by the module being loaded and interface appears in /proc/net/dev.
+#
+# Arguments:
+#   - interface (string)    interface name to be checked
+#
+# Returns:
+#   Zero (0) is returned on success with a non-zero (1) returned on any error.
+#
+bonded_interface_exists()
+{
+	# grab input variables with sane defaulting
+	INTERFACE=${1:-}
+
+	# perform sanity checks
+	[ -z "$INTERFACE" ] && return 1
+
+	# grab details from lsmod and /proc/net/dev
+	LSMOD_COUNT="$(lsmod | grep $INTERFACE | wc -l)"
+	PROC_NET_DEV_COUNT="$(cat /proc/net/dev | grep $INTERFACE | wc -l)"
+
+	# exists if interface is modprobed and available
+	[ "$LSMOD_COUNT" -eq 1 -a "$PROC_NET_DEV_COUNT" -eq 1 ] && return 0
+	
+	# error if interface is modprobed but not available
+	[ "$LSMOD_COUNT" -eq 0 -a "$PROC_NET_DEV_COUNT" -eq 0 ] && return -1
+
+	return 1
+}
+
+#
+# bonded_interface_load()
+#
+# Builds a bonded interface that slaves the supplied (comma separated interface
+# list) and presents it to the system.
+#
+# Arguments:
+#   - interface (string)    comma separated interface list to build from.
+#
+# Returns:
+#   Zero (0) is returned on success with a non-zero (1) returned on any error.
+#
+# Examples:
+#   - bonded_interface_load("bond0:eth0,eth1")
+#   - bonded_interface_load("bond1:eth0,eth1,eth2")
+#
+bonded_interface_load()
+{
+	INTERFACE=${1:-}
+
+	# perform sanity checks
+	[ -z "$INTERFACE" ] && return 1
+	[ "${INTERFACE:0:4}" ] && return 1
+	
+	# extract interface information
+	BOND_NAME=${INTERFACE%%:*}
+	BOND_NUMBER=${BOND_NUMBER#bond}
+	BOND_INTERFACES=${INTERACE#bond*:}
+	BOND_INTERFACES=${BOND_INTERFACES/,/ }
+	
+	# check if interface already exists
+	[ "$(bonded_interface_exists $BOND_NAME)" -eq 0 ] && return 1
+
+	# check for module/interface sync
+	#  if N>0, in "bond(N)", then make sure all the bonded interfaces <N exist
+	#  without checking you may end up with a bond(N) module and a bond(N-1) interface name
+ 	I=0
+	while [ "$I" -lt "$BOND_NUMBER" ]
+	do
+	  	[ "$(bonded_interface_exists bond${I})" -ne 0 ] && return 1
+		((I=I+1))
+	done
+	
+	# modprobe the interface			
+	modprobe bonding -o $BOND_NAME || return 1
+
+	return 0
+}
+
+#
+# interface_up()
+#
+# Brings a normal or bonded interface up making it active. If required it will
+# build a bonded interface using bonded_interface_load().
+#
+# Arguments:
+#   - interface (string)    comma separated interface list to slave.
+#
+# Returns:
+#   Zero (0) is returned on success with a non-zero (1) returned on any error.
+#
+# Examples:
+#   - interface_up("bond0:eth0,eth1")
+#   - interface_up("bond1:eth0,eth1,eth2")
+#
+interface_up()
+{
+	# grab input variables with sane defaulting
+	INTERFACE=${1:-}
+	
+	DO_BONDING=""
+	[ "$(echo $INTERFACE | grep ^bond | wc -l)" -eq 1 ] && DO_BONDING="yes"
+
+	if [ -z "$DO_BONDING" ]
+	then
+		# start a normal interface with no ip
+		ifconfig $INTERFACE 0.0.0.0 up 
+		if [ ${?} -ne 0 ]
+		then
+			echo_error_msg 1 "could not configure interface: $INTERFACE"
+			return 1
+		fi
+	else
+		# extract interface information
+		BOND_NAME=${INTERFACE%%:*}
+		BOND_NUMBER=${BOND_NUMBER#bond}
+		BOND_INTERFACES=${INTERACE#bond*:}
+		BOND_INTERFACES=${BOND_INTERFACES/,/ }
+
+		# check if bonded interface exists
+		if [ "$(bonded_interace_exists $BOND_NAME)" -ne 0 ]
+		then
+			bonded_interface_load $BOND_NAME
+		fi
+
+		# bring the interface up
+		ifconfig $BOND_NAME up >/dev/null 2>&1
+		if [ ${?} -ne 0 ]
+		then
+			echo_error_msg 1 "could not configure interface: $BOND_NAME"
+			return 1
+		fi
+
+		# enslave the physical interfaces
+		for IF in $BOND_INTERFACES
+		do
+			[ "$(cat /proc/net/dev | grep $IF | wc -l)" -eq 0 ] && return 1
+
+			ifenslave $BOND_NAME $IF >/dev/null 2>&1
+			if [ ${?} -ne 0 ]
+			then
+				echo_error_msg 1 "unable to enslave $IF to $BOND_NAME"
+				return 1
+			fi
+		done
+	fi
+
+	return 0
+}
+
+#
+# interface_down
+#
+interface_down()
+{
+
+	return 0
+}
+
+
+#
+# FILE TRACKING (CACHE) FUNCTIONS
+#
+
+#
+# cache_file_exists()
+#
+# Determines if a file exists in the NSMnow cache which is stored in the NSMnow
+# share direcotry.
+#
+# Arguments:
+#   - file_path  (string)   the full path to the file
+#   - file_group (string)   the file group it belongs to (default: unknown)
+#
+# Returns:
+#   Zero (0) is returned if the file exists with a non-zero (1) returned on any
+# error.
+#
+cache_file_exists()
+{
+	# check the cache exists
+	[ ! -f "${NSM_SHARE_DIR}/.cache" ] && return 1
+
+	# grab input variables with sane defaulting
+	FILE_PATH=${1:-}
+	FILE_GROUP=${2:-unknown}
+
+	# check for line existence
+	[ "$(cat ${NSM_SHARE_DIR}/.cache | grep "$FILE_GROUP;$FILE_PATH" | wc -l)" -gt 0 ] && return 0
+
+	return 1
+}
+
+#
+# cache_file_exists_and_valid()
+#
+# Determines if a file exists in the NSMnow cache which is stored in the NSMnow
+# share direcotry and that its associated MD5 is still valid.
+#
+# Arguments:
+#   - file_path  (string)   the full path to the file
+#   - file_group (string)   the file group it belongs to (default: unknown)
+#
+# Returns:
+#   Zero (0) is returned if the file exists and the associated MD5 matches with
+# a non-zero (1) returned on any error.
+#
+cache_file_exists_and_valid()
+{
+	# check the cache exists
+	[ ! -f "${NSM_SHARE_DIR}/.cache" ] && return 1
+
+	# grab input variables with sane defaulting
+	FILE_PATH=${1:-}
+	FILE_GROUP=${2:-unknown}
+
+	# grab the file hash
+	if [ -L "$FILE_PATH" ]
+	then
+		FILE_HASH="symlink"
+	elif [ -f "$FILE_PATH" ]
+	then
+		FILE_HASH=$(md5sum $FILE_PATH | awk '{print $1}')
+	else
+		return 1
+	fi
+
+	# check for line existence
+	[ "$(cat ${NSM_SHARE_DIR}/.cache | grep "$FILE_GROUP;$FILE_PATH;$FILE_HASH" | wc -l)" -gt 0 ] && return 0
+
+	return 1
+}
+
+#
+# cache_file_add()
+#
+# Add a file to the NSMnow cache which is stored in the NSMnow share directory.
+#
+# Arguments:
+#   - file_path  (string)   the full path to the file
+#   - file_group (string)   the file group it belongs to (default: unknown)
+#
+# Returns:
+#   Zero (0) is returned if the file is added to the cache with a non-zero (1)
+# returned on any error.
+#
+cache_file_add()
+{
+	# grab input variables with sane defaulting
+	FILE_PATH=${1:-}
+	FILE_GROUP=${2:-unknown}
+
+    # error if we are operating on a directory
+    [ -d "${FILE_PATH}" ] && return 1
+
+	# check if the entry already exists and if so we are updating not adding
+	cache_file_exists "${FILE_PATH}" "${FILE_GROUP}"
+    if [ ${?} -eq 0 ]
+    then
+	    cache_file_remove "${FILE_PATH}" "${FILE_GROUP}"
+    fi
+
+	# check if the file actually exists
+	[ ! -r "${FILE_PATH}" ] && return 1
+
+	# grab the file hash
+	if [ -L "$FILE_PATH" ]
+	then
+		FILE_HASH="symlink"
+	else
+		FILE_HASH=$(md5sum $FILE_PATH | awk '{print $1}')
+	fi
+
+    # ensure the cache directory exists
+    if [ ! -d "${NSM_SHARE_DIR}" ]
+    then
+        mkdir -p "${NSM_SHARE_DIR}"
+    fi
+        
+	echo "$FILE_GROUP;$FILE_PATH;$FILE_HASH" >>${NSM_SHARE_DIR}/.cache
+
+	return $?
+}
+
+#
+# cache_file_remove()
+#
+# Remove a file from the NSMnow cache which is stored in the NSMnow share
+# directory.
+#
+# Arguments:
+#   - file_path  (string)   the full path to the file
+#   - file_group (string)   the file group it belongs to (default: unknown)
+#
+# Returns:
+#   Zero (0) is returned if the file is removed from the cache with a
+# non-zero (1) returned on any error.
+#
+cache_file_remove()
+{
+	# check the cache exists
+	[ ! -f "${NSM_SHARE_DIR}/.cache" ] && return 1
+
+	# grab input variables with sane defaulting
+	FILE_PATH=${1:-}
+	FILE_GROUP=${2:-unknown}
+
+	# check if the entry already exists
+	cache_file_exists "${FILE_PATH}" "${FILE_GROUP}"
+	[ ${?} -ne 0 ] && return 1
+
+    # generate escaped version of sed patter
+    SED_PATTERN=$(echo "${FILE_GROUP}\;${FILE_PATH}\;" | sed "s|/|\\\/|g")
+
+	# remove the file
+	sed -i /^$SED_PATTERN/D ${NSM_SHARE_DIR}/.cache
+
+	return $?
+}
+
+#
+# cache_file_update()
+#
+# Firstly it determines if the file exists in the NSMnow cache, which is stored
+# in the NSMnow share directory, and that its associated MD5 is valid. If the
+# MD5 is not valid then it will update the entry with new MD5 for that file.
+#
+# Arguments:
+#   - file_path  (string)   the full path to the file
+#   - file_group (string)   the file group it belongs to (default: unknown)
+#
+# Returns:
+#   Zero (0) is returned if either the file exists and associated MD5 is still
+# valid or if the update was successfull. A non-zero (1) returned on any error.
+#
+cache_file_update()
+{
+	# grab input variables with sane defaulting
+	FILE_PATH=${1:-}
+	FILE_GROUP=${2:-unknown}
+
+	# check if the entry already exists and is valid
+	cache_file_exists_and_valid "${FILE_PATH}" "${FILE_GROUP}"
+	[ ${?} -eq 0 ] && return 0
+
+	# update by removing existing and then add again
+	cache_file_remove "${FILE_PATH}" "${FILE_GROUP}"
+	cache_file_add "${FILE_PATH}" "${FILE_GROUP}"
+    
+    return $?
+}
+
+#
+# cache_group_remove()
+#
+# Remove an entire file group (multiple files) from the NSMnow cache which is
+# stored in the NSMnow share directory.
+#
+# Arguments:
+#   - file_group (string)   the file group it belongs to (default: unknown)
+#
+# Returns:
+#   Zero (0) is returned if the file group is removed from the cache with a
+# non-zero (1) returned on any error.
+#
+cache_group_remove()
+{
+	# grab input variables with sane defaulting
+	FILE_GROUP=${1:-unknown}
+
+    # generate escaped version of sed patter
+    SED_PATTERN=$(echo "${FILE_GROUP}\;" | sed "s|/|\\\/|g")
+
+	# remove the group
+	sed -i /^$SED_PATTERN/D ${NSM_SHARE_DIR}/.cache
+
+	return $?
+}
+
+#
+# cache_group_update()
+#
+# Scans through the NSMnow cache and performs an update on all files associated
+# with the specified file_group.
+#
+# Arguments:
+#   - file_group (string)   the file group it belongs to (default: unknown)
+#
+# Returns:
+#   Zero (0) is returned if all files are updated successfully. A non-zero (1)
+# returned on any error.
+cache_group_update()
+{
+	# grab input variables with sane defaulting
+	FILE_GROUP=${1:-unknown}
+
+	# check the cache exists
+	[ ! -f "${NSM_SHARE_DIR}/.cache" ] && return 1
+
+    # set default return
+    RET=0
+
+    # search the cache for file group and update based on 
+    cat $NSM_SHARE_DIR/.cache | while READ ENTRY
+    do
+        ENTRY_GROUP=$(echo "${ENTRY}" | cut -d; -f1)
+        ENTRY_FILE=$(echo "${ENTRY}" | cut -d; -f2)
+        ENTRY_HASH=$(echo "${ENTRY}" | cut -d; -f3)
+
+        if [ "${ENTRY_GROUP}" == "${FILE_GROUP}" ]
+        then
+            cache_file_update "${ENTRY_FILE}" "${ENTRY_GROUP}"
+            [ ${?} -ne 0 ] && RET=1
+        fi
+    done
+
+    return $RET
+}
+
+#
+# APPLICATION ROUTINES
+#
+
+#
+# is_barnyard2_version()
+#
+#
+# Check if barnyard2 is available and optionally at a particular version.
+#
+# Arguments:
+#   version (string)        optional version number for comparision.
+#
+# Returns:
+#   Zero (0) is returned if barnyard2 is available and matches the version criteria
+# if specified. A non-zero (1) is returned in every other condition.
+#
+is_barnyard2_version()
+{
+	# grab input variables with sane defaulting
+	VER=${1:-}
+
+	BY2_VER=$(barnyard2 -V 2>&1 | grep Version | cut -d" " -f8)
+	
+	if [ ${?} -ne 0 ]
+	then
+		return 1
+	fi
+
+    # check version if requested
+    if [ -n "${VER}" ]
+    then
+
+        # check for "+" modifier
+        if [ "${VER:${#VAR}-1:1}" == "+" ]
+        then
+            # extract the number only
+            VER=${VER%+}
+
+            if [ "${BY2_VER}" \> "${VER}" -o "${BY2_VER}" == "${VER}" ]
+            then 
+                return 0
+            fi
+        # check for "-" modifier
+        elif [ "${VER:${#VAR}-1:1}" == "-" ]
+        then
+            # extract the number only
+            VER=${VER%-}
+
+            if [ "${BY2_VER}" \< "${VER}" -o "x${BY2_VER}" == "x${VER}" ]
+            then 
+                return 0
+            fi
+        # otherwise we have explicit versions
+        else
+            for V in $VER
+            do
+                if [ "x${V}" == "x${BY2_VER}" ]
+                then
+                    return 0
+                fi
+            done
+        fi
+    # otherwise we care about genre only
+    else
+        return 0
+    fi
+
+    # if we get here the version match failed
+	return 1
+}
+
+#
+# is_snort_version()
+#
+#
+# Check if snort is available and optionally at a particular version.
+#
+# Arguments:
+#   version (string)        optional version number for comparision.
+#
+# Returns:
+#   Zero (0) is returned if snort is available and matches the version criteria
+# if specified. A non-zero (1) is returned in every other condition.
+#
+is_snort_version()
+{
+	# grab input variables with sane defaulting
+	VER=${1:-}
+
+	SNORT_VER=$(snort -V 2>&1 | grep Version | cut -d" " -f9)
+	
+	if [ ${?} -ne 0 ]
+	then
+		return 1
+	fi
+
+    # check version if requested
+    if [ -n "${VER}" ]
+    then
+
+        # check for "+" modifier
+        if [ "${VER:${#VAR}-1:1}" == "+" ]
+        then
+            # extract the number only
+            VER=${VER%+}
+
+            if [ "${SNORT_VER}" \> "${VER}" -o "${SNORT_VER}" == "${VER}" ]
+            then 
+                return 0
+            fi
+        # check for "-" modifier
+        elif [ "${VER:${#VAR}-1:1}" == "-" ]
+        then
+            # extract the number only
+            VER=${VER%-}
+
+            if [ "${SNORT_VER}" \< "${VER}" -o "x${SNORT_VER}" == "x${VER}" ]
+            then 
+                return 0
+            fi
+        # otherwise we have explicit versions
+        else
+            for V in $VER
+            do
+                if [ "x${V}" == "x${SNORT_VER}" ]
+                then
+                    return 0
+                fi
+            done
+        fi
+    # otherwise we care about genre only
+    else
+        return 0
+    fi
+
+    # if we get here the version match failed
+	return 1
+}
+
+
+#
+# OS ROUTINES
+#
+
+#
+# is_debian()
+#
+# Check if we are on a pure Debian system.
+#
+# Arguments:
+#   Nil.
+#
+# Returns:
+#   Zero (0) is returned if system is a Debian linux system with a non-zero (1)
+# returned on any other system.
+#
+is_debian()
+{
+	if [ ! -f "/etc/debian_version" ]
+	then
+		return 1
+	fi
+
+	# ensure it's not ubuntu
+	if [ -f "/etc/lsb-release" ]
+	then
+		return 1
+	fi
+
+	return 0;
+}
+
+#
+# is_ubuntu ()
+#
+# Check if we are on an Ubuntu system.
+#
+# Arguments:
+#   version (string)        optional version number for comparision.
+#
+# Returns:
+#   Zero (0) is returned if system is a Ubuntu linux system with a non-zero (1)
+# returned on any other system.
+#
+is_ubuntu()
+{
+	# grab input variables with sane defaulting
+	VER=${1:-}
+
+	if [ ! -f "/etc/lsb-release" ]
+	then
+		return 1
+	fi
+
+	DIST_ID=$(cat /etc/lsb-release | grep Ubuntu)
+    DIST_VER=$(cat /etc/lsb-release | grep RELEASE | cut -d= -f2)
+
+	if [ "x$DIST_ID" == "x" ]
+	then
+		return 1
+	fi
+
+    # check version if requested
+    if [ -n "$VER" ]
+    then
+
+# TODO: Test new comparative check
+#        # strip all decimals
+#        VER=${VER//./}
+#        DIST_VER=${DIST_VER//./}
+
+        # check for "+" modifier
+        if [ "${VER:${#VAR}-1:1}" == "+" ]
+        then
+            # extract the number only
+            VER=${VER%+}
+
+            if [ "${DIST_VER}" \> "${VER}" -o "${DIST_VER}" == "${VER}" ]
+# TODO:            if [ $DIST_VER -ge $VER ]
+            then 
+                return 0
+            fi
+        # check for "-" modifier
+        elif [ "${VER:${#VAR}-1:1}" == "-" ]
+        then
+            # extract the number only
+            VER=${VER%-}
+
+# TODO:            #if [ $DIST_VER -le $VER ]
+            if [ "${DIST_VER}" \< "${VER}" -o "x${DIST_VER}" == "x${VER}" ]
+            then 
+                return 0
+            fi
+        # otherwise we have explicit versions
+        else
+            for V in $VER
+            do
+                if [ "x${V}" == "x${DIST_VER}" ]
+                then
+                    return 0
+                fi
+            done
+        fi
+    # otherwise we care about genre only
+    else
+        return 0
+    fi
+
+    # if we get here the version match failed
+	return 1
+}
+
+#
+# is_fedora ()
+#
+# Check if we are on a Fedora system.
+#
+# Arguments:
+#   version (string)        optional version number for comparision.
+#
+# Returns:
+#   Zero (0) is returned if system is a Fedora linux system with a non-zero (1)
+# returned on any other system.
+#
+is_fedora()
+{
+	# grab input variables with sane defaulting
+	VER=${1:-}
+
+	if [ ! -f "/etc/system-release" ]
+	then
+		return 1
+	fi
+
+	DIST_ID=$(cat /etc/system-release | grep Fedora)
+    DIST_VER=$(cat /etc/system-release | cut -d" " -f3)
+
+	if [ "x$DIST_ID" == "x" ]
+	then
+		return 1
+	fi
+
+    # check version if requested
+    if [ -n "$VER" ]
+    then
+        # check for "+" modifier
+        if [ "${VER:${#VAR}-1:1}" == "+" ]
+        then
+            # extract the number only
+            VER=${VER%+}
+
+#            if [ $DIST_VER -ge $VER ]
+            if [ "${DIST_VER}" \> "${VER}" -o "${DIST_VER}" == "${VER}" ]
+            then 
+                return 0
+            fi
+        # check for "-" modifier
+        elif [ "${VER:${#VAR}-1:1}" == "-" ]
+        then
+            # extract the number only
+            VER=${VER%-}
+
+#            if [ $DIST_VER -le $VER ]
+            if [ "${DIST_VER}" \< "${VER}" -o "${DIST_VER}" == "${VER}" ]
+            then 
+                return 0
+            fi
+        # otherwise we have explicit versions
+        else
+            for V in $VER
+            do
+                if [ "x$V" == "x${DIST_VER}" ]
+                then
+                    return 0
+                fi
+            done
+        fi
+    # otherwise we care about genre only
+    else
+        return 0
+    fi
+
+    # if we get here the version match failed
+	return 1;
+}
+
+#
+# is_rhel ()
+#
+# Check if we are on a RHEL system
+#
+# Arguments:
+#   Nil.
+#
+# Returns:
+#   Zero (0) is returned if system is a RHEL linux system with a non-zero (1)
+# returned on any other system.
+#
+is_rhel()
+{
+	if [ ! -f "/etc/redhat-release" ]
+    then
+        return 1
+    fi
+
+    DIST_ID=$(cat /etc/redhat-release | grep "Red Hat")
+
+    if [ "x$DIST_ID" == "x" ]
+    then
+        return 1
+    fi
+
+    return 0;
+}
+
+#
+# is_centos ()
+#
+# Check if we are on a CentOS system.
+#
+# Arguments:
+#   version (string)        optional version number for comparision.
+#
+# Returns:
+#   Zero (0) is returned if system is a CentOS linux system with a non-zero (1)
+# returned on any other system.
+#
+is_centos()
+{
+	# grab input variables with sane defaulting
+	VER=${1:-}
+
+	if [ ! -f "/etc/redhat-release" ]
+	then
+		return 1
+	fi
+
+	DIST_ID=$(cat /etc/redhat-release | grep CentOS)
+    DIST_VER=$(cat /etc/redhat-release | cut -d" " -f3)
+
+	if [ "x$DIST_ID" == "x" ]
+	then
+		return 1
+	fi
+
+    # check version if requested
+    if [ -n "$VER" ]
+    then
+#        # strip all decimals
+#        VER=${VER//./}
+#        DIST_VER=${DIST_VER//./}
+
+        # check for "+" modifier
+        if [ "${VER:${#VAR}-1:1}" == "+" ]
+        then
+            # extract the number only
+            VER=${VER%+}
+
+#            if [ $DIST_VER -ge $VER ]
+            if [ "${DIST_VER}" \> "${VER}" -o "${DIST_VER}" == "${VER}" ]
+            then 
+                return 0
+            fi
+        # check for "-" modifier
+        elif [ "${VER:${#VAR}-1:1}" == "-" ]
+        then
+            # extract the number only
+            VER=${VER%-}
+
+#            if [ $DIST_VER -le $VER ]
+            if [ "${DIST_VER}" \< "${VER}" -o "${DIST_VER}" == "${VER}" ]
+            then 
+                return 0
+            fi
+        # otherwise we have explicit versions
+        else
+            for V in $VER
+            do
+                if [ "x${V}" == "x${DIST_VER}" ]
+                then
+                    return 0
+                fi
+            done
+        fi
+    # otherwise we care about genre only
+    else
+        return 0
+    fi
+
+    # if we get here the version match failed
+	return 1;
+}
+
+
+#
+# os_type_get
+#
+# Returns the OS type/genre (eg. debian or ubuntu)
+#
+# Arguments:
+#   Nil.
+#
+# Returns:
+#   String denoting the OS type/genre, "unknown" is returned where the OS type
+# cannot be determined.
+#
+os_type_get()
+{
+    is_ubuntu
+    if [ ${?} -eq 0 ]
+    then
+        echo "ubuntu"
+        return
+    fi
+
+    is_debian
+    if [ ${?} -eq 0 ]
+    then
+        echo "debian"
+        return
+    fi
+
+    is_fedora
+    if [ ${?} -eq 0 ]
+    then
+        echo "fedora"
+        return
+    fi
+
+    is_rhel
+    if [ ${?} -eq 0 ]
+    then
+        echo "rhel"
+        return
+    fi
+
+    is_centos
+    if [ ${?} -eq 0 ]
+    then
+        echo "centos"
+        return
+    fi
+
+    echo "unknown"
+}
+
+
+#
+# DEBIAN/UBUNTU specific routines
+#
+
+#
+# debconf_priority_get()
+#
+# Get the priority level (of questioning) for the debconf system
+debconf_priority_get()
+{
+	# the debconf
+	DEBCONF_CONFIG="/var/cache/debconf/config.dat"
+
+	# return null if we can't read the config file
+    if [ ! -r "${DEBCONF_CONFIG}" ]
+    then
+        return 1
+    fi
+
+    RET=$(cat $DEBCONF_CONFIG | grep -A 2 "debconf/priority" | grep Value | cut -d" " -f2)
+
+    echo $RET
+
+    if [ -n "$(echo \"critical high medium low\" | grep ${RET})" ]
+    then
+        return 0
+    fi
+
+    return 1
+}
+
+#
+# debconf_priority_set()
+#
+# Set the priority level (of questioning) for the debconf system
+#
+debconf_priority_set()
+{
+	# grab input variables with sane defaulting
+	PRIORITY=${1:-}
+
+	# perform sanity checks
+	if [ -z "$PRIORITY" ]
+    then
+        return 1
+    elif [ -z "$(echo \"critical high medium low\" | grep ${PRIORITY})" ]
+    then
+        return 1
+    fi
+
+	# the debconf
+	DEBCONF_CONFIG="/var/cache/debconf/config.dat"
+
+	# return null if we can't read the config file
+    if [ ! -r "${DEBCONF_CONFIG}" ]
+    then
+        return 1
+    fi
+
+    # edit debconf priority via sed
+    sed -i "/Name: debconf\/priority/,/^Owners:/{s/Value:.*/Value: ${PRIORITY}/}" ${DEBCONF_CONFIG}
+
+	return $?
+}
+
+is_deb_installed()
+{
+	DEB_PACKAGE=${1:-}
+	RET="$(dpkg -l | grep $DEB_PACKAGE | wc -l)"
+
+	if [ $RET -eq "0" ]
+	then
+		return 0
+	fi
+
+	return 1
+}
+
+
+#
+# APPARMOR ROUTINES
+#
+
+#
+# apparmor_add()
+#
+# Add an entry into the specified profile file.
+#
+# Arguments:
+#   profile (string)        profile to add entry into
+#   entry (string)          entry to add
+#
+# Returns:
+#   Zero (0) is returned if insertion is successful with a non-zero (1)
+# returned on any error.
+#
+apparmor_add()
+{
+	# grab input variables with sane defaulting
+	PROFILE=${1:-}
+	ENTRY=${2:-}
+
+	# perform sanity checks
+	[ -z "$PROFILE" -o -z "$ENTRY" ] && return 1
+
+    # check the profile file exists and if not create a blank one
+    if [ ! -f $PROFILE ]
+    then
+        echo "" > $PROFILE
+    fi
+
+    # check if the entry already exists
+    if [ "$(cat $PROFILE | grep -e "[[:space:]]$ENTRY[[:space:]]" | wc -l)" -eq 1 ]
+    then
+        return 0
+    fi
+
+    # add the entry to the bottom (before the closing brace "}")
+    sed -i "/^}/i\\  $ENTRY," $PROFILE
+
+    return $?
+}
+
+#
+# apparmor_del()
+#
+# Remove an entry from the specified profile file.
+#
+# Arguments:
+#   profile (string)        profile to remove entry from
+#   entry (string)          entry to remove
+#
+# Returns:
+#   Zero (0) is returned if removal is successful with a non-zero (1) returned
+# on any error.
+#
+apparmor_del()
+{
+	# grab input variables with sane defaulting
+	PROFILE=${1:-}
+	ENTRY=${2:-}
+
+	# perform sanity checks
+	[ -z "$PROFILE" -o -z "$ENTRY" ] && return 1
+
+    # check if the file exists (there may be no need to remove)
+    if [ ! -f "$PROFILE" ]
+    then
+        return 0
+    fi
+
+    # check if the entry doesn't exist
+    if [ "$(cat $PROFILE | grep -e "[[:space:]]$ENTRY[[:space:]]" | wc -l)" -eq 0 ]
+    then
+        return 0
+    fi
+
+    # remove the entry
+    sed -i /$ENTRY/D $PROFILE
+
+    return $?
+}
+
+#
+# apparmor_update()
+#
+# Update an existing entry in the specified profile file.
+#
+# Arguments:
+#   profile (string)        profile containing the entry to udpate
+#   entry_old (string)      entry to be replaced
+#   entry_new (string)      entry to be inserted
+#
+# Returns:
+#   Zero (0) is returned if update is successful with a non-zero (1) returned
+# on any error.
+#
+apparmor_update()
+{
+	# grab input variables with sane defaulting
+	PROFILE=${1:-}
+	ENTRY_OLD=${2:-}
+	ENTRY_NEW=${3:-}
+
+	# perform sanity checks
+	[ -z "${PROFILE}" -o -z "${ENTRY_OLD}" -o -z "${ENTRY_NEW}" ] && return 1
+
+    # check if the old entry doesn't exist
+    if [ $(cat $PROFILE | grep -e "[[:space:]]$ENTRY_OLD[[:space:]]" | wc -l) -eq 0 ]
+    then
+
+        # just add the entry to the bottom (before the closing brace "}")
+        sed -i "/^}/i\\  $ENTRY," $PROFILE
+    else
+
+        # update the existing entry to the new one
+        sed -i "s|$ENTRY_OLD,|$ENTRY_NEW,|" $PROFILE
+    fi
+
+    return $?
+}
+
+
+#
+# FEDORA specific routines
+#
+is_rpm_installed()
+{
+	# grab input variables with sane defaulting
+	RPM_PACKAGE=${1:-}
+
+	# perform sanity checks
+	[ -z "${RPM_PACKAGE}" ] && return 1
+
+	RET=$(yum list installed | grep "${RPM_PACKAGE}" | wc -l)
+
+	if [ ${RET} -eq 0 ]
+	then
+		return 0
+	fi
+
+	return 1
+}
+
+
+#
+# MYSQL ROUTINES
+#
+
+#
+# mysql_start
+#
+# Start the mysql server using the distribution specific startup scripts. This
+# function is OS agnostic.
+#
+# Arguments:
+#   Nil.
+#
+# Returns:
+#   Zero (0) is returned if mysql server is started with a non-zero (1) on any
+# other condition or error.
+#
+mysql_start()
+{
+    # get the OS type
+    OS_TYPE="$(os_type_get)"
+
+    case "$OS_TYPE" in
+        debian|ubuntu)
+        	# check mysql status, return code indicated status
+        	/etc/init.d/mysql start >/dev/null 2>&1
+        	return $?
+            ;;
+        fedora|rhel|centos)
+        	# check mysql status, return code indicated status
+        	/etc/init.d/mysqld start >/dev/null 2>&1
+        	return $?
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+#
+#
+# mysql_stop
+#
+# Stop the mysql server using the distribution specific shutdown scripts. This
+# function is OS agnostic.
+#
+# Arguments:
+#   Nil.
+#
+# Returns:
+#   Zero (0) is returned if mysql server is stopped with a non-zero (1) on any
+# other condition or error.
+#
+mysql_stop()
+{
+    # get the OS type
+    OS_TYPE="$(os_type_get)"
+
+    case "$OS_TYPE" in
+        debian|ubuntu)
+        	# check mysql status, return code indicated status
+        	/etc/init.d/mysql stop >/dev/null 2>&1
+        	return $?
+            ;;
+        fedora|rhel|centos)
+        	# check mysql status, return code indicated status
+        	/etc/init.d/mysqld stop >/dev/null 2>&1
+        	return $?
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+#
+# mysql_is_running
+#
+# Determine if mysql server is running. This function is OS agnostic.
+#
+# Arguments:
+#   Nil.
+#
+# Returns:
+#   Zero (0) is returned if mysql server is running with a non-zero (1) on any
+# other condition or error.
+#
+mysql_is_running()
+{
+    # get the OS type
+    OS_TYPE="$(os_type_get)"
+
+    case "$OS_TYPE" in
+        debian|ubuntu)
+        	# check mysql status, return code indicated status
+        	/etc/init.d/mysql status >/dev/null 2>&1
+        	return $?
+            ;;
+        fedora|rhel|centos)
+        	# check mysql status, return code indicated status
+        	/etc/init.d/mysqld status >/dev/null 2>&1
+        	return $?
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    return 1
+}
+

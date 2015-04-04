@@ -1,0 +1,32 @@
+#$Id: sguild.access,v 1.3 2004/04/21 18:44:27 bamm Exp $
+#########################################################################
+#                                                                       #
+# This file is used by sguild for access control. It is read upon init  #
+# or when sguild receives a HUP signal.                                 #
+#                                                                       #
+# By default, sguild will look first for /etc/sguild/sguild.access,     #
+# then ./sguild.access unless the -A /path/to/sguild.access switch      #
+# is used.                                                              #
+#                                                                       #
+######################################################################### 
+#
+###############################################
+# Add your sensor IPs here.
+# If don't want to limit access, then use the 
+# keyword 'ANY'.
+#
+# Examples:
+# sensor 192.168.8.254
+###############################################
+sensor ANY
+#
+###############################################
+# Add your clients here.
+# If don't want to limit access, then use the 
+# keyword ANY.
+#
+# Examples:
+# client 192.168.8.1
+# client 127.0.0.1
+###############################################
+client ANY

@@ -1,0 +1,237 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion65) precise; urgency=low
+ .
+   * Issues 429, 451, and 454
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_clear
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_clear
+@@ -155,7 +155,7 @@ then
+ fi
+ 
+ # prompt to clear the server
+-prompt_user_yesno "Clear Server" "All collected data for server \"$SERVER_NAME\" will be cleared.\n\nDo you want to continue?" "N"
++prompt_user_yesno "Clear Server" "All collected data for server \"$SERVER_NAME\" will be cleared.\n\nThis includes user accounts!\n\nDo you want to continue?" "N"
+ [ "$?" -ne 0 ] && exit 1
+ if [ "$PROMPT_RET" != "Y" -a "$PROMPT_RET" != "y" ]
+ then
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -516,7 +516,11 @@ do
+                 # By default, we need to exclude IPv6 traffic from prads since Sguil doesn't grok it (yet)
+                 BPF="ip or (vlan and ip)"
+         fi
+-        [ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && process_start "prads" "-i $SENSOR_INTERFACE_SHORT -c /etc/nsm/$SENSOR/prads.conf -u $SENSOR_USER -g $SENSOR_GROUP -L /nsm/sensor_data/$SENSOR/sancp/ -f /nsm/sensor_data/$SENSOR/pads.fifo $PADS_OPTIONS -b \"$BPF\"" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "$PROCESS_LOG_DIR/$SENSOR/prads.log" "prads (sessions/assets)"
++	#[ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && process_start "prads" "-i $SENSOR_INTERFACE_SHORT -c /etc/nsm/$SENSOR/prads.conf -u $SENSOR_USER -g $SENSOR_GROUP -L /nsm/sensor_data/$SENSOR/sancp/ -f /nsm/sensor_data/$SENSOR/pads.fifo $PADS_OPTIONS -b \"$BPF\"" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "$PROCESS_LOG_DIR/$SENSOR/prads.log" "prads (sessions/assets)"
++        [ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && [ "$PADS_AGENT_ENABLED" == "yes" ] && [ "$SANCP_AGENT_ENABLED" == "yes" ] && process_start "prads" "-i $SENSOR_INTERFACE_SHORT -c /etc/nsm/$SENSOR/prads.conf -u $SENSOR_USER -g $SENSOR_GROUP -L /nsm/sensor_data/$SENSOR/sancp/ -f /nsm/sensor_data/$SENSOR/pads.fifo $PADS_OPTIONS -b \"$BPF\"" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "$PROCESS_LOG_DIR/$SENSOR/prads.log" "prads (sessions/assets)"
++        [ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && [ "$PADS_AGENT_ENABLED" == "no" ]  && [ "$SANCP_AGENT_ENABLED" == "yes" ] && process_start "prads" "-i $SENSOR_INTERFACE_SHORT -c /etc/nsm/$SENSOR/prads.conf -u $SENSOR_USER -g $SENSOR_GROUP -L /nsm/sensor_data/$SENSOR/sancp/ -b \"$BPF\"" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "$PROCESS_LOG_DIR/$SENSOR/prads.log" "prads (sessions/assets)"
++        [ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && [ "$PADS_AGENT_ENABLED" == "yes" ] && [ "$SANCP_AGENT_ENABLED" == "no" ]  && process_start "prads" "-i $SENSOR_INTERFACE_SHORT -c /etc/nsm/$SENSOR/prads.conf -u $SENSOR_USER -g $SENSOR_GROUP -f /nsm/sensor_data/$SENSOR/pads.fifo $PADS_OPTIONS -b \"$BPF\"" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "$PROCESS_LOG_DIR/$SENSOR/prads.log" "prads (sessions/assets)"
++        [ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && [ "$PADS_AGENT_ENABLED" == "no" ]  && [ "$SANCP_AGENT_ENABLED" == "no" ]  && echo_error_msg 1 "Warning: PRADS is enabled but will not start because both SANCP AGENT and PADS AGENT are disabled!"
+ 
+ 	# start pads_agent
+         [ "$PADS_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PADS_AGENT" ] && process_start "pads_agent.tcl" "-c $PADS_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pads_agent.log" "pads_agent (sguil)"
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_add
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_add
+@@ -438,7 +438,7 @@ fi
+ chmod 775 -R "/nsm/server_data/${SERVER_NAME}" "/etc/nsm/${SERVER_NAME}"
+ chmod 775 "/etc/nsm/${SERVER_NAME}" "/etc/nsm/${SERVER_NAME}/certs"
+ 
+-# udpate servertab
++# update servertab
+ servertab_entry_add $SERVER_NAME $SERVER_AUTO
+ if [ "$?" -ne 0 ]
+ then
+@@ -462,6 +462,18 @@ then
+ 	done
+ fi
+ 
++# MOVED FROM /usr/bin/sosetup
++# Create /etc/sguild symlink - http://securityonion.blogspot.com/2011/11/security-onion-20111130-now-available.html
++if [ ! -e /etc/sguild ]; then 
++        ln -f -s /etc/nsm/"$SERVER_NAME"/ /etc/sguild
++fi
++# We keep all our rules in /etc/nsm/rules, so symlink all other rules locations to here
++rm -rf /nsm/server_data/"$SERVER_NAME"/rules/default
++ln -s /etc/nsm/rules /nsm/server_data/"$SERVER_NAME"/rules/default
++# Sensors will try to scp bpf.conf and threshold.conf from master, so let's create them if they don't already exist
++if [ ! -f /etc/nsm/rules/bpf.conf ]; then touch /etc/nsm/rules/bpf.conf; fi
++if [ ! -f /etc/nsm/rules/threshold.conf ]; then cp /etc/nsm/templates/snort/threshold.conf /etc/nsm/rules/; fi
++
+ # add all files into tracking cache
+ find /etc/nsm/$SERVER_NAME /nsm/server_data/$SERVER_NAME -type f | while read FILE
+ do
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -517,7 +517,11 @@ do
+ 		# By default, we need to exclude IPv6 traffic from prads since Sguil doesn't grok it (yet)
+ 		BPF="ip or (vlan and ip)"
+ 	fi
+-	[ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && $ACTION "prads" "-i $SENSOR_INTERFACE_SHORT -c /etc/nsm/$SENSOR/prads.conf -u $SENSOR_USER -g $SENSOR_GROUP -L /nsm/sensor_data/$SENSOR/sancp/ -f /nsm/sensor_data/$SENSOR/pads.fifo $PADS_OPTIONS -b \"$BPF\"" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "$PROCESS_LOG_DIR/$SENSOR/prads.log" "prads (sessions/assets)"
++	#[ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && $ACTION "prads" "-i $SENSOR_INTERFACE_SHORT -c /etc/nsm/$SENSOR/prads.conf -u $SENSOR_USER -g $SENSOR_GROUP -L /nsm/sensor_data/$SENSOR/sancp/ -f /nsm/sensor_data/$SENSOR/pads.fifo $PADS_OPTIONS -b \"$BPF\"" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "$PROCESS_LOG_DIR/$SENSOR/prads.log" "prads (sessions/assets)"
++        [ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && [ "$PADS_AGENT_ENABLED" == "yes" ] && [ "$SANCP_AGENT_ENABLED" == "yes" ] && $ACTION "prads" "-i $SENSOR_INTERFACE_SHORT -c /etc/nsm/$SENSOR/prads.conf -u $SENSOR_USER -g $SENSOR_GROUP -L /nsm/sensor_data/$SENSOR/sancp/ -f /nsm/sensor_data/$SENSOR/pads.fifo $PADS_OPTIONS -b \"$BPF\"" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "$PROCESS_LOG_DIR/$SENSOR/prads.log" "prads (sessions/assets)"
++        [ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && [ "$PADS_AGENT_ENABLED" == "no" ]  && [ "$SANCP_AGENT_ENABLED" == "yes" ] && $ACTION "prads" "-i $SENSOR_INTERFACE_SHORT -c /etc/nsm/$SENSOR/prads.conf -u $SENSOR_USER -g $SENSOR_GROUP -L /nsm/sensor_data/$SENSOR/sancp/ -b \"$BPF\"" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "$PROCESS_LOG_DIR/$SENSOR/prads.log" "prads (sessions/assets)"
++        [ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && [ "$PADS_AGENT_ENABLED" == "yes" ] && [ "$SANCP_AGENT_ENABLED" == "no" ]  && $ACTION "prads" "-i $SENSOR_INTERFACE_SHORT -c /etc/nsm/$SENSOR/prads.conf -u $SENSOR_USER -g $SENSOR_GROUP -f /nsm/sensor_data/$SENSOR/pads.fifo $PADS_OPTIONS -b \"$BPF\"" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "$PROCESS_LOG_DIR/$SENSOR/prads.log" "prads (sessions/assets)"
++        [ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && [ "$PADS_AGENT_ENABLED" == "no" ]  && [ "$SANCP_AGENT_ENABLED" == "no" ]  && echo_error_msg 1 "Warning: PRADS is enabled but will not start because both SANCP AGENT and PADS AGENT are disabled!"
+ 
+ 	# restart pads_agent
+ 	[ "$PADS_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PADS_AGENT" ] && $ACTION "pads_agent.tcl" "-c $PADS_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pads_agent.log" "pads_agent (sguil)"
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/lib/nsmnow/lib-nsm-server-utils
++++ securityonion-nsmnow-admin-scripts-20120724/usr/lib/nsmnow/lib-nsm-server-utils
+@@ -573,6 +573,19 @@ EOF_SGUIL_DB
+ 	fi
+ 	RET=$?
+ 
++	# MOVED FROM /usr/bin/sosetup
++	cat /var/www/squert/.scripts/squert.sql | mysql -uroot -U securityonion_db
++	mysql -N -B --user=root -e "GRANT SELECT ON securityonion_db.* TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
++	mysql -N -B --user=root -e "GRANT ALL PRIVILEGES ON securityonion_db.mappings TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
++	mysql -N -B --user=root -e "GRANT ALL PRIVILEGES ON securityonion_db.ip2c TO 'readonly'@'localhost';"
++	mysql -N -B --user=root -e "GRANT FILE ON *.* TO 'readonly'@'localhost';"
++	mysql -N -B --user=root -e "GRANT INSERT,UPDATE,DELETE ON securityonion_db.filters TO 'readonly'@'localhost';"
++	mysql -N -B --user=root -e "CREATE INDEX comment ON securityonion_db.history (comment(50));"
++	mysql -N -B --user=root -e "CREATE INDEX sid ON securityonion_db.history (sid);"
++	mysql -N -B --user=root -e "CREATE INDEX cid ON securityonion_db.history (cid);"
++	mysql -N -B --user=root -e "GRANT DELETE on securityonion_db.history to 'readonly'@'localhost';"
++	mysql -N -B --user=root -e "GRANT UPDATE on securityonion_db.user_info TO 'readonly'@'localhost';"
++
+ 	# clean up after ourselves
+ 	rm -f /tmp/create_sguil_db.sql
+ 
+@@ -776,63 +789,11 @@ CREATE TABLE version
+ 
+ INSERT INTO version (version, installed) VALUES ("0.13", now());
+ 
+-GRANT SELECT ON securityonion_db.* TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';
+-GRANT ALL PRIVILEGES ON securityonion_db.mappings TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';
+-GRANT ALL PRIVILEGES ON securityonion_db.ip2c TO 'readonly'@'localhost';
+-
+-CREATE TABLE IF NOT EXISTS ip2c
+-(
+-  registry	VARCHAR(7),
+-  cc		VARCHAR(2),
+-  c_long	VARCHAR(255),
+-  type		VARCHAR(4),
+-  start_ip	INT UNSIGNED NOT NULL DEFAULT 0,
+-  end_ip	INT UNSIGNED NOT NULL DEFAULT 0,
+-  date		DATETIME,
+-  status	VARCHAR(25),
+-  INDEX registry (registry),
+-  INDEX cc (cc),
+-  INDEX c_long (c_long),
+-  INDEX type (type),
+-  INDEX start_ip (start_ip),
+-  INDEX end_ip (end_ip)
+-);  
+-
+-CREATE TABLE IF NOT EXISTS mappings
+-(
+-  registry       VARCHAR(7),
+-  cc             VARCHAR(2),
+-  c_long         VARCHAR(255),
+-  type           VARCHAR(4),
+-  ip             INT UNSIGNED NOT NULL DEFAULT 0,
+-  date           DATETIME,
+-  status         VARCHAR(25),
+-  age            TIMESTAMP,
+-  PRIMARY KEY (ip),
+-  INDEX registry (registry),
+-  INDEX cc (cc),
+-  INDEX c_long (c_long),
+-  INDEX age (age)
+-);
+-
+-CREATE TABLE IF NOT EXISTS iprep
+-(
+-  id		TINYINT UNSIGNED NOT NULL AUTO_INCREMENT,
+-  list		VARCHAR(255),
+-  url		VARCHAR(255),
+-  weight	TINYINT(1) NOT NULL DEFAULT 0,
+-  user		VARCHAR(255),
+-  age           TIMESTAMP,		
+-  PRIMARY KEY (id)
+-);
+-
+-ALTER TABLE user_info
+-ADD email VARCHAR(320) NOT NULL DEFAULT 'none',
+-ADD type ENUM('ADMIN','USER') NOT NULL DEFAULT 'USER',
+-ADD timeout SMALLINT UNSIGNED NOT NULL DEFAULT '1200';
+-
+ EOF_SGUIL_DB
+ 
++	echo
++	echo "Creating new database..."
++
+ 	# execute SQL script
+ 	if [ -z "$MYSQL_NO_PASSWORD" ]
+ 	then
+@@ -844,10 +805,21 @@ EOF_SGUIL_DB
+ 	fi
+ 	RET=$?
+ 
+-	echo
+-	echo "Creating new database..."
++        # COPIED FROM ABOVE
++        cat /var/www/squert/.scripts/squert.sql | mysql -uroot -U securityonion_db
++        mysql -N -B --user=root -e "GRANT SELECT ON securityonion_db.* TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
++        mysql -N -B --user=root -e "GRANT ALL PRIVILEGES ON securityonion_db.mappings TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
++        mysql -N -B --user=root -e "GRANT ALL PRIVILEGES ON securityonion_db.ip2c TO 'readonly'@'localhost';"
++        mysql -N -B --user=root -e "GRANT FILE ON *.* TO 'readonly'@'localhost';"
++        mysql -N -B --user=root -e "GRANT INSERT,UPDATE,DELETE ON securityonion_db.filters TO 'readonly'@'localhost';"
++        mysql -N -B --user=root -e "CREATE INDEX comment ON securityonion_db.history (comment(50));"
++        mysql -N -B --user=root -e "CREATE INDEX sid ON securityonion_db.history (sid);"
++        mysql -N -B --user=root -e "CREATE INDEX cid ON securityonion_db.history (cid);"
++        mysql -N -B --user=root -e "GRANT DELETE on securityonion_db.history to 'readonly'@'localhost';"
++        mysql -N -B --user=root -e "GRANT UPDATE on securityonion_db.user_info TO 'readonly'@'localhost';"
++
+ 	echo "Populating SQueRT IP-to-country mappings..."
+-	cd /var/www/squert/.scripts/Ip2c/
++	cd /var/www/squert/.scripts
+ 	./ip2c.tcl
+ 	cd ->/dev/null
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/lib/nsmnow/lib-nsm-sensor-utils
++++ securityonion-nsmnow-admin-scripts-20120724/usr/lib/nsmnow/lib-nsm-sensor-utils
+@@ -333,6 +333,24 @@ sensor_cleandisk()
+                         REMOVED="yes"
+                 fi
+ 
++		# find the oldest extracted files in /nsm/bro/extracted/ and exclude today
++		# NOTE: --time-style="long-iso" must be used so that the script works properly in a cron job where the locale is not set
++		OLDEST_EXTRACT=$(ls -l --time-style="long-iso" /nsm/bro/extracted/*-* 2>/dev/null | awk '{print $6 " " $8}' |sort | grep -v $TODAY | head -n 1)
++		if [ -z "$OLDEST_EXTRACT" -o "$OLDEST_EXTRACT" == ".." -o "$OLDEST_EXTRACT" == "." ]
++		then
++			echo_msg 1 "${RED}no old extracted files available to clean up in /nsm/bro/extracted/"
++		else
++			OLDEST_EXTRACT_DATE=`echo $OLDEST_EXTRACT | awk '{print $1}'`
++			OLDEST_EXTRACT_FILE=`echo $OLDEST_EXTRACT | awk '{print $2}'`
++			echo_msg 1 "removing extracted files for $OLDEST_EXTRACT_DATE"
++			ls -l --time-style="long-iso" /nsm/bro/extracted/*-* | grep $OLDEST_EXTRACT_DATE | awk '{print $8}' |while read FILE
++			do
++				echo_msg 1 "removing extracted file: $FILE"
++				rm -f "$FILE"
++			done
++			REMOVED="yes"
++		fi
++
+ 		# Delete oldest day's worth of logs from each of the sensors in /nsm/sensor_data/
+ 		for SENSOR in "$SENSOR_DIR"/*
+ 		do

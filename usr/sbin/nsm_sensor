@@ -1,0 +1,162 @@
+#!/bin/bash
+#
+# Copyright (C) 2008-2009 SecurixLive   <dev@securixlive.com>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.  You may not use, modify or
+# distribute this program under any other version of the GNU General
+# Public License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#
+
+# Version:
+# 20111214
+
+# Changelog:
+# 20111214 - Exposed --clean function
+
+#
+# INCLUDES
+#
+INC="/etc/nsm/administration.conf"
+. $INC
+
+. $NSM_LIB_DIR/lib-console-utils
+. $NSM_LIB_DIR/lib-nsm-common-utils
+
+#
+# USAGE
+#
+print_usage()
+{
+	echo 
+	echo "The NSMnow Administration scripts are designed to easily configure and manage"
+	echo "your NSM installation. Bugs, comments and flames can be directed to the"
+	echo "SXL team at dev@securixlive.com"
+	echo
+	echo "The NSMnow Administration scripts come with ABSOLUTELY NO WARRANTY."
+	echo 
+	echo "Usage: $0 [options]"
+	echo
+	echo "Options:"
+	echo "    -V         Show version information"
+	echo "    -?         Show usage information"
+	echo 
+	echo "Long Options:"
+	echo "    --add             See nsm_sensor_add"
+	echo "    --del             See nsm_sensor_del"
+	echo "    --edit            See nsm_sensor_edit"
+	echo "    --clear           See nsm_sensor_clear"
+	echo "    --clean           See nsm_sensor_clean"
+	echo
+	echo "    --start           See nsm_sensor_ps-start"
+	echo "    --stop            See nsm_sensor_ps-stop"
+	echo "    --restart         See nsm_sensor_ps-restart"
+	echo "    --status          See nsm_sensor_ps-status"
+	echo
+	echo "    --backup-config   See nsm_sensor_backup-config"
+	echo "    --backup-data     See nsm_sensor_backup-data"
+	echo
+	echo "    --version         Same as -V"
+	echo "    --help            Same as -?"
+	echo 
+}
+
+# script specific variables
+PROMPT_SCRIPT="Sensor"
+PROMPT_MODE=cli
+FORCE_YES=""
+
+# sensor specific variables
+SENSOR_NAME=""
+
+# check there are indeed arguments
+if [ "$#" -eq 0 ]
+then
+	echo_error_msg 0 "OOPS: You need to tell me to do something!"
+	print_usage
+	exit 1
+fi
+
+# extract necessary pre-check arguments from the commandline
+while [ "$#" -gt 0 ]
+do
+	# grab first parameter and shift
+	OPTION=$1
+	shift
+
+	case $OPTION in
+		"-?" | "--help")
+			SHOW_HELP_ONLY=yes
+			;;
+		"-V" | "--version")
+			SHOW_VERSION_ONLY=yes
+			;;
+		--add)
+			nsm_sensor_add "$@"
+			;;
+		--del)
+			nsm_sensor_del "$@"
+			;;
+		--edit)
+			nsm_sensor_edit "$@"
+			;;
+		--clear)
+			nsm_sensor_clear "$@"
+			;;
+		--clean)
+			nsm_sensor_clean "$@"
+			;;
+		--start)
+			nsm_sensor_ps-start "$@"
+			;;
+		--stop)
+			nsm_sensor_ps-stop "$@"
+			;;
+		--restart)
+			nsm_sensor_ps-restart "$@"
+			;;
+		--status)
+			nsm_sensor_ps-status "$@"
+			;;
+		--backup-config)
+			nsm_sensor_backup-config "$@"
+			;;
+		--backup-data)
+			nsm_sensor_backup-data "$@"
+			;;
+		--skip-*|--only-*)
+			# safely ignore these keywords
+			;;
+		*)
+			echo_error_msg 0 "OOPS: Unknown option \"$OPTION\" found!"
+			print_usage
+			exit 1
+			;;
+	esac
+
+	# abort on any error occuring above
+	[ "$?" -ne 0 ] && exit 1
+done
+
+# check for help or version requests
+if [ -n "$SHOW_HELP_ONLY" ]
+then
+	print_usage
+	exit 0
+elif [ -n "$SHOW_VERSION_ONLY" ]
+then
+	print_version
+	exit 0
+fi
+
+exit 0

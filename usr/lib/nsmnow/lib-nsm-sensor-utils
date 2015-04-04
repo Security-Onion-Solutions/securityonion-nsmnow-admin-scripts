@@ -1,0 +1,488 @@
+#!/bin/bash
+#
+# Copyright (C) 2008-2009 SecurixLive   <dev@securixlive.com>
+# Modified by Doug Burks for Security Onion
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.  You may not use, modify or
+# distribute this program under any other version of the GNU General
+# Public License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#
+#
+# Description:
+#   Sensor library functions used for the NSM administration scripts.
+#
+
+# Version:
+# 20120125
+
+# Changelog:
+# 20111214 - cleandisk function should delete from all sensors evenly
+# 20120125 - purge old Bro logs as well
+
+#
+# SENSOR TABLE (aka. SENSORTAB) FUNTIONS
+#
+
+#
+# sensortab_entry_add ()
+#
+# Add an entry in the sensortab file ensuring it conforms to a standardised
+# syntax.
+#
+# Arguments:
+#   - name (string)       name of the sensor
+#   - auto (string)       auto assumed, (Y)es or (N)o
+#   - port (integer)      network port for local communications
+#   - interface (string)  interface sensor is listening on
+#
+# Returns:
+#   Zero (0) is returned on success with a non-zero (1) returned on any error.
+#
+sensortab_entry_add()
+{
+	# grab input variables with sane defaulting
+	ADD_NAME=${1:-}
+	ADD_AUTO=${2:-}
+	ADD_BY_PORT=${3:-}
+	ADD_INTERFACE=${4:-}
+
+	# sanity checks
+	[ -z "$ADD_NAME" -o -z "$ADD_AUTO" -o -z "$ADD_BY_PORT" -o -z "$ADD_INTERFACE" ] && return 1
+
+	# convert autoboot syntax to integer equivalents
+	[ "$ADD_AUTO" == "Y" ] && ADD_AUTO=1 || ADD_AUTO=0
+
+	# check for duplicate entries if sensortab exists
+	if [ -f "/etc/nsm/sensortab" ]
+	then
+		# grab the sensortab
+		SENSORTAB=$(cat "/etc/nsm/sensortab" | grep -v "^#" | awk '{print $1}')
+	
+		# loop through non commented entries to check for duplicate entry
+		for SENSOR in $SENSORTAB
+		do
+			[ "${ADD_NAME}" == "${SENSOR}" ] && return 1
+		done
+	else
+		# create headers for the sensor table
+		echo -e "# The sensor table is used as a quick look up for the NSMnow administration\n# scripts. Each line represents a unique sensor on this host. The values defined\n# are:\n#   - name: the name of the sensor\n#   - auto: the sensor is capable of auto assumption\n#   - by2: the local listening port for barnyard2/sguil (snort_agent)\n#   - if: the listening interface of the sensor\n#\n# name\tauto\tby2\tif" >/etc/nsm/sensortab || return 1
+	fi
+
+	echo -e "${ADD_NAME}\t${ADD_AUTO}\t${ADD_BY_PORT}\t${ADD_INTERFACE}" >>/etc/nsm/sensortab || return 1
+}
+
+#
+# sensortab_entry_del ()
+#
+# Delete an entry in the sensortab file.
+#
+# Arguments:
+#   - name (string)       name of the sensor
+#
+# Returns:
+#   Zero (0) is returned on success with a non-zero (1) returned on any error.
+#
+sensortab_entry_del()
+{
+	# grab input variables with sane defaulting
+	DEL_NAME=${1:-}
+
+	# sanity checks
+	[ -z "$DEL_NAME" ] && return 1
+	[ -f "/etc/nsm/sensortab" ] || return 1
+	
+	sed -i "/^$DEL_NAME[ \t]/D" /etc/nsm/sensortab
+	
+	return $?
+}
+
+#
+# sensortab_names_get ()
+#
+# Return all the sensor names stored within the sensortab file.
+#
+# Arguments:
+#   Nil.
+#
+# Returns:
+#   The sensor names are echoed one at a time, each followed by a new line
+#   character. A zero (0) exit code is returned when there are names echoed
+#   whilst a non-zero (1) exit code is returned on any failure.
+#
+sensortab_names_get()
+{
+	SENSORTAB_NAMES=""
+
+	[ -f "/etc/nsm/sensortab" ] || return 1
+	
+	# grab the sensortab
+	SENSORTAB=$(cat "/etc/nsm/sensortab" | grep -v "^#" | awk '{print $1}')
+
+	# loop through not commented entries and extract
+	for SENSOR in $SENSORTAB
+	do
+		# confirm sensor exists before adding
+		[ -d "/etc/nsm/$SENSOR" ] && SENSORTAB_NAMES="${SENSORTAB_NAMES} ${SENSOR}"
+	done
+
+	echo $SENSORTAB_NAMES
+}
+
+#
+# sensortab_names_get_on_auto()
+#
+# Return all the sensor names stored within the sensortab file that match
+# the given auto value.
+#
+# Arguments:
+#   - auto (integer)	value of auto to match on
+#
+# Returns:
+#   The sensor names matching the given auto value are echoed one at a time,
+#   each followed by a new line character. A zero (0) exit code is returned
+#   when there are names echoed whilst a non-zero (1) exit code is returned on
+#   any failure.
+#
+sensortab_names_get_on_auto()
+{
+	SENSORTAB_NAMES=""
+
+	# grab input variables with sane defaulting
+	AUTO_STATE=${1:-1}
+
+	[ -f "/etc/nsm/sensortab" ] || return 1
+	
+	# grab the sensortab
+	echo "\$2==\"$AUTO_STATE\" {print \$1}" >/tmp/awk.conf
+	SENSORTAB=$(cat "/etc/nsm/sensortab" | grep -v "^#" | awk -f /tmp/awk.conf)
+
+	# loop through not commented entries and extract
+	for SENSOR in $SENSORTAB
+	do
+		# confirm sensor exists before adding
+		[ -d "/etc/nsm/$SENSOR" ] && SENSORTAB_NAMES="${SENSORTAB_NAMES} ${SENSOR}"
+	done
+
+	echo $SENSORTAB_NAMES
+}
+
+#
+# sensortab_names_get_on_port()
+#
+# Return all the sensor names stored within the sensortab file that match
+# the given port value.
+#
+# Arguments:
+#   - port (integer)	value of port to match on
+#
+# Returns:
+#   The sensor names matching the given port value are echoed one at a time,
+#   each followed by a new line character. A zero (0) exit code is returned
+#   when there are names echoed whilst a non-zero (1) exit code is returned on
+#   any failure.
+#
+sensortab_names_get_on_port()
+{
+	PORT=${1:-}
+	SENSORTAB_NAMES=""
+
+	[ -f "/etc/nsm/sensortab" ] || return 1
+	
+	# grab the sensortab
+	echo "\$3==\"$PORT\" {print \$1}" >/tmp/awk.conf
+	SENSORTAB=$(cat "/etc/nsm/sensortab" | grep -v "^#" | awk -f /tmp/awk.conf)
+
+	# loop through not commented entries and extract
+	for SENSOR in $SENSORTAB
+	do
+		# confirm sensor exists before adding
+		[ -d "/etc/nsm/$SENSOR" ] && SENSORTAB_NAMES="${SENSORTAB_NAMES} ${SENSOR}"
+	done
+
+	echo $SENSORTAB_NAMES
+}
+
+#
+# sensortab_port_find_available()
+#
+# Return an available port number within a specified min and max range with
+# preference to a bias value. The port number will not be used by any existing
+# sensor within the sensortab file.
+#
+# Arguments:
+#   - min  (integer)	min value of port range
+#   - max  (integer)	max value of port range
+#   - bias (integer)	preferred value of port
+#
+# Returns:
+#   The bias value will be returned if is available, otherwise the first
+#   available value within the provided range will be returned. A zero (0) exit
+#   code is returned with a non-zero (1) exit code is returned on any failure.
+#
+sensortab_port_find_available()
+{
+	# grab input variables with sane defaulting
+	PORT_MIN=${1:-}
+	PORT_MAX=${2:-}
+	PORT_BIAS=${3:-7735}
+
+	# lean to a bias value (ie. preferred)
+	if [ -z "$(sensortab_names_get_on_port $PORT_BIAS)" ]
+	then
+		echo $PORT_BIAS
+		return 0
+	fi
+
+	# look for an available between the specified range.
+	for PORT in $(seq $PORT_MIN $PORT_MAX)
+	do
+		if [ -z "$(sensortab_names_get_on_port $PORT)" ]
+		then
+			echo $PORT
+			return 0
+		fi	
+	done
+
+	return 1
+}
+
+#
+# SENSOR FUNCTIONS
+#
+
+#
+# sensor_cleandisk()
+#
+# Recurslively removes the oldest log files until the disk status fall below
+# the specified critical usage level. There are two usage levels to be
+# specified - warning and critical.
+#
+# The warning usage level only alerts the user of approaching critical levels
+# whilst critical levels actually perform file deletion.
+#
+# Arguments:
+#   - log_dir (string)			full path of log directory
+#   - utc (string)				enable UTC timestamps
+#   - warning level (integer)	percentage value of warning (eg. 80)
+#   - critical level (ineger)	percentage value of critical (eg. 90)
+#
+# Returns:
+#   Zero (0) is returned on success with a non-zero (1) returned on any error.
+#
+sensor_cleandisk() 
+{
+	# grab input variables with sane defaulting
+	LOG_DIR=${1:-}
+	UTC=${2:N}
+	WARN_DISK_USAGE=${3:-80}
+	CRIT_DISK_USAGE=${4:-90}
+	#echo $LOG_DIR
+	cd $LOG_DIR/..
+	SENSOR_DIR=`pwd`
+	cd - >/dev/null
+	#echo $SENSOR_DIR
+	CUR_USAGE=$(df -P $SENSOR_DIR | grep -v -i filesystem | awk '{print $5}' | tr -d %)
+	#echo $CUR_USAGE
+  
+	# let's change color based on severity
+	if [ "$CUR_USAGE" -gt "$CRIT_DISK_USAGE" ]; then
+		USE_COL=${RED}
+	elif [ "$CUR_USAGE" -gt "$WARN_DISK_USAGE" ]; then
+		USE_COL=${YELLOW}
+	else
+		USE_COL=${GREEN}
+	fi
+
+	echo_msg 1 "disk space currently at ${USE_COL}${CUR_USAGE}%"
+	
+	if [ "$CUR_USAGE" -gt "$CRIT_DISK_USAGE" ]
+	then
+		# grab time in GMT
+		if [ "$UTC" == "Y" ]
+		then
+			TODAY=$(date -u "+%Y-%m-%d")
+		else
+			TODAY=$(date "+%Y-%m-%d")
+		fi
+		
+		# Initialize REMOVED to "no".
+		# We recursively run this job until one of the following conditions exist:
+		# - there are no more files/dirs to delete (REMOVED=no even at the end)
+		# - disk is under $CRIT_DISK_USAGE
+		REMOVED="no"
+
+		# find the oldest Bro logs directory and exclude today
+                OLDEST_DIR=$(ls /nsm/bro/logs/ | grep -v "current" | grep -v "stats" | sort | grep -v $TODAY | head -n 1)
+                if [ -z "$OLDEST_DIR" -o "$OLDEST_DIR" == ".." -o "$OLDEST_DIR" == "." ]
+                then
+                        echo_msg 1 "${RED}no old Bro logs available to clean up in /nsm/bro/logs/"
+                else
+                        echo_msg 1 "removing directory: /nsm/bro/logs/$OLDEST_DIR"
+                        rm -rf /nsm/bro/logs/"$OLDEST_DIR"
+                        REMOVED="yes"
+                fi
+
+		# find the oldest extracted files in /nsm/bro/extracted/ and exclude today
+		# NOTE: --time-style="long-iso" must be used so that the script works properly in a cron job where the locale is not set
+		OLDEST_EXTRACT=$(ls -l --time-style="long-iso" /nsm/bro/extracted/*-* 2>/dev/null | awk '{print $6 " " $8}' |sort | grep -v $TODAY | head -n 1)
+		if [ -z "$OLDEST_EXTRACT" -o "$OLDEST_EXTRACT" == ".." -o "$OLDEST_EXTRACT" == "." ]
+		then
+			echo_msg 1 "${RED}no old extracted files available to clean up in /nsm/bro/extracted/"
+		else
+			OLDEST_EXTRACT_DATE=`echo $OLDEST_EXTRACT | awk '{print $1}'`
+			OLDEST_EXTRACT_FILE=`echo $OLDEST_EXTRACT | awk '{print $2}'`
+			echo_msg 1 "removing extracted files for $OLDEST_EXTRACT_DATE"
+			ls -l --time-style="long-iso" /nsm/bro/extracted/*-* | grep $OLDEST_EXTRACT_DATE | awk '{print $8}' |while read FILE
+			do
+				echo_msg 1 "removing extracted file: $FILE"
+				rm -f "$FILE"
+			done
+			REMOVED="yes"
+		fi
+
+		# if no interfaces have any more pcaps to delete, then we'll stop netsniff-ng
+		NUMBER_OF_SENSORS=0
+		SENSORS_WITH_NO_PCAPS_TO_DELETE=0
+
+		# Delete oldest day's worth of logs from each of the sensors in /nsm/sensor_data/
+		for SENSOR in "$SENSOR_DIR"/*
+		do
+			
+			# Keep count of the number of sensors
+			let NUMBER_OF_SENSORS++
+
+			# find the oldest dailylogs directory and exclude today
+			OLDEST_DIR=$(ls $SENSOR/dailylogs | sort | grep -v $TODAY | head -n 1)
+			if [ -z "$OLDEST_DIR" -o "$OLDEST_DIR" == ".." -o "$OLDEST_DIR" == "." ]
+			then
+				# there are no pcaps from previous days, so look for pcaps from today that we can delete
+			        CUR_USAGE=$(df -P $SENSOR_DIR | grep -v -i filesystem | awk '{print $5}' | tr -d %)
+				# keep looping until EITHER disk usage is no longer critical OR we're out of pcaps to delete
+				while [ "$CUR_USAGE" -gt "$CRIT_DISK_USAGE" ] && [ `ls $SENSOR/dailylogs/$TODAY/snort.log.* | wc -l` -gt 1 ]; do
+					PCAP=`ls $SENSOR/dailylogs/$TODAY/snort.log.* |head -1`
+					echo_msg 1 "removing pcap from today's directory: $PCAP"
+					rm -f "$PCAP"
+				        CUR_USAGE=$(df -P $SENSOR_DIR | grep -v -i filesystem | awk '{print $5}' | tr -d %)
+				done
+				# if we're out of pcaps to delete, then increment variable
+				if [ `ls $SENSOR/dailylogs/$TODAY/snort.log.* | wc -l` -le 1 ]; then
+					echo_msg 1 "${RED}no old pcaps available to clean up in $SENSOR/dailylogs/"
+					let SENSORS_WITH_NO_PCAPS_TO_DELETE++
+				fi
+			else
+				# there are pcaps from previous days, so delete the oldest day's worth of pcaps
+				echo_msg 1 "removing directory: $SENSOR/dailylogs/$OLDEST_DIR"
+				rm -rf "$SENSOR"/dailylogs/"$OLDEST_DIR"
+				REMOVED="yes"
+			fi
+
+			# find the oldest argus files and exclude today
+			OLDEST_ARGUS=$(ls $SENSOR/argus | sort | grep -v $TODAY | head -n 1)
+			if [ -z "$OLDEST_ARGUS" -o "$OLDEST_ARGUS" == ".." -o "$OLDEST_ARGUS" == "." ]
+			then
+				echo_msg 1 "${RED}no old argus files available to clean up in $SENSOR/argus/"
+			else
+				echo_msg 1 "removing argus file: $SENSOR/argus/$OLDEST_ARGUS"
+				rm -f "$SENSOR"/argus/"$OLDEST_ARGUS"
+				REMOVED="yes"
+			fi
+
+			# find the oldest SURICATA unified2 files in $SENSOR/ and exclude today
+			# NOTE: --time-style="long-iso" must be used so that the script works properly in a cron job where the locale is not set
+			OLDEST_UNIFIED2=$(ls -l --time-style="long-iso" $SENSOR/snort.unified2* 2>/dev/null | awk '{print $6 " " $8}' |sort | grep -v $TODAY | head -n 1)
+			if [ -z "$OLDEST_UNIFIED2" -o "$OLDEST_UNIFIED2" == ".." -o "$OLDEST_UNIFIED2" == "." ]
+			then
+				echo_msg 1 "${RED}no old unified2 files available to clean up in $SENSOR/"
+			else
+				OLDEST_UNIFIED2_DATE=`echo $OLDEST_UNIFIED2 | awk '{print $1}'`
+				OLDEST_UNIFIED2_FILE=`echo $OLDEST_UNIFIED2 | awk '{print $2}'`
+				echo_msg 1 "removing unified2 files for $OLDEST_UNIFIED2_DATE"
+				ls -l --time-style="long-iso" $SENSOR/snort.unified2* | grep $OLDEST_UNIFIED2_DATE | awk '{print $8}' |while read FILE
+				do
+					echo_msg 1 "removing unified2 file: $FILE"
+					rm -f "$FILE"
+				done
+				REMOVED="yes"
+			fi
+
+                        # find the oldest SNORT unified2 files in $SENSOR/snort-? and exclude today
+                        # NOTE: --time-style="long-iso" must be used so that the script works properly in a cron job where the locale is not set
+                        OLDEST_UNIFIED2=$(ls -l --time-style="long-iso" $SENSOR/snort-?/snort.unified2* 2>/dev/null | awk '{print $6 " " $8}' |sort | grep -v $TODAY | head -n 1)
+                        if [ -z "$OLDEST_UNIFIED2" -o "$OLDEST_UNIFIED2" == ".." -o "$OLDEST_UNIFIED2" == "." ]
+                        then
+                                echo_msg 1 "${RED}no old unified2 files available to clean up in $SENSOR/"
+                        else
+                                OLDEST_UNIFIED2_DATE=`echo $OLDEST_UNIFIED2 | awk '{print $1}'`
+                                OLDEST_UNIFIED2_FILE=`echo $OLDEST_UNIFIED2 | awk '{print $2}'`
+                                echo_msg 1 "removing unified2 files for $OLDEST_UNIFIED2_DATE"
+                                ls -l --time-style="long-iso" $SENSOR/snort-?/snort.unified2* | grep $OLDEST_UNIFIED2_DATE | awk '{print $8}' |while read FILE
+                                do
+                                        echo_msg 1 "removing unified2 file: $FILE"
+                                        rm -f "$FILE"
+                                done
+                                REMOVED="yes"
+                        fi
+
+		done
+
+		# check if we're still above disk usage threshold
+	        CUR_USAGE=$(df -P $SENSOR_DIR | grep -v -i filesystem | awk '{print $5}' | tr -d %)
+		if [ "$CUR_USAGE" -gt "$CRIT_DISK_USAGE" ]; then
+			# if we're out of pcaps to delete for all sensor interfaces, then stop writing pcaps
+			if [ "$SENSORS_WITH_NO_PCAPS_TO_DELETE" -ne 0 -a "$SENSORS_WITH_NO_PCAPS_TO_DELETE" -eq "$NUMBER_OF_SENSORS" ]; then
+				echo_msg 1 "${RED}stopping pcap!"
+				/usr/sbin/nsm_sensor_ps-stop --only-pcap > /dev/null 2>&1
+			fi
+		fi
+
+		if [ "$REMOVED" == "yes" ]
+		then
+			# run cleandisk again as rm'ing one file might been enough
+			# but we wait 3 secs and hope any open writes are done.
+			sync 
+			sleep 3
+			sensor_cleandisk $LOG_DIR $UTC $WARN_DISK_USAGE $CRIT_DISK_USAGE
+		fi
+	# simple warning (no action taken) of increased disk usage
+	elif [ "$CUR_USAGE" -gt "$WARN_DISK_USAGE" ]
+	then
+		echo_warning_msg 1 "disk space is approaching critical levels"
+	fi
+}
+
+#
+# sensor_stat_cronjob()
+#
+# Check if the cronjob for daily rotation of log files is present.
+#
+# Arguments:
+#   Nil.
+#
+# Returns:
+#   Zero (0) is returned when the cronjob exists, otherwise a
+# non-zero (1) is returned.
+#
+sensor_stat_cronjob()
+{
+	# grab input variables with sane defaulting
+	CRONJOB=${1:-/etc/cron.d/sensor-newday}
+
+	# check if cronjob set to restart each day
+	if [ ! -f $CRONJOB ]
+	then 
+		echo_warning_msg 1 "no cronjob found for daily restarts"
+		return 1
+	fi
+}
+

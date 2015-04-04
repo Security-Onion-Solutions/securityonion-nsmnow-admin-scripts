@@ -1,0 +1,12 @@
+#!/bin/bash
+
+echo "WARNING!"
+echo ""
+echo "Continuing will permanently delete all NSM configuration and data!"
+echo ""
+echo "Press Ctrl-C to cancel."
+echo "OR"
+echo "Press Enter to continue."
+read input
+
+/usr/sbin/nsm_all_del_quick

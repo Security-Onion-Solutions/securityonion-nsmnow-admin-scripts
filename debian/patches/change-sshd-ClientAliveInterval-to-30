@@ -1,0 +1,97 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion74) precise; urgency=low
+ .
+   * change sshd ClientAliveInterval to 30
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_configure_sshd
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_configure_sshd
+@@ -1,27 +1,52 @@
+ #!/bin/bash
+ 
++############
++# Variables
++############
+ SSHD_CONFIG="/etc/ssh/sshd_config"
+ 
+-# Verify sshd_config exists
+-if [ -f $SSHD_CONFIG ]; then 
+-
+-	# Check to see if sshd_config contains our Autossh settings
+-	if ! grep "Security Onion Autossh" $SSHD_CONFIG >/dev/null 2>&1; then
+-
+-		# If sshd_config doesn't contain our ClientAlive settings, append them
+-		echo " * Adding ClientAlive settings to $SSHD_CONFIG"
+-		cat << EOF >> $SSHD_CONFIG 
++############
++# Functions
++############
++# Write custom settings to sshd_config
++update_sshd ()
++{
++	echo " * Adding ClientAlive settings to $SSHD_CONFIG"
++	cat << EOF >> $SSHD_CONFIG 
+ 
+ # Security Onion Autossh
+-ClientAliveInterval 60
++ClientAliveInterval 30
+ ClientAliveCountMax 3
+ EOF
+-		
+-		# Check to see if sshd is running
+-		if pgrep -lf /usr/sbin/sshd >/dev/null 2>&1; then
+-			# If sshd is running, then reload config
+-			echo " * Reloading ssh daemon"
+-			service ssh reload
+-		fi
++}
++
++# If we make changes to sshd_config later, we'll need to restart sshd
++restart_sshd ()
++{
++	# Check to see if sshd is running
++	if pgrep -lf /usr/sbin/sshd >/dev/null 2>&1; then
++		# If sshd is running, then reload config
++		echo " * Reloading ssh daemon"
++	        service ssh reload
+ 	fi
++}
++
++############
++# Code
++############
++
++# Verify sshd_config exists
++[ -f $SSHD_CONFIG ] || exit
++
++# If sshd_config doesn't contain our ClientAlive settings, append them and restart sshd
++if ! grep "Security Onion Autossh" $SSHD_CONFIG >/dev/null 2>&1; then
++	update_sshd
++	restart_sshd
+ fi
++
++# if sshd_config has the old ClientAliveInterval setting, update it and restart sshd
++if grep "ClientAliveInterval 60" $SSHD_CONFIG >/dev/null 2>&1; then
++	sed -i 's|ClientAliveInterval 60|ClientAliveInterval 30|g' $SSHD_CONFIG
++	restart_sshd
++fi
++

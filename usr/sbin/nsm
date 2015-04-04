@@ -1,0 +1,325 @@
+#!/bin/bash
+#
+# Copyright (C) 2008-2009 SecurixLive   <dev@securixlive.com>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.  You may not use, modify or
+# distribute this program under any other version of the GNU General
+# Public License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#
+
+# Version:
+# 20111229
+#
+# Changelog:
+# 20111229 - "nsm --all" doesn't need to stop if server portion fails
+
+#
+# INCLUDES
+#
+INC="/etc/nsm/administration.conf"
+. $INC
+
+. $NSM_LIB_DIR/lib-console-utils
+. $NSM_LIB_DIR/lib-nsm-common-utils
+
+#
+# USAGE
+#
+print_usage()
+{
+	echo 
+	echo "The NSMnow Administration scripts are designed to easily configure and manage"
+	echo "your NSM installation. Bugs, comments and flames can be directed to the"
+	echo "SXL team at dev@securixlive.com"
+	echo
+	echo "The NSMnow Administration scripts come with ABSOLUTELY NO WARRANTY."
+	echo 
+	echo "Usage: $0 [options]"
+	echo
+	echo "Options:"
+	echo "    -U         Check and apply any available upgrades"
+	echo "    -V         Show version information"
+	echo "    -?         Show usage information"
+	echo 
+	echo "Long Options:"
+	echo "    --sensor          See nsm_sensor"
+	echo "    --server          See nsm_server"
+	echo "    --all             Performs actions on both sensor and server"
+	echo
+	echo "    --upgrade         Same as -U"
+	echo "    --version         Same as -V"
+	echo "    --help            Same as -?"
+	echo 
+}
+
+
+
+#
+# UPGRADE
+#
+
+#
+# nsmadmin_upgrade()
+#
+# Checks online (via www.securixlive.com) if an upgrade is available to the 
+# NSM administration scripts.
+#
+# Upgradability is determined if the MD5 file version string supersedes the
+# current string.
+#
+# Should the action be set (ie. =1) then the upgrade will be performed.
+#
+# Arguments:
+#   action (integer)    determines if the upgrade should be performed
+#
+# Returns:
+#   Zero (0) is returned when an upgrade is avaliable otherwise a non-zero (1)
+# is returned.
+#
+nsmadmin_upgrade()
+{
+    echo_msg 0 "Upgrading the NSM administration scripts"
+
+	# grab input variables with sane defaulting
+    ACTION=${1:-1}
+
+    # set up initial variables
+    NSM_ADMIN_MD5_FILE="/tmp/NSMadministration.md5"
+    NSM_ADMIN_UPGRADE_LOG="/tmp/NSMadministration.log"
+    NSM_ADMIN_URL_BASE="http://www.securixlive.com/download/nsmnow"
+    
+    # grab the latest MD5 file from securixlive.com
+    echo_msg_begin 1 "Grabbing latest version list"
+    wget "${NSM_ADMIN_URL_BASE}/NSMadministration.md5" -O $NSM_ADMIN_MD5_FILE -o $NSM_ADMIN_UPGRADE_LOG
+    CMD_RET=$?
+    
+    # ensure the download succeeded
+    if [ ${CMD_RET} -ne 0 ]
+    then
+        echo_msg_end 1
+        echo_error_msg 2 "unable to download: ${NSM_ADMIN_URL_BASE}/NSMadministration.md5 (${CMD_RET})"
+        return 1
+    fi
+    echo_msg_end 0
+
+    # extract the version literal and numbers
+    echo_msg 1 "Checking versions:"
+    ONLINE_VER_LITERAL=$(cat "$NSM_ADMIN_MD5_FILE" | grep "^VERSION" | cut -d: -f2)
+
+    # print versions
+    echo_msg 2 "Installed: v${NSM_ADMIN_VER_LITERAL}"
+    echo_msg 2 "Available: v${ONLINE_VER_LITERAL}"
+
+    # assume we are up to date
+    RET=2
+
+    # check for literal mismatch and then determine if online version is higher
+    if [ "${ONLINE_VER_LITERAL}" \> "${NSM_ADMIN_VER_LITERAL}" ]
+    then
+        RET=0
+    fi
+
+    # output the available version if upgradeable
+    if [ "${RET}" -eq 0 -a "${ACTION}" -eq "1" ]
+    then
+        # build variables
+        NSM_ADMIN_TARBALL="NSMadministration-${ONLINE_VER_LITERAL}.tar.gz"
+        NSM_ADMIN_TMP_DIR="/tmp/NSMadministration-${ONLINE_VER_LITERAL}"
+        NSM_ADMIN_TMP_TARBALL="/tmp/${NSM_ADMIN_TARBALL}"
+        NSM_ADMIN_URL="${NSM_ADMIN_URL_BASE}/${NSM_ADMIN_TARBALL}"
+
+        # download the available version
+        echo_msg_begin 1 "Grabbing latest tarball"
+        wget $NSM_ADMIN_URL -O $NSM_ADMIN_TMP_TARBALL -a $NSM_ADMIN_UPGRADE_LOG
+        CMD_RET=$?
+        echo_msg_end $CMD_RET
+
+        # ensure the download succeeded
+        if [ "${CMD_RET}" -ne 0 ]
+        then
+			echo_error_msg 2 "unable to download: ${NSM_ADMIN_URL} (${CMD_RET})"
+            return 1
+        fi
+
+        # remove any old extracts and extract the new download
+        echo_msg_begin 1 "Extracting tarball"
+        rm -rf $NSM_ADMIN_TMP_DIR && mkdir -p $NSM_ADMIN_TMP_DIR && tar -xzf $NSM_ADMIN_TMP_TARBALL -C /tmp
+        CMD_RET=$?
+        echo_msg_end $CMD_RET
+
+        # ensure the extraction succeeded
+        if [ "${CMD_RET}" -ne 0 ]
+        then
+			echo_error_msg 2 "unable to extract (${CMD_RET})"
+            return 1
+        fi
+
+        # install the new files ignoring the full tarball (which we just downloaded)
+        cat $NSM_ADMIN_MD5_FILE | grep -E "^[0-9a-f]{32}" | grep -v "${NSM_ADMIN_TARBALL}" | while read MD5 FILE
+        do
+            # check the md5
+    		FILE_HASH=$(md5sum "${NSM_ADMIN_TMP_DIR}/${FILE}" | awk '{print $1}')
+            if [ "${FILE_HASH}" == "${MD5}" ]
+            then
+                # grab the basename of the file
+                FILE_BASENAME=$(basename $FILE)
+                case "$FILE" in
+                    */sbin*)
+                        DST_FILE="/usr/sbin/${FILE_BASENAME}"
+                        ;;
+                    */lib*)
+                        DST_FILE="/usr/lib/${FILE_BASENAME}"
+                        ;;
+                    */init*)
+                        DST_FILE="/etc/init.d/${FILE_BASENAME}"
+                        ;;
+                    */cron*)
+                        DST_FILE="/etc/cron.d/${FILE_BASENAME}"
+                        ;;
+                    *)
+                        DST_FILE="${NSM_SHARE_DIR}/${FILE_BASENAME}"
+                        ;;
+                esac
+    
+                # check the copy was successful
+                cp "${NSM_ADMIN_TMP_DIR}/${FILE}" "${DST_FILE}"
+                CMD_RET=$?
+                if [ "${CMD_RET}" -eq 0 ]
+                then
+                    # update the cache and check for errors
+                    cache_file_update "${DST_FILE}" "nsmadministration"
+                    CMD_RET=$?
+                    if [ "${CMD_RET}" -ne 0 ]
+                    then
+			            echo_error_msg 2 "unable to update cache for: ${DST_FILE}"
+                    fi
+                else
+			        echo_error_msg 2 "unable to copy: ${DST_FILE} (${CMD_RET})"
+                    RET=1
+                fi
+            else
+			    echo_error_msg 2 "hash mismatch: ${FILE}"
+            fi
+        done
+
+        # clean up
+        rm -rf $NSM_ADMIN_TMP_DIR $NSM_ADMIN_TMP_TARBALL
+    fi
+
+    # clean up
+    rm -rf $NSM_ADMIN_MD5_FILE $LOG
+
+    if [ "$RET" -eq 0 ]
+    then
+        echo_msg 1 "NSM upgrade completed."
+    elif [ "$RET" -eq 2 ]
+    then
+        echo_msg 1 "NSM is up to date."
+    else
+        echo_error_msg 1 "There were errors during the NSM upgrade."
+    fi
+
+    return $RET
+}
+
+
+
+#
+# MAIN
+#
+
+# script specific variables
+PROMPT_SCRIPT="NSM"
+PROMPT_MODE=cli
+FORCE_YES=""
+
+# sensor specific variables
+#SENSOR_NAME=""
+
+# set sane defaults
+RET=0
+
+# check there are indeed arguments
+if [ "$#" -eq 0 ]
+then
+	echo_error_msg 0 "OOPS: You need to tell me to do something!"
+	print_usage
+	exit 1
+fi
+
+# extract necessary pre-check arguments from the commandline
+while [ "$#" -gt 0 ]
+do
+	# grab first parameter and shift
+	OPTION=$1
+	shift
+
+	case $OPTION in
+		"-?" | "--help")
+			SHOW_HELP_ONLY=yes
+			;;
+		"-V" | "--version")
+			SHOW_VERSION_ONLY=yes
+			;;
+        "-U" | "--upgrade")
+            UPGRADE_ONLY=yes            
+            ;;
+		--all)
+			nsm_server "$@"
+			# abort if the former errors
+			# [ "$?" -ne 0 ] && exit 1
+			nsm_sensor "$@"
+            		# don't continue parsing
+            		break
+			;;
+		--sensor)
+			nsm_sensor "$@"
+            		# don't continue parsing
+            		break
+			;;
+		--server)
+			nsm_server "$@"
+            		# don't continue parsing
+            		break
+			;;
+		--start|--stop|--status|--restart|--backup-data|--backup-config|--add|--edit|--del|--clear|--skip-*|--only-*|--sensor-*|--server-*)
+			# indicate incorrect usage
+			echo_error_msg 0 "OOPS: Incorrect usage - The action is to proceed the actioner (eg. --server)!"
+			exit 1
+			;;
+		*)
+			echo_error_msg 0 "OOPS: Unknown option \"$OPTION\" found!"
+			print_usage
+			exit 1
+			;;
+	esac
+
+	# abort on any error occuring above
+	[ ${?} -ne 0 ] && exit 1
+done
+
+# check for help or version requests
+if [ -n "$SHOW_HELP_ONLY" ]
+then
+	print_usage
+elif [ -n "$SHOW_VERSION_ONLY" ]
+then
+	print_version
+elif [ -n "$UPGRADE_ONLY" ]
+then
+    nsmadmin_upgrade
+    RET=$?
+fi
+
+exit $RET

@@ -1,0 +1,168 @@
+#!/bin/bash
+#
+# Copyright (C) 2008-2009 SecurixLive   <dev@securixlive.com>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.  You may not use, modify or
+# distribute this program under any other version of the GNU General
+# Public License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#
+
+#
+# INCLUDES
+#
+INC="/etc/nsm/administration.conf"
+. $INC
+
+. $NSM_LIB_DIR/lib-console-utils
+. $NSM_LIB_DIR/lib-nsm-common-utils
+. $NSM_LIB_DIR/lib-nsm-server-utils
+
+#
+# USAGE
+#
+print_usage()
+{
+	echo 
+	echo "The NSMnow Administration scripts are designed to easily configure and manage"
+	echo "your NSM installation. Bugs, comments and flames can be directed to the"
+	echo "SXL team at dev@securixlive.com"
+	echo
+	echo "The NSMnow Administration scripts come with ABSOLUTELY NO WARRANTY."
+	echo 
+	echo "Usage: $0 [options]"
+	echo
+	echo "Options:"
+	echo "    -d         Use dialog mode"
+	echo "    -y         Force yes"
+	echo "    -V         Show version information"
+	echo "    -?         Show usage information"
+	echo 
+	echo "Long Options: "
+	echo "    --server-name=<name>             Define specific server <name> to process"
+	echo "    --skip-barnyard2                 Skip processing of barnyard2"
+	echo "    --skip-sancp                     Skip processing of sancp"
+	echo "    --skip-snort-alert               Skip processing of snort alert"
+	echo "    --skip-snort-logging             Skip processing of snort logging"
+	echo "    --skip-pcap_agent                Skip processing of pcap_agent"
+	echo "    --skip-sancp_agent               Skip processing of sancp_agent"
+	echo "    --skip-snort_agent               Skip processing of snort_agent"
+	echo
+	echo "    --dialog                         Same as -d"
+	echo "    --force-yes                      Same as -y"
+	echo
+	echo "    --version                        Same as -V"
+	echo "    --help                           Same as -?"
+	echo 
+}
+
+# script specific variables
+PROMPT_SCRIPT="Stop Server"
+PROMPT_MODE=cli
+FORCE_YES=""
+
+# server specific variables
+SERVER_NAME=""
+SERVER_AUTO=""
+
+PROCESS_LOG_DIR="/var/log/nsm"
+PROCESS_PID_DIR="/var/run/nsm"
+
+# processing specific variables
+SKIP_SANCP=""
+SKIP_SNORT_ALERT=""
+SKIP_SNORT_LOGGING=""
+SKIP_BARNYARD2=""
+SKIP_SNORT_AGENT=""
+SKIP_SANCP_AGENT=""
+SKIP_PCAP_AGENT=""
+
+# extract necessary pre-check arguments from the commandline
+while [ ${#} -gt 0 ]
+do
+	case $1 in
+		"-d" | "--dialog")
+			PROMPT_MODE=dialog
+			;;
+		"-y" | "--force-yes")
+			FORCE_YES=yes
+			;;
+		"-?" | "--help")
+			SHOW_HELP_ONLY=yes
+			;;
+		"-V" | "--version")
+			SHOW_VERSION_ONLY=yes
+			;;
+		--server-name*)
+			SERVER_NAME="$SERVER_NAME $(echo $1 | cut -d "=" -f 2)"
+			;;
+		--sensor*)
+			# any sensor directive is clearly meant for the sensor
+			exit 0
+			;;
+        *)
+			echo_error_msg 0 "OOPS: Unknown option \"${1}\" found!"
+			print_usage
+			exit 1
+            ;;
+	esac
+	shift
+done
+
+# check for help or version requests
+if [ -n "$SHOW_HELP_ONLY" ]
+then
+	print_usage
+	exit 0
+elif [ -n "$SHOW_VERSION_ONLY" ]
+then
+	print_version
+	exit 0
+fi
+
+# ensure we are root user before continuing any further
+is_root
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 0 "OOPS: Must be root to run this script!"
+	exit 1;
+fi
+
+# sanity check what servers we are using
+if [ -z "$SERVER_NAME" ]
+then
+	SERVER_NAME=$(servertab_names_get_on_auto "1")
+fi
+	
+#
+# STOP
+#
+
+for SERVER in $SERVER_NAME
+do
+
+   	echo_msg 0 "Stopping: ${SERVER}"
+
+	# check for server configuration file
+	SERVER_CONF_DIR="/etc/nsm/$SERVER"
+	SERVER_CONF="$SERVER_CONF_DIR/server.conf"
+	if [ ! -f "$SERVER_CONF" ]
+	then
+		echo_error_msg 1 "server does not exist!"
+		exit 1
+	fi
+				
+	# stop sguil server
+	process_stop "sguild" "$PROCESS_PID_DIR/$SERVER/sguild.pid" "sguil server"
+done
+

@@ -1,0 +1,115 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion57) precise; urgency=low
+ .
+   * remove PCAP_MMAP option
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-stop
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-stop
+@@ -356,7 +356,6 @@ do
+ 	HTTP_AGENT_ENABLED="yes"
+ 	PCAP_SIZE="150MiB"
+ 	PCAP_RING_SIZE="64MiB"
+-	PCAP_MMAP=""
+ 
+ 	# add parameters to $SENSOR_CONF if they don't already exist
+ 	grep PCAP_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PCAP_ENABLED=\"yes\""		>> $SENSOR_CONF
+@@ -371,7 +370,6 @@ do
+ 	grep HTTP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "HTTP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
+ 	grep PCAP_SIZE $SENSOR_CONF >/dev/null			|| echo "PCAP_SIZE=\"150MiB\""		>> $SENSOR_CONF
+ 	grep PCAP_RING_SIZE $SENSOR_CONF >/dev/null		|| echo "PCAP_RING_SIZE=\"64MiB\""	>> $SENSOR_CONF		
+-	grep PCAP_MMAP $SENSOR_CONF >/dev/null			|| echo "PCAP_MMAP=\"\""		>> $SENSOR_CONF
+ 	
+ 	# load in sensor specific details (we need $IDS_LB_PROCS)
+ 	. $SENSOR_CONF
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -360,7 +360,6 @@ do
+ 	HTTP_AGENT_ENABLED="yes"
+ 	PCAP_SIZE="150MiB"
+ 	PCAP_RING_SIZE="64MiB"
+-	PCAP_MMAP=""
+ 
+ 	# add parameters to $SENSOR_CONF if they don't already exist
+ 	grep PCAP_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PCAP_ENABLED=\"yes\""		>> $SENSOR_CONF
+@@ -375,7 +374,6 @@ do
+ 	grep HTTP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "HTTP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
+ 	grep PCAP_SIZE $SENSOR_CONF >/dev/null			|| echo "PCAP_SIZE=\"150MiB\""		>> $SENSOR_CONF
+ 	grep PCAP_RING_SIZE $SENSOR_CONF >/dev/null		|| echo "PCAP_RING_SIZE=\"64MiB\""	>> $SENSOR_CONF
+-	grep PCAP_MMAP $SENSOR_CONF >/dev/null			|| echo "PCAP_MMAP=\"\""		>> $SENSOR_CONF
+ 
+ 	# load in sensor specific details
+ 	. $SENSOR_CONF
+@@ -402,7 +400,7 @@ do
+         else
+                 BPF_OPTION=""
+         fi
+-	[ "$PCAP_ENABLED" == "yes" ] && [ -z "$SKIP_PCAP" ] && process_start "netsniff-ng" "-i $SENSOR_INTERFACE_SHORT -o $SENSOR_LOG_DIR/dailylogs/$TODAY/ --user `id -u $SENSOR_USER` --group `id -g $SENSOR_GROUP` -s --prefix snort.log. --verbose --ring-size $PCAP_RING_SIZE --interval $PCAP_SIZE $PCAP_MMAP $PCAP_OPTIONS $BPF_OPTION" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "$PROCESS_LOG_DIR/$SENSOR/netsniff-ng.log" "netsniff-ng (full packet data)"
++	[ "$PCAP_ENABLED" == "yes" ] && [ -z "$SKIP_PCAP" ] && process_start "netsniff-ng" "-i $SENSOR_INTERFACE_SHORT -o $SENSOR_LOG_DIR/dailylogs/$TODAY/ --user `id -u $SENSOR_USER` --group `id -g $SENSOR_GROUP` -s --prefix snort.log. --verbose --ring-size $PCAP_RING_SIZE --interval $PCAP_SIZE $PCAP_OPTIONS $BPF_OPTION" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "$PROCESS_LOG_DIR/$SENSOR/netsniff-ng.log" "netsniff-ng (full packet data)"
+ 
+ 	# If pcap_agent tries to start too soon, pcap logger will not have yet initialized and pcap_agent will fail.  Wait a few seconds for pcap logger to fully initialize.
+ 	sleep 5s
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-status
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-status
+@@ -356,7 +356,6 @@ do
+ 	HTTP_AGENT_ENABLED="yes"
+ 	PCAP_SIZE="150MiB"
+ 	PCAP_RING_SIZE="64MiB"
+-	PCAP_MMAP=""
+ 
+ 	# add parameters to $SENSOR_CONF if they don't already exist
+ 	grep PCAP_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PCAP_ENABLED=\"yes\""		>> $SENSOR_CONF
+@@ -371,7 +370,6 @@ do
+ 	grep HTTP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "HTTP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
+ 	grep PCAP_SIZE $SENSOR_CONF >/dev/null			|| echo "PCAP_SIZE=\"150MiB\""		>> $SENSOR_CONF
+ 	grep PCAP_RING_SIZE $SENSOR_CONF >/dev/null		|| echo "PCAP_RING_SIZE=\"64MiB\""	>> $SENSOR_CONF
+-	grep PCAP_MMAP $SENSOR_CONF >/dev/null			|| echo "PCAP_MMAP=\"\""		>> $SENSOR_CONF
+ 
+         # load in sensor specific details (we need $IDS_LB_PROCS)
+         . $SENSOR_CONF
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -365,7 +365,6 @@ do
+ 	HTTP_AGENT_ENABLED="yes"
+ 	PCAP_SIZE="150MiB"
+ 	PCAP_RING_SIZE="64MiB"
+-	PCAP_MMAP=""
+ 
+ 	# add parameters to $SENSOR_CONF if they don't already exist
+ 	grep PCAP_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PCAP_ENABLED=\"yes\""		>> $SENSOR_CONF
+@@ -380,7 +379,6 @@ do
+ 	grep HTTP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "HTTP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
+ 	grep PCAP_SIZE $SENSOR_CONF >/dev/null			|| echo "PCAP_SIZE=\"150MiB\""		>> $SENSOR_CONF
+ 	grep PCAP_RING_SIZE $SENSOR_CONF >/dev/null		|| echo "PCAP_RING_SIZE=\"64MiB\""	>> $SENSOR_CONF				
+-	grep PCAP_MMAP $SENSOR_CONF >/dev/null			|| echo "PCAP_MMAP=\"\""		>> $SENSOR_CONF
+ 
+ 	# load in sensor specific details
+ 	. $SENSOR_CONF
+@@ -408,7 +406,7 @@ do
+ 	        else
+ 	                BPF_OPTION=""
+ 	        fi
+-		$ACTION_PCAP "netsniff-ng" "-i $SENSOR_INTERFACE_SHORT -o $SENSOR_LOG_DIR/dailylogs/$TODAY/ --user `id -u $SENSOR_USER` --group `id -g $SENSOR_GROUP` -s --prefix snort.log. --verbose --ring-size $PCAP_RING_SIZE --interval $PCAP_SIZE $PCAP_MMAP $PCAP_OPTIONS $BPF_OPTION" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "$PROCESS_LOG_DIR/$SENSOR/netsniff-ng.log" "netsniff-ng (full packet data)"
++		$ACTION_PCAP "netsniff-ng" "-i $SENSOR_INTERFACE_SHORT -o $SENSOR_LOG_DIR/dailylogs/$TODAY/ --user `id -u $SENSOR_USER` --group `id -g $SENSOR_GROUP` -s --prefix snort.log. --verbose --ring-size $PCAP_RING_SIZE --interval $PCAP_SIZE $PCAP_OPTIONS $BPF_OPTION" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "$PROCESS_LOG_DIR/$SENSOR/netsniff-ng.log" "netsniff-ng (full packet data)"
+ 	fi
+ 
+ 	# restart pcap_agent

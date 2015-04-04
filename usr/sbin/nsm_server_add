@@ -1,0 +1,483 @@
+#!/bin/bash
+#
+# Copyright (C) 2008-2009 SecurixLive   <dev@securixlive.com>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.  You may not use, modify or
+# distribute this program under any other version of the GNU General
+# Public License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#
+
+# Modified by Doug Burks for Security Onion
+#
+# Version:
+# 20120725
+#
+# Changelog:
+# 20120725 - Updated tcpflow to tcpflow-no-tags
+
+#
+# INCLUDES
+#
+INC="/etc/nsm/administration.conf"
+. $INC
+
+. $NSM_LIB_DIR/lib-console-utils
+. $NSM_LIB_DIR/lib-nsm-common-utils
+. $NSM_LIB_DIR/lib-nsm-server-utils
+
+#
+# USAGE
+#
+print_usage()
+{
+	echo 
+	echo "The NSMnow Administration scripts are designed to easily configure and manage"
+	echo "your NSM installation. Bugs, comments and flames can be directed to the"
+	echo "SXL team at dev@securixlive.com"
+	echo
+	echo "The NSMnow Administration scripts come with ABSOLUTELY NO WARRANTY."
+	echo 
+	echo "Usage: $0 [options]"
+	echo
+	echo "Options:"
+	echo "    -d         Use dialog mode"
+	echo "    -y         Force yes"
+	echo "    -V         Show version information"
+	echo "    -?         Show usage information"
+	echo 
+	echo "Long Options: "
+	echo "    --server-name=<name>             Define name of server"
+	echo "    --server-sensor-name=<s1,s2,..>  Define the sensors that will connect"
+	echo "    --server-sensor-port=<port>      Define port sensors will connect to"
+	echo "    --server-client-port=<port>      Define port clients will connect to"
+	echo "    --server-db-name=<name>          Define name of local db"
+	echo "    --server-db-user=<user>          Define user of local db"
+	echo "    --server-db-pass=<pass>          Define password of local db"
+	echo "    --server-client-user=<user>      Define initial authorised client username"
+	echo "    --server-client-pass=<pass>      Define initial authorised client password"
+	echo "    --server-auto=yes|no             Server can be auto assumed"
+	echo
+	echo "    --dialog                         Same as -d"
+	echo "    --force-yes                      Same as -y"
+	echo
+	echo "    --version                        Same as -V"
+	echo "    --help                           Same as -?"
+	echo 
+}
+
+# script specific variables
+PROMPT_SCRIPT="Add Server"
+PROMPT_MODE="cli"
+FORCE_YES=""
+
+# server specific variables
+SERVER_NAME=""
+SERVER_AUTO=""
+SERVER_CLIENT_PORT=""
+#SERVER_SENSOR_NAME=""
+SERVER_SENSOR_PORT=""
+SERVER_SGUIL_USER=""
+SERVER_SGUIL_PASS=""
+
+SERVER_USER="sguil"
+SERVER_GROUP="sguil"
+
+SERVER_DB_NAME=""
+SERVER_DB_USER="sguil"
+SERVER_DB_PASS="password"
+
+SERVER_LOG_DIR="/nsm/server_data"
+SERVER_LIB_DIR="/usr/lib/sguild"
+SERVER_CONF_DIR="/etc/nsm"
+
+# extract necessary pre-check arguments from the commandline
+while [ ${#} -gt 0 ]
+do
+	case $1 in
+		"-d" | "--dialog")
+			PROMPT_MODE=dialog
+			;;
+		"-y" | "--force-yes")
+			FORCE_YES=yes
+			;;
+		"-?" | "--help")
+			SHOW_HELP_ONLY=yes
+			;;
+		"-V" | "--version")
+			SHOW_VERSION_ONLY=yes
+			;;
+		--server-name*)
+			SERVER_NAME=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--server-sensor-name*)
+			SERVER_SENSOR_NAME=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--server-sensor-port*)
+			SERVER_SENSOR_PORT=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--server-client-port*)
+			SERVER_CLIENT_PORT=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--server-db-name*)
+			SERVER_DB_NAME=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--server-db-user*)
+			SERVER_DB_USER=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--server-db-pass*)
+			SERVER_DB_PASS=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--server-client-user*)
+			SERVER_SGUIL_USER=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--server-client-pass*)
+			SERVER_SGUIL_PASS=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--server-auto*)
+			[ "$(echo $1 | cut -d '=' -f 2)" == "yes" ] && SERVER_AUTO=Y
+			;;
+		--sensor*)
+			# any sensor directive is clearly meant for the sensor
+			exit 0
+			;;
+        *)
+			echo_error_msg 0 "OOPS: Unknown option \"${1}\" found!"
+			print_usage
+			exit 1
+            ;;
+	esac
+	shift
+done
+
+# check for help or version requests
+if [ -n "$SHOW_HELP_ONLY" ]
+then
+	print_usage
+	exit 0
+elif [ -n "$SHOW_VERSION_ONLY" ]
+then
+	print_version
+	exit 0
+fi
+
+# ensure we are root user before continuing any further
+is_root
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 0 "OOPS: Must be root to run this script!"
+	exit 1
+fi
+	
+#
+# COLLECT INPUT
+#
+
+# collect server name
+if [ -z "$SERVER_NAME" ]
+then
+	prompt_user_input "Server Name" "Enter the name of the server" "server-${RANDOM}"
+
+	[ "$?" -ne 0 ] && exit 1
+	SERVER_NAME=$PROMPT_RET
+fi
+
+# check that the server does not exist
+if [ -d "/etc/nsm/$SERVER_NAME" -o -d "/nsm/server_data/$SERVER_NAME" ]
+then
+	echo_error_msg 0 "OOPS: The server \"$SERVER_NAME\" already exists!"
+	exit 1
+fi
+
+# collect database name requirements
+[ -z "$SERVER_DB_NAME" ] && SERVER_DB_NAME="$(echo "${SERVER_NAME}_db" | tr "-" "_")"
+
+# collect sensor names that will connect
+if [ -z "$SERVER_SENSOR_NAME" ]
+then
+	prompt_user_input "Sensor Names" "Enter the names of the sensors, comma separated, that will connect to this server that have been configured with the default rule sets.\n\nIf unsure leave blank and refer to README.administration for further information on Server Sensor Managment." ""
+	[ "$?" -ne 0 ] && exit 1
+	SERVER_SENSOR_NAME=$PROMPT_RET
+fi
+
+# collect sensor listening port
+if [ -z "$SERVER_SENSOR_PORT" ]
+then
+	prompt_user_input "Sensor Port" "Enter the listening port of this server that sensors will connect to" "7736"
+	[ "$?" -ne 0 ] && exit 1
+	SERVER_SENSOR_PORT=$PROMPT_RET
+fi
+
+# collect client listening port
+if [ -z "$SERVER_CLIENT_PORT" ]
+then
+	prompt_user_input "Client Port" "Enter the listening port of this server that clients will connect to" "7734"
+	[ "$?" -ne 0 ] && exit 1
+	SERVER_CLIENT_PORT=$PROMPT_RET
+fi
+
+# collect initial authorised client username
+if [ -z "$SERVER_SGUIL_USER" ]
+then
+	prompt_user_input "Initial Client Username" "Enter the username of the initial authorised client" "sguil"
+	[ "$?" -ne 0 ] && exit 1
+	SERVER_SGUIL_USER=$PROMPT_RET
+fi
+
+# collect initial authorised client password
+if [ -z "$SERVER_SGUIL_PASS" ]
+then
+	prompt_user_input "Initial Client Password" "Enter the password of the initial authorised client" "password"
+	[ "$?" -ne 0 ] && exit 1
+	SERVER_SGUIL_PASS=$PROMPT_RET
+fi
+
+# collect auto requirements
+if [ -z "$SERVER_AUTO" ]
+then
+	prompt_user_yesno "Auto" "Do you want this server to be auto assumed with the NSMnow Administration scripts?" "N"
+	[ "$?" -ne 0 ] && exit 1
+	SERVER_AUTO=$PROMPT_RET
+fi
+
+# prompt to create the server
+prompt_user_yesno "Create Server" "The following information has been collected:\n\n  name:        $SERVER_NAME\n  sensor port: ${SERVER_SENSOR_PORT}\n  client port: ${SERVER_CLIENT_PORT}\n  client name: ${SERVER_SGUIL_USER}\n  db name:     ${SERVER_DB_NAME}\n  db user:     ${SERVER_DB_USER}\n  auto:        $SERVER_AUTO\n\nDo you want to create?" "Y"
+[ "$?" -ne 0 ] && exit 1
+
+[ "$PROMPT_RET" != "Y" -a "$PROMPT_RET" != "y" ] && exit 1
+
+#
+# ADD
+#
+
+# do the creation
+echo_msg 0 "Creating new server: $SERVER_NAME"
+
+# make the directories
+for DIR in "/nsm/server_data/$SERVER_NAME/archive" "/nsm/server_data/$SERVER_NAME/load" "/nsm/server_data/$SERVER_NAME/rules/default" "/etc/nsm/$SERVER_NAME/certs"
+do
+	if [ ! -d "$DIR" ]
+	then
+		mkdir -p "$DIR"
+		if [ "$?" -ne 0 ]
+		then
+			echo_error_msg 1 "unable to create $DIR"
+		fi
+	fi
+done
+
+# satisfy any mandatory access control requirements (eg. Ubuntu => AppArmor)
+is_ubuntu "7.10+"
+if [ "$?" -eq 0 ]
+then
+    apparmor_add "/etc/apparmor.d/usr.sbin.mysqld" "/nsm/server_data/${SERVER_NAME}/load r"
+    if [ "$?" -ne 0 ]
+    then
+        echo_error_msg 1 "unable to update the apparmor profile for MySQL (see README.apparmor)"
+    fi
+fi
+
+# copy the sguil server templates
+cp -a /usr/share/nsmnow/templates/server/sguil/config/* /etc/nsm/$SERVER_NAME >/dev/null 2>&1
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 1 "unable to copy default server templates"
+fi
+
+# copy default rules
+cp -a /usr/share/nsmnow/templates/snort/rules/* /nsm/server_data/$SERVER_NAME/rules/default >/dev/null 2>&1
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 1 "unable to copy default snort rules"
+fi
+
+# build the configuration files
+THE_TIME=$(date)
+cat >/etc/nsm/$SERVER_NAME/server.conf << EOF_SERVER
+# server.conf: auto-generated by NSMnow Administration on $THE_TIME
+SERVER_NAME="${SERVER_NAME}"
+SERVER_SENSOR_PORT="${SERVER_SENSOR_PORT}"
+SERVER_CLIENT_PORT="${SERVER_CLIENT_PORT}"
+
+SERVER_DB_NAME="${SERVER_DB_NAME}"
+SERVER_DB_USER="${SERVER_DB_USER}"
+SERVER_DB_PASS="${SERVER_DB_PASS}"
+
+SERVER_USER="${SERVER_USER}"
+SERVER_GROUP="${SERVER_GROUP}"
+SERVER_LIB_DIR="${SERVER_LIB_DIR}"
+SERVER_LOG_DIR="${SERVER_LOG_DIR}/${SERVER_NAME}"
+SERVER_AUTO="${SERVER_AUTO}"
+EOF_SERVER
+
+THE_TIME=$(date)
+cat >/etc/nsm/$SERVER_NAME/sguild.conf << EOF_SGUILD
+# sguild.conf: auto-generated by NSMnow Administration on $THE_TIME
+# Path to the sguild libs.
+set SGUILD_LIB_PATH "${SERVER_LIB_DIR}" 
+
+# DEBUG 0=off 1=important stuff 2=everything. Option 2 is VERY chatty.
+set DEBUG 2
+
+# Run sguild in daemon mode. 1=on 0=off
+# This overrides above and will set DEBUG off.
+# set DAEMON 1 is the same as using -D
+set DAEMON 0
+
+# Syslog Facility to log to in DAEMON mode
+# Note the Errors will go to SYSLOGFACILITY.err
+# DEBUG == 1 messages go to SYSLOGFACILITY.notice
+# DEBUG == 2 messages go to SYSLOGFACILITY.info
+# So, even at DEBUG == 2 you can send the 'important'
+# debug level 1 messages one place and the noisy info stuff another
+# by twiddling your syslog.conf
+set SYSLOGFACILITY daemon
+
+# Use the below to configure alert aggregation. Aggregation will
+# always use the source IP and signature (message). By default
+# we use the sensor ID too. If you want to override this,
+# then set the below to 0.
+set SENSOR_AGGREGATION_ON 1
+
+# If the server is on a multi interface machine and you want it
+# to only listen on a specific IP addr, then uncomment and put
+# the correct values here. You can listen on seperate addrs for
+# clients and sensors.
+# set BIND_SENSOR_IP_ADDR 127.0.0.1
+# set BIND_CLIENT_IP_ADDR 127.0.0.1
+
+# What port for sguild to listen on.
+# Client Connects
+set SERVERPORT ${SERVER_CLIENT_PORT}
+
+# Sensor connects
+set SENSORPORT ${SERVER_SENSOR_PORT}
+
+# Path to look for rules. Sguild will append the hostname (/etc/snort/rules/<hostname>/*.rules)
+# Some day we'll move the rules into the DB.
+set RULESDIR "${SERVER_LOG_DIR}/${SERVER_NAME}/rules"
+
+# Where to temporarily store portscan and session data for loading into the DB
+set TMPDATADIR /tmp
+
+# DataBase Info
+set DBHOST localhost
+set DBPORT 3306
+set DBNAME "${SERVER_DB_NAME}"
+set DBUSER "${SERVER_DB_USER}"
+set DBPASS "${SERVER_DB_PASS}"
+
+# Configs for xscript function
+# Where you want to archive raw file locally when xscripts are requested.
+set LOCAL_LOG_DIR "${SERVER_LOG_DIR}/${SERVER_NAME}/archive"
+
+# Where to store DB LOADable files until loaderd can put them in the DB
+set TMP_LOAD_DIR "${SERVER_LOG_DIR}/${SERVER_NAME}/load"
+
+# We're using a newer version of tcpflow that includes
+# extra output that confuses Sguil.  tcpflow-no-tags
+# is a shim that sends the correct options to tcpflow
+# such that its output is what Sguil is expecting.
+set TCPFLOW "/usr/bin/tcpflow-no-tags"
+
+# p0f - (C) Michal Zalewski <lcamtuf\@gis.net>, William Stearns <wstearns\@pobox.com>
+# If you have p0f (a passive OS fingerprinting system) installed, you can have
+# xscriptd attempt to use it by enabling it here. Get p0f at http://www.stearns.org
+#
+# 1=ON, 0=OFF
+set P0F 1
+
+# Path of the p0f binary. Switches -q and -s <filename> are appended on exec,
+# add any others you may need here.
+set P0F_PATH "/usr/sbin/p0f"
+EOF_SGUILD
+		
+# build certificates
+server_certificates_new "" "" "/etc/nsm/$SERVER_NAME/certs" "" "" "" "${SERVER_NAME}" "root@${SERVER_NAME}"
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 1 "OOPS: The server certificates could not be created!"
+	exit 1
+fi
+
+# add client user details
+server_sguil_user_add "/etc/nsm/$SERVER_NAME/sguild.users" "$SERVER_SGUIL_USER" "$SERVER_SGUIL_PASS"
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 1 "OOPS: The user \"${SERVER_SGUIL_USER}\" could not be added!"
+	exit 1
+fi
+
+# build the database
+server_sguil_database_create "$SERVER_DB_NAME" "$SERVER_DB_USER" "$SERVER_DB_PASS"
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 1 "OOPS: The database could not be created!"
+	exit 1
+fi
+
+# with all files created, enforce certain permissions
+check_usergroup "${SERVER_USER}" "${SERVER_GROUP}"
+if [ "$?" -ne "0" ]
+then
+	echo_error_msg 1 "OOPS: The system user:group \"${SERVER_USER}:${SERVER_GROUP}\" does not exist!"
+	exit 1
+else
+	chown -R $SERVER_USER:$SERVER_GROUP "/nsm/server_data/${SERVER_NAME}" "/etc/nsm/${SERVER_NAME}"
+fi
+chmod 775 -R "/nsm/server_data/${SERVER_NAME}" "/etc/nsm/${SERVER_NAME}"
+chmod 775 "/etc/nsm/${SERVER_NAME}" "/etc/nsm/${SERVER_NAME}/certs"
+
+# update servertab
+servertab_entry_add $SERVER_NAME $SERVER_AUTO
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 1 "OOPS: The server table could not be updated!"
+	rm -rf /etc/nsm/$SERVER_NAME
+	rm -rf /nsm/server_data/$SERVER_NAME
+	exit 1
+fi
+
+# break out templates per sensor name if appropriate
+if [ ! -z "$SERVER_SENSOR_NAME" ]
+then
+	SENSOR_NAMES=${SERVER_SENSOR_NAME//,/ }
+	for SENSOR in $SENSOR_NAMES
+	do
+		mkdir -p /nsm/server_data/$SERVER_NAME/rules/$SENSOR && cp -a /usr/share/nsmnow/templates/snort/rules/* /nsm/server_data/$SERVER_NAME/rules/$SENSOR
+		if [ "$?" -ne 0 ]
+		then
+			echo_error_msg 1 "default Snort rules could not be copied!"
+		fi
+	done
+fi
+
+# MOVED FROM /usr/bin/sosetup
+# Create /etc/sguild symlink - http://securityonion.blogspot.com/2011/11/security-onion-20111130-now-available.html
+if [ ! -e /etc/sguild ]; then 
+        ln -f -s /etc/nsm/"$SERVER_NAME"/ /etc/sguild
+fi
+# We keep all our rules in /etc/nsm/rules, so symlink all other rules locations to here
+rm -rf /nsm/server_data/"$SERVER_NAME"/rules/default
+ln -s /etc/nsm/rules /nsm/server_data/"$SERVER_NAME"/rules/default
+# Sensors will try to scp bpf.conf and threshold.conf from master, so let's create them if they don't already exist
+if [ ! -f /etc/nsm/rules/bpf.conf ]; then touch /etc/nsm/rules/bpf.conf; fi
+if [ ! -f /etc/nsm/rules/threshold.conf ]; then cp /etc/nsm/templates/snort/threshold.conf /etc/nsm/rules/; fi
+
+# add all files into tracking cache
+find /etc/nsm/$SERVER_NAME /nsm/server_data/$SERVER_NAME -type f | while read FILE
+do
+	cache_file_add $FILE "server:$SERVER_NAME"
+done
+
+exit 0

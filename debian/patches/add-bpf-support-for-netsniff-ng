@@ -1,0 +1,104 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion32) precise; urgency=low
+ .
+   * add bpf support for netsniff-ng
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -353,21 +353,27 @@ do
+ 
+ 	# start packet logger
+ 	TODAY=$(date $DATE_OPTIONS "+%Y-%m-%d")      #-u option sets TZ to GMT
+-	if [ ! -d "$SENSOR_LOG_DIR/dailylogs/$TODAY" ]
+-	then
++	if [ ! -d "$SENSOR_LOG_DIR/dailylogs/$TODAY" ]; then
+ 		mkdir -p $SENSOR_LOG_DIR/dailylogs/$TODAY
+ 		chown $SENSOR_USER:$SENSOR_GROUP $SENSOR_LOG_DIR/dailylogs/$TODAY
+ 		chmod 775 $SENSOR_LOG_DIR/dailylogs/$TODAY
+ 	fi
+-	# TODO: convert bpf
+-	[ -z "$SKIP_PCAP" ] && process_start "netsniff-ng" "-i $SENSOR_INTERFACE_SHORT -o $SENSOR_LOG_DIR/dailylogs/$TODAY -s --prefix snort.log. --interval 150MiB" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "$PROCESS_LOG_DIR/$SENSOR/netsniff-ng.log" "netsniff-ng (full packet data)"
++	# Did the user supply a BPF?
++        if [ -s /etc/nsm/$SENSOR/bpf-pcap.conf ]; then
++                # User supplied a BPF, so we need to convert it
++                BPF=`grep -v "^#" /etc/nsm/$SENSOR/bpf-pcap.conf`
++                tcpdump -i $SENSOR_INTERFACE_SHORT -dd $BPF > /etc/nsm/$SENSOR/bpf-pcap.ops 2>/dev/null
++                BPF_OPTION="--filter /etc/nsm/$SENSOR/bpf-pcap.ops"
++        else
++                BPF_OPTION=""
++        fi
++	[ -z "$SKIP_PCAP" ] && process_start "netsniff-ng" "-i $SENSOR_INTERFACE_SHORT -o $SENSOR_LOG_DIR/dailylogs/$TODAY -s --prefix snort.log. --interval 150MiB $BPF_OPTION" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "$PROCESS_LOG_DIR/$SENSOR/netsniff-ng.log" "netsniff-ng (full packet data)"
+ 
+ 	# start pcap_agent
+ 	[ -z "$SKIP_PCAP_AGENT" ] && process_start "pcap_agent.tcl" "-c $PCAP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pcap_agent.log" "pcap_agent (sguil)"
+ 
+ 	# need multiple snort_agents if running multiple snorts
+-	if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+-	then
++	if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null; then
+ 		[ -z "$SKIP_SNORT_AGENT" ] && process_start "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent.log" "snort_agent (sguil)"
+ 	else
+ 		# Start $IDS_LB_PROCS instances of snort_agent
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -357,26 +357,30 @@ do
+ 	SENSOR_INTERFACE_SHORT="${SENSOR_INTERFACE%%:*}"
+ 
+ 	# restart pcap logger
+-	if [ -z "$SKIP_PCAP" ]
+-	then
+-        TODAY=$(date $DATE_OPTIONS "+%Y-%m-%d")      #-u option sets TZ to GMT
+-		if [ ! -d "$SENSOR_LOG_DIR/dailylogs/$TODAY" ]
+-		then
++	if [ -z "$SKIP_PCAP" ]; then
++        	TODAY=$(date $DATE_OPTIONS "+%Y-%m-%d")      #-u option sets TZ to GMT
++		if [ ! -d "$SENSOR_LOG_DIR/dailylogs/$TODAY" ]; then
+ 			mkdir -p $SENSOR_LOG_DIR/dailylogs/$TODAY
+ 			chown $SENSOR_USER:$SENSOR_GROUP $SENSOR_LOG_DIR/dailylogs/$TODAY
+ 			chmod 775 $SENSOR_LOG_DIR/dailylogs/$TODAY
+ 		fi
+-
+-		# TODO: convert bpf
+-		$ACTION_PCAP "netsniff-ng" "-i $SENSOR_INTERFACE_SHORT -o $SENSOR_LOG_DIR/dailylogs/$TODAY -s --prefix snort.log. --interval 150MiB" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "$PROCESS_LOG_DIR/$SENSOR/netsniff-ng.log" "netsniff-ng (full packet data)"
++		# Did the user supply a BPF?
++	        if [ -s /etc/nsm/$SENSOR/bpf-pcap.conf ]; then
++	                # User supplied a BPF, so we need to convert it
++	                BPF=`grep -v "^#" /etc/nsm/$SENSOR/bpf-pcap.conf`
++	                tcpdump -i $SENSOR_INTERFACE_SHORT -dd $BPF > /etc/nsm/$SENSOR/bpf-pcap.ops 2>/dev/null
++	                BPF_OPTION="--filter /etc/nsm/$SENSOR/bpf-pcap.ops"
++	        else
++	                BPF_OPTION=""
++	        fi
++		$ACTION_PCAP "netsniff-ng" "-i $SENSOR_INTERFACE_SHORT -o $SENSOR_LOG_DIR/dailylogs/$TODAY -s --prefix snort.log. --interval 150MiB $BPF_OPTION" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "$PROCESS_LOG_DIR/$SENSOR/netsniff-ng.log" "netsniff-ng (full packet data)"
+ 	fi
+ 
+ 	# restart pcap_agent
+ 	[ -z "$SKIP_PCAP_AGENT" ] && $ACTION "pcap_agent.tcl" "-c $PCAP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pcap_agent.log" "pcap_agent (sguil)"
+ 
+ 	# restart snort_agent
+-        if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+-	then
++        if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null; then
+ 		[ -z "$SKIP_SNORT_AGENT" ] && $ACTION "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent.log" "snort_agent (sguil)"
+ 	else
+                 for i in `seq 1 $IDS_LB_PROCS`; do

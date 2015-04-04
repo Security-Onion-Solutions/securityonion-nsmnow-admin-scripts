@@ -1,0 +1,114 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion112) precise; urgency=low
+ .
+   * Issue 686: NSM: nsm_server_ps-start needs to set permissions on /var/log/nsm/so-elsa/ properly
+   * Issue 687: NSM: nsm_sensor_ps-start should set permissions on /var/log/nsm/ properly
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_ps-restart
+@@ -180,6 +180,13 @@ do
+         chown -R $SERVER_USER:$SERVER_GROUP $PROCESS_PID_DIR
+ 	chown -R $SERVER_USER:$SERVER_GROUP $SERVER_LOG_DIR
+ 
++        # ELSA permissions
++        ELSA_REG_LOG_DIR="/var/log/nsm/so-elsa"
++        if [ -d $ELSA_REG_LOG_DIR ]; then
++        	chgrp -R securityonion $ELSA_REG_LOG_DIR
++	        chmod -R g+w $ELSA_REG_LOG_DIR
++        fi
++
+ 	# restart sguil server
+ 	$ACTION "/usr/bin/sguild" "-c $SERVER_CONF_DIR/sguild.conf -a $SERVER_CONF_DIR/autocat.conf -g $SERVER_CONF_DIR/sguild.queries -A $SERVER_CONF_DIR/sguild.access -C $SERVER_CONF_DIR/certs" "$PROCESS_PID_DIR/$SERVER/sguild.pid" "$PROCESS_LOG_DIR/$SERVER/sguild.log" "sguil server" "$SERVER_USER"
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -335,6 +335,12 @@ if [ "$OSSEC_AGENT_ENABLED" == "yes" ] &
+ 	# Add OSSEC_AGENT_USER to ossec group
+ 	adduser $OSSEC_AGENT_USER ossec >/dev/null
+ 
++	# Create ossec_agent.log if it doesn't already exist
++	touch $PROCESS_LOG_DIR/ossec_agent.log
++
++	# Set permissions
++        chown $OSSEC_AGENT_USER $PROCESS_LOG_DIR/ossec_agent.log
++
+ 	# start OSSEC agent
+ 	process_start "/etc/nsm/ossec/ossec_agent.tcl" "-o -f /var/ossec/logs/alerts/alerts.log -i 127.0.0.1 -p $OSSEC_AGENT_LEVEL -c /etc/nsm/ossec/ossec_agent.conf" "$PROCESS_PID_DIR/ossec_agent.pid" "$PROCESS_LOG_DIR/ossec_agent.log" "ossec_agent (sguil)" "$OSSEC_AGENT_USER"
+ 
+@@ -412,6 +418,12 @@ do
+ 	# load in sensor specific details
+ 	. $SENSOR_CONF
+ 
++	# create sensor log directory if it doesn't exist
++	mkdir -p $PROCESS_LOG_DIR/$SENSOR
++
++	# fix permissions
++        chown -R $SENSOR_USER:$SENSOR_GROUP $PROCESS_LOG_DIR/$SENSOR
++
+ 	# ensure interfaces are up if autoconfigure enabled
+ 	[ "$SENSOR_INTERFACE_AUTO" == "Y" ] && interface_up $SENSOR_INTERFACE
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_ps-start
+@@ -166,6 +166,13 @@ do
+ 	chown -R $SERVER_USER:$SERVER_GROUP $PROCESS_PID_DIR
+ 	chown -R $SERVER_USER:$SERVER_GROUP $SERVER_LOG_DIR
+ 
++	# ELSA permissions
++	ELSA_REG_LOG_DIR="/var/log/nsm/so-elsa"
++	if [ -d $ELSA_REG_LOG_DIR ]; then
++		chgrp -R securityonion $ELSA_REG_LOG_DIR
++		chmod -R g+w $ELSA_REG_LOG_DIR
++	fi
++
+ 	# Start sguild as $SERVER_USER
+ 	process_start "/usr/bin/sguild" "-c $SERVER_CONF_DIR/sguild.conf -a $SERVER_CONF_DIR/autocat.conf -g $SERVER_CONF_DIR/sguild.queries -A $SERVER_CONF_DIR/sguild.access -C $SERVER_CONF_DIR/certs" "$PROCESS_PID_DIR/$SERVER/sguild.pid" "$PROCESS_LOG_DIR/$SERVER/sguild.log" "sguil server" "$SERVER_USER"
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -338,6 +338,12 @@ if [ "$OSSEC_AGENT_ENABLED" == "yes" ] &
+         # Add OSSEC_AGENT_USER to ossec group
+         adduser $OSSEC_AGENT_USER ossec >/dev/null
+ 
++	# Create ossec_agent.log if it doesn't already exist
++        touch $PROCESS_LOG_DIR/ossec_agent.log
++
++        # Set permissions
++        chown $OSSEC_AGENT_USER $PROCESS_LOG_DIR/ossec_agent.log
++
+         $ACTION "/etc/nsm/ossec/ossec_agent.tcl" "-o -f /var/ossec/logs/alerts/alerts.log -i 127.0.0.1 -p $OSSEC_AGENT_LEVEL -c /etc/nsm/ossec/ossec_agent.conf" "$PROCESS_PID_DIR/ossec_agent.pid" "$PROCESS_LOG_DIR/ossec_agent.log" "ossec_agent (sguil)" "$OSSEC_AGENT_USER"
+ 
+ fi
+@@ -416,6 +422,12 @@ do
+ 	# load in sensor specific details
+ 	. $SENSOR_CONF
+ 
++        # create sensor log directory if it doesn't exist
++        mkdir -p $PROCESS_LOG_DIR/$SENSOR
++
++        # fix permissions
++        chown -R $SENSOR_USER:$SENSOR_GROUP $PROCESS_LOG_DIR/$SENSOR
++
+ 	# ensure interfaces are up if autoconfigure enabled
+ 	[ "$SENSOR_INTERFACE_AUTO" == "Y" ] && interface_up $SENSOR_INTERFACE
+ 

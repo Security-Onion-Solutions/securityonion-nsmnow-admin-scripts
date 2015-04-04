@@ -1,0 +1,1085 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion51) precise; urgency=low
+ .
+   * granular service control
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/etc/init/securityonion.conf
++++ securityonion-nsmnow-admin-scripts-20120724/etc/init/securityonion.conf
+@@ -57,8 +57,29 @@ script
+                 export AUTOSSH_GATETIME=0
+                 /usr/bin/autossh -M 0 -f -q -N -o "ServerAliveInterval 60" -o "ServerAliveCountMax 3" -i "$KEY" -L 3306:127.0.0.1:3306 $REVERSE_TUNNEL $SSH_USERNAME@$SERVERNAME
+         fi
++
+         # Both SLAVES and MASTERS need to start NSM services
+         service nsm start
+-        # If this is a MASTER, then start Snorby
+-        [ -d /var/lib/mysql/snorby/ ] && su www-data -c "cd /opt/snorby; bundle exec rake snorby:update RAILS_ENV=production"
++
++        # If this is a MASTER, then start Snorby and Xplico
++        if [ -d /var/lib/mysql/snorby/ ]; then 
++                # check for variables in /etc/nsm/securityonion.conf
++                SO_CONF="/etc/nsm/securityonion.conf"
++
++                # default values (can override in $SO_CONF)
++                SNORBY_ENABLED="yes"
++                XPLICO_ENABLED="yes"
++
++                # add parameters to $SO_CONF if they don't already exist
++                grep SNORBY_ENABLED $SO_CONF >/dev/null || echo "SNORBY_ENABLED=yes" >> $SO_CONF
++                grep XPLICO_ENABLED $SO_CONF >/dev/null || echo "XPLICO_ENABLED=yes" >> $SO_CONF
++
++                # load in user config
++		SNORBY_ENABLED=`grep SNORBY_ENABLED $SO_CONF | cut -d\= -f2`
++		XPLICO_ENABLED=`grep XPLICO_ENABLED $SO_CONF | cut -d\= -f2`
++
++                [ "$XPLICO_ENABLED" = "yes" ] && /etc/init.d/xplico start
++                [ "$SNORBY_ENABLED" = "yes" ] && su www-data -c "cd /opt/snorby; bundle exec rake snorby:update RAILS_ENV=production"
++        fi
++
+ end script
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-stop
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-stop
+@@ -67,28 +67,26 @@ print_usage()
+ 	echo "Long Options: "
+ 	echo "    --sensor-name=<name>             Define specific sensor <name> to process"
+ 	echo "    --only-barnyard2                 Only process barnyard2"
+-#	echo "    --only-sancp                     Only process sancp"
+ 	echo "    --only-snort-alert               Only process snort alert"
+ 	echo "    --only-pcap                      Only process packet logger"
+ 	echo "    --only-argus                     Only process argus"
+         echo "    --only-prads                     Only process prads"
+         echo "    --only-bro                       Only process bro"
+-		echo
++	echo
+ 	echo "    --only-pcap-agent                Only process pcap_agent"
+ 	echo "    --only-sancp-agent               Only process sancp_agent"
+ 	echo "    --only-snort-agent               Only process snort_agent"
+ 	echo "    --only-http-agent                Only process http_agent"
+         echo "    --only-pads-agent                Only process pads_agent"
+         echo "    --only-ossec-agent               Only process ossec_agent"
+-		echo
++	echo
+ 	echo "    --skip-barnyard2                 Skip processing of barnyard2"
+-#	echo "    --skip-sancp                     Skip processing of sancp"
+ 	echo "    --skip-snort-alert               Skip processing of snort alert"
+ 	echo "    --skip-pcap                      Skip processing of packet logger"
+ 	echo "    --skip-argus                     Skip processing of argus"
+         echo "    --skip-prads                     Skip processing of prads"
+         echo "    --skip-bro                       Skip processing of bro"
+-		echo
++	echo
+ 	echo "    --skip-pcap-agent                Skip processing of pcap_agent"
+ 	echo "    --skip-sancp-agent               Skip processing of sancp_agent"
+ 	echo "    --skip-snort-agent               Skip processing of snort_agent"
+@@ -124,7 +122,6 @@ PROCESS_PID_DIR="/var/run/nsm"
+ 
+ # processing specific variables
+ SKIP_INVERT=""
+-#SKIP_SANCP=""
+ SKIP_SNORT_ALERT=""
+ SKIP_PCAP=""
+ SKIP_ARGUS=""
+@@ -156,15 +153,13 @@ do
+ 			;;
+ 		--sensor-name*)
+ 			SENSOR_NAME="$SENSOR_NAME $(echo $1 | cut -d "=" -f 2)"
++			SKIP_BRO=yes
++			SKIP_OSSEC_AGENT=yes
+ 			;;
+ 		--only-barnyard2)
+ 			SKIP_INVERT=yes
+ 			SKIP_BARNYARD2=yes
+ 			;;
+-#		--only-sancp)
+-#			SKIP_INVERT=yes
+-#			SKIP_SANCP=yes
+-#			;;
+ 		--only-snort-alert)
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_ALERT=yes
+@@ -212,9 +207,6 @@ do
+ 		--skip-barnyard2)
+ 			SKIP_BARNYARD2=yes
+ 			;;
+-#		--skip-sancp)
+-#			SKIP_SANCP=yes
+-#			;;
+ 		--skip-snort-alert)
+ 			SKIP_SNORT_ALERT=yes
+ 			;;
+@@ -289,19 +281,18 @@ fi
+ # invert skip as appropriate
+ if [ -n "$SKIP_INVERT" ]
+ then
+-	[ -z "$SKIP_PCAP_AGENT" ] && SKIP_PCAP_AGENT=yes || SKIP_PCAP_AGENT=""
+-	[ -z "$SKIP_SANCP_AGENT" ] && SKIP_SANCP_AGENT=yes || SKIP_SANCP_AGENT=""
+-	[ -z "$SKIP_SNORT_AGENT" ] && SKIP_SNORT_AGENT=yes || SKIP_SNORT_AGENT=""
+-	[ -z "$SKIP_HTTP_AGENT" ] && SKIP_HTTP_AGENT=yes || SKIP_HTTP_AGENT=""
+-	[ -z "$SKIP_PADS_AGENT" ] && SKIP_PADS_AGENT=yes || SKIP_PADS_AGENT=""
+-	[ -z "$SKIP_OSSEC_AGENT" ] && SKIP_OSSEC_AGENT=yes || SKIP_OSSEC_AGENT=""
+-	[ -z "$SKIP_SNORT_ALERT" ] && SKIP_SNORT_ALERT=yes || SKIP_SNORT_ALERT=""
+-#	[ -z "$SKIP_SANCP" ] && SKIP_SANCP=yes || SKIP_SANCP=""
+-	[ -z "$SKIP_BARNYARD2" ] && SKIP_BARNYARD2=yes || SKIP_BARNYARD2=""
+-	[ -z "$SKIP_PCAP" ] && SKIP_PCAP=yes || SKIP_PCAP=""
+-	[ -z "$SKIP_ARGUS" ] && SKIP_ARGUS=yes || SKIP_ARGUS=""
+-	[ -z "$SKIP_PRADS" ] && SKIP_PRADS=yes || SKIP_PRADS=""
+-	[ -z "$SKIP_BRO" ] && SKIP_BRO=yes || SKIP_BRO=""
++	[ -z "$SKIP_PCAP_AGENT" ]	&& SKIP_PCAP_AGENT=yes		|| SKIP_PCAP_AGENT=""
++	[ -z "$SKIP_SANCP_AGENT" ]	&& SKIP_SANCP_AGENT=yes	|| SKIP_SANCP_AGENT=""
++	[ -z "$SKIP_SNORT_AGENT" ]	&& SKIP_SNORT_AGENT=yes	|| SKIP_SNORT_AGENT=""
++	[ -z "$SKIP_HTTP_AGENT" ]	&& SKIP_HTTP_AGENT=yes		|| SKIP_HTTP_AGENT=""
++	[ -z "$SKIP_PADS_AGENT" ]	&& SKIP_PADS_AGENT=yes		|| SKIP_PADS_AGENT=""
++	[ -z "$SKIP_OSSEC_AGENT" ]	&& SKIP_OSSEC_AGENT=yes	|| SKIP_OSSEC_AGENT=""
++	[ -z "$SKIP_SNORT_ALERT" ]	&& SKIP_SNORT_ALERT=yes	|| SKIP_SNORT_ALERT=""
++	[ -z "$SKIP_BARNYARD2" ]	&& SKIP_BARNYARD2=yes		|| SKIP_BARNYARD2=""
++	[ -z "$SKIP_PCAP" ]		&& SKIP_PCAP=yes		|| SKIP_PCAP=""
++	[ -z "$SKIP_ARGUS" ]		&& SKIP_ARGUS=yes		|| SKIP_ARGUS=""
++	[ -z "$SKIP_PRADS" ]		&& SKIP_PRADS=yes		|| SKIP_PRADS=""
++	[ -z "$SKIP_BRO" ]		&& SKIP_BRO=yes		|| SKIP_BRO=""
+ fi
+ 
+ #
+@@ -310,12 +301,26 @@ fi
+ 
+ # Bro and OSSEC agent need to exist outside of the for-loop
+ 
+-if [ -z "$SKIP_OSSEC_AGENT" ]; then
++# check for variables in /etc/nsm/securityonion.conf
++SO_CONF="/etc/nsm/securityonion.conf"
++			
++# default values (can override in $SO_CONF)
++OSSEC_AGENT_ENABLED="yes"
++BRO_ENABLED="yes"
++
++# add parameters to $SO_CONF if they don't already exist
++grep OSSEC_AGENT_ENABLED $SO_CONF >/dev/null	|| echo "OSSEC_AGENT_ENABLED=yes" 	>> $SO_CONF
++grep BRO_ENABLED $SO_CONF >/dev/null 		|| echo "BRO_ENABLED=yes" 	>> $SO_CONF
++
++# load in user config
++. $SO_CONF
++
++if [ "$OSSEC_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_OSSEC_AGENT" ]; then
+         echo_msg 0 "Stopping: HIDS"
+         process_stop "/etc/nsm/ossec/ossec_agent.tcl" "$PROCESS_PID_DIR/ossec_agent.pid" "ossec_agent (sguil)"
+ fi
+ 
+-if [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
++if [ "$BRO_ENABLED" == "yes" ] && [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
+         echo_msg 0 "Stopping: Bro"
+         # Update IP if necessary
+         if grep "^type=manager$" /opt/bro/etc/node.cfg >/dev/null 2>&1; then
+@@ -338,58 +343,84 @@ do
+ 		exit 1
+ 	fi
+ 				
++	# default values (can override in $SENSOR_CONF)
++	PCAP_ENABLED="yes"
++	PCAP_AGENT_ENABLED="yes"
++	SNORT_AGENT_ENABLED="yes"
++	IDS_ENGINE_ENABLED="yes"
++	BARNYARD2_ENABLED="yes"
++	PRADS_ENABLED="yes"
++	SANCP_AGENT_ENABLED="yes"
++	PADS_AGENT_ENABLED="yes"
++	ARGUS_ENABLED="yes"
++	HTTP_AGENT_ENABLED="yes"
++	PCAP_SIZE="150MiB"
++
++	# add parameters to $SENSOR_CONF if they don't already exist
++	grep PCAP_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PCAP_ENABLED=\"yes\""		>> $SENSOR_CONF
++	grep PCAP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "PCAP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep SNORT_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "SNORT_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep IDS_ENGINE_ENABLED $SENSOR_CONF >/dev/null	|| echo "IDS_ENGINE_ENABLED=\"yes\""	>> $SENSOR_CONF
++	grep BARNYARD2_ENABLED $SENSOR_CONF >/dev/null		|| echo "BARNYARD2_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep PRADS_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PRADS_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep SANCP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "SANCP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep PADS_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "PADS_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep ARGUS_ENABLED $SENSOR_CONF >/dev/null 		|| echo "ARGUS_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep HTTP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "HTTP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep PCAP_SIZE $SENSOR_CONF >/dev/null			|| echo "PCAP_SIZE=\"150MiB\""		>> $SENSOR_CONF
++				
+ 	# load in sensor specific details (we need $IDS_LB_PROCS)
+ 	. $SENSOR_CONF
+ 
+ 	# stop pcap logger
+-	[ -z "$SKIP_PCAP" ] && process_stop "netsniff-ng" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "netsniff-ng (full packet data)"
++	[ "$PCAP_ENABLED" == "yes" ] && [ -z "$SKIP_PCAP" ] && process_stop "netsniff-ng" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "netsniff-ng (full packet data)"
+ 
+ 	# stop agents
+-	[ -z "$SKIP_PCAP_AGENT" ] && process_stop "pcap_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "pcap_agent (sguil)"
++	[ "$PCAP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PCAP_AGENT" ] && process_stop "pcap_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "pcap_agent (sguil)"
+ 
+ 	# stop the snort_agent
+         if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+ 	then
+-		[ -z "$SKIP_SNORT_AGENT" ] && process_stop "snort_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "snort_agent (sguil)"
++		[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && process_stop "snort_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "snort_agent (sguil)"
+ 	else
+ 		for i in `seq 1 $IDS_LB_PROCS`; do
+-			[ -z "$SKIP_SNORT_AGENT" ] && process_stop "snort_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid" "snort_agent-$i (sguil)"
++			[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && process_stop "snort_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid" "snort_agent-$i (sguil)"
+ 		done
+ 	fi
+ 
+ 	# stop the IDS engine
+         if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+ 	then
+-   		[ -z "$SKIP_SNORT_ALERT" ] && process_stop "suricata" "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "suricata (alert data)"
++   		[ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && process_stop "suricata" "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "suricata (alert data)"
+ 	else
+ 		for i in `seq 1 $IDS_LB_PROCS`; do
+-   			[ -z "$SKIP_SNORT_ALERT" ] && process_stop "snort" "$PROCESS_PID_DIR/$SENSOR/snortu-$i.pid" "snort-$i (alert data)"
++   			[ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && process_stop "snort" "$PROCESS_PID_DIR/$SENSOR/snortu-$i.pid" "snort-$i (alert data)"
+ 		done
+ 	fi
+ 
+ 	# stop barnyard2
+         if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+ 	then
+-		[ -z "$SKIP_BARNYARD2" ] && process_stop "barnyard2" "$PROCESS_PID_DIR/$SENSOR/barnyard2.pid" "barnyard2 (spooler, unified2 format)"
++		[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && process_stop "barnyard2" "$PROCESS_PID_DIR/$SENSOR/barnyard2.pid" "barnyard2 (spooler, unified2 format)"
+ 	else
+ 		for i in `seq 1 $IDS_LB_PROCS`; do
+-			[ -z "$SKIP_BARNYARD2" ] && process_stop "barnyard2" "$PROCESS_PID_DIR/$SENSOR/barnyard2-$i.pid" "barnyard2-$i (spooler, unified2 format)"
++			[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && process_stop "barnyard2" "$PROCESS_PID_DIR/$SENSOR/barnyard2-$i.pid" "barnyard2-$i (spooler, unified2 format)"
+ 		done
+ 	fi
+ 
+         # stop prads
+-        [ -z "$SKIP_PRADS" ] && process_stop "prads" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "prads (sessions/assets)"
++        [ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && process_stop "prads" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "prads (sessions/assets)"
+ 
+ 	# stop sancp_agent
+-   	[ -z "$SKIP_SANCP_AGENT" ] && process_stop "sancp_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "sancp_agent (sguil)"
++   	[ "$SANCP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SANCP_AGENT" ] && process_stop "sancp_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "sancp_agent (sguil)"
+ 
+ 	# stop pads_agent
+-        [ -z "$SKIP_PADS_AGENT" ] && process_stop "pads_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "pads_agent (sguil)"
++        [ "$PADS_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PADS_AGENT" ] && process_stop "pads_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "pads_agent (sguil)"
+ 
+ 	# stop argus
+-	[ -z "$SKIP_ARGUS" ] && process_stop "argus" "$PROCESS_PID_DIR/$SENSOR/argus.pid" "argus"
++	[ "$ARGUS_ENABLED" == "yes" ] && [ -z "$SKIP_ARGUS" ] && process_stop "argus" "$PROCESS_PID_DIR/$SENSOR/argus.pid" "argus"
+ 
+ 	# stop http_agent
+-	[ -z "$SKIP_HTTP_AGENT" ] && process_stop "http_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/http_agent.pid" "http_agent (sguil)"
++	[ "$HTTP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_HTTP_AGENT" ] && process_stop "http_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/http_agent.pid" "http_agent (sguil)"
+ done
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -71,28 +71,26 @@ print_usage()
+ 	echo "Long Options: "
+ 	echo "    --sensor-name=<name>             Define specific sensor <name> to process"
+ 	echo "    --only-barnyard2                 Only process barnyard2"
+-#	echo "    --only-sancp                     Only process sancp"
+ 	echo "    --only-snort-alert               Only process snort alert"
+ 	echo "    --only-pcap                      Only process packet logger"
+ 	echo "    --only-argus                     Only process argus"
+         echo "    --only-prads                     Only process prads"
+         echo "    --only-bro                       Only process bro"
+-		echo
++	echo
+ 	echo "    --only-pcap-agent                Only process pcap_agent"
+ 	echo "    --only-sancp-agent               Only process sancp_agent"
+ 	echo "    --only-snort-agent               Only process snort_agent"
+ 	echo "    --only-http-agent                Only process http_agent"
+         echo "    --only-pads-agent                Only process pads_agent"
+         echo "    --only-ossec-agent               Only process ossec_agent"
+-		echo
++	echo
+ 	echo "    --skip-barnyard2                 Skip processing of barnyard2"
+-#	echo "    --skip-sancp                     Skip processing of sancp"
+ 	echo "    --skip-snort-alert               Skip processing of snort alert"
+ 	echo "    --skip-pcap                      Skip processing of packet logger"
+ 	echo "    --skip-argus                     Skip processing of argus"
+         echo "    --skip-prads                     Skip processing of prads"
+         echo "    --skip-bro                       Skip processing of bro"
+-		echo
++	echo
+ 	echo "    --skip-pcap-agent                Skip processing of pcap_agent"
+ 	echo "    --skip-sancp-agent               Skip processing of sancp_agent"
+ 	echo "    --skip-snort-agent               Skip processing of snort_agent"
+@@ -128,7 +126,6 @@ PROCESS_PID_DIR="/var/run/nsm"
+ 
+ # processing specific variables
+ SKIP_INVERT=""
+-#SKIP_SANCP=""
+ SKIP_SNORT_ALERT=""
+ SKIP_PCAP=""
+ SKIP_ARGUS=""
+@@ -160,15 +157,13 @@ do
+ 			;;
+ 		--sensor-name*)
+ 			SENSOR_NAME="$SENSOR_NAME $(echo $1 | cut -d "=" -f 2)"
++			SKIP_BRO=yes
++			SKIP_OSSEC_AGENT=yes
+ 			;;
+ 		--only-barnyard2)
+ 			SKIP_INVERT=yes
+ 			SKIP_BARNYARD2=yes
+ 			;;
+-#		--only-sancp)
+-#			SKIP_INVERT=yes
+-#			SKIP_SANCP=yes
+-#			;;
+ 		--only-snort-alert)
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_ALERT=yes
+@@ -216,9 +211,6 @@ do
+ 		--skip-barnyard2)
+ 			SKIP_BARNYARD2=yes
+ 			;;
+-#		--skip-sancp)
+-#			SKIP_SANCP=yes
+-#			;;
+ 		--skip-snort-alert)
+ 			SKIP_SNORT_ALERT=yes
+ 			;;
+@@ -293,19 +285,18 @@ fi
+ # invert skip as appropriate
+ if [ -n "$SKIP_INVERT" ]
+ then
+-	[ -z "$SKIP_PCAP_AGENT" ] && SKIP_PCAP_AGENT=yes || SKIP_PCAP_AGENT=""
+-	[ -z "$SKIP_SANCP_AGENT" ] && SKIP_SANCP_AGENT=yes || SKIP_SANCP_AGENT=""
+-	[ -z "$SKIP_SNORT_AGENT" ] && SKIP_SNORT_AGENT=yes || SKIP_SNORT_AGENT=""
+-	[ -z "$SKIP_HTTP_AGENT" ] && SKIP_HTTP_AGENT=yes || SKIP_HTTP_AGENT=""
+-	[ -z "$SKIP_PADS_AGENT" ] && SKIP_PADS_AGENT=yes || SKIP_PADS_AGENT=""
+-	[ -z "$SKIP_OSSEC_AGENT" ] && SKIP_OSSEC_AGENT=yes || SKIP_OSSEC_AGENT=""
+-	[ -z "$SKIP_SNORT_ALERT" ] && SKIP_SNORT_ALERT=yes || SKIP_SNORT_ALERT=""
+-#	[ -z "$SKIP_SANCP" ] && SKIP_SANCP=yes || SKIP_SANCP=""
+-	[ -z "$SKIP_BARNYARD2" ] && SKIP_BARNYARD2=yes || SKIP_BARNYARD2=""
+-	[ -z "$SKIP_PCAP" ] && SKIP_PCAP=yes || SKIP_PCAP=""
+-	[ -z "$SKIP_ARGUS" ] && SKIP_ARGUS=yes || SKIP_ARGUS=""
+-	[ -z "$SKIP_PRADS" ] && SKIP_PRADS=yes || SKIP_PRADS=""
+-	[ -z "$SKIP_BRO" ] && SKIP_BRO=yes || SKIP_BRO=""
++	[ -z "$SKIP_PCAP_AGENT" ] 	&& SKIP_PCAP_AGENT=yes		|| SKIP_PCAP_AGENT=""
++	[ -z "$SKIP_SANCP_AGENT" ] 	&& SKIP_SANCP_AGENT=yes 	|| SKIP_SANCP_AGENT=""
++	[ -z "$SKIP_SNORT_AGENT" ] 	&& SKIP_SNORT_AGENT=yes 	|| SKIP_SNORT_AGENT=""
++	[ -z "$SKIP_HTTP_AGENT" ] 	&& SKIP_HTTP_AGENT=yes		|| SKIP_HTTP_AGENT=""
++	[ -z "$SKIP_PADS_AGENT" ] 	&& SKIP_PADS_AGENT=yes		|| SKIP_PADS_AGENT=""
++	[ -z "$SKIP_OSSEC_AGENT" ] 	&& SKIP_OSSEC_AGENT=yes 	|| SKIP_OSSEC_AGENT=""
++	[ -z "$SKIP_SNORT_ALERT" ] 	&& SKIP_SNORT_ALERT=yes 	|| SKIP_SNORT_ALERT=""
++	[ -z "$SKIP_BARNYARD2" ] 	&& SKIP_BARNYARD2=yes 		|| SKIP_BARNYARD2=""
++	[ -z "$SKIP_PCAP" ] 		&& SKIP_PCAP=yes 		|| SKIP_PCAP=""
++	[ -z "$SKIP_ARGUS" ] 		&& SKIP_ARGUS=yes 		|| SKIP_ARGUS=""
++	[ -z "$SKIP_PRADS" ] 		&& SKIP_PRADS=yes 		|| SKIP_PRADS=""
++	[ -z "$SKIP_BRO" ] 		&& SKIP_BRO=yes 		|| SKIP_BRO=""
+ fi
+ 
+ #
+@@ -314,12 +305,26 @@ fi
+ 
+ # Bro and OSSEC agent need to exist outside of the for-loop
+ 
+-if [ -z "$SKIP_OSSEC_AGENT" ]; then
++# check for variables in /etc/nsm/securityonion.conf
++SO_CONF="/etc/nsm/securityonion.conf"
++			
++# default values (can override in $SO_CONF)
++OSSEC_AGENT_ENABLED="yes"
++BRO_ENABLED="yes"
++
++# add parameters to $SO_CONF if they don't already exist
++grep OSSEC_AGENT_ENABLED $SO_CONF >/dev/null	|| echo "OSSEC_AGENT_ENABLED=yes" 	>> $SO_CONF
++grep BRO_ENABLED $SO_CONF >/dev/null 		|| echo "BRO_ENABLED=yes" 	>> $SO_CONF
++
++# load in user config
++. $SO_CONF
++
++if [ "$OSSEC_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_OSSEC_AGENT" ]; then
+ 	echo_msg 0 "Starting: HIDS"
+ 	process_start "/etc/nsm/ossec/ossec_agent.tcl" "-o -f /var/ossec/logs/alerts/alerts.log -i 127.0.0.1 -p 5 -c /etc/nsm/ossec/ossec_agent.conf" "$PROCESS_PID_DIR/ossec_agent.pid" "$PROCESS_LOG_DIR/ossec_agent.log" "ossec_agent (sguil)"
+ fi
+ 
+-if [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
++if [ "$BRO_ENABLED" == "yes" ] && [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
+ 	echo_msg 0 "Starting: Bro"
+ 	# Update IP if necessary
+ 	if grep "^type=manager$" /opt/bro/etc/node.cfg >/dev/null 2>&1; then
+@@ -334,9 +339,6 @@ do
+ 
+ 	echo_msg 0 "Starting: ${SENSOR}"
+ 
+-	# set default PCAP capture value
+-	PCAP_SIZE=150MiB
+-
+ 	# check for sensor configuration file
+ 	SENSOR_CONF="/etc/nsm/$SENSOR/sensor.conf"
+ 	if [ ! -f "$SENSOR_CONF" ]
+@@ -345,6 +347,32 @@ do
+ 		exit 1
+ 	fi
+ 				
++	# default values (can override in $SENSOR_CONF)
++	PCAP_ENABLED="yes"
++	PCAP_AGENT_ENABLED="yes"
++	SNORT_AGENT_ENABLED="yes"
++	IDS_ENGINE_ENABLED="yes"
++	BARNYARD2_ENABLED="yes"
++	PRADS_ENABLED="yes"
++	SANCP_AGENT_ENABLED="yes"
++	PADS_AGENT_ENABLED="yes"
++	ARGUS_ENABLED="yes"
++	HTTP_AGENT_ENABLED="yes"
++	PCAP_SIZE="150MiB"
++
++	# add parameters to $SENSOR_CONF if they don't already exist
++	grep PCAP_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PCAP_ENABLED=\"yes\""		>> $SENSOR_CONF
++	grep PCAP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "PCAP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep SNORT_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "SNORT_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep IDS_ENGINE_ENABLED $SENSOR_CONF >/dev/null	|| echo "IDS_ENGINE_ENABLED=\"yes\""	>> $SENSOR_CONF
++	grep BARNYARD2_ENABLED $SENSOR_CONF >/dev/null		|| echo "BARNYARD2_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep PRADS_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PRADS_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep SANCP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "SANCP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep PADS_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "PADS_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep ARGUS_ENABLED $SENSOR_CONF >/dev/null 		|| echo "ARGUS_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep HTTP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "HTTP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep PCAP_SIZE $SENSOR_CONF >/dev/null			|| echo "PCAP_SIZE=\"150MiB\""		>> $SENSOR_CONF
++
+ 	# load in sensor specific details
+ 	. $SENSOR_CONF
+ 
+@@ -370,17 +398,17 @@ do
+         else
+                 BPF_OPTION=""
+         fi
+-	[ -z "$SKIP_PCAP" ] && process_start "netsniff-ng" "-i $SENSOR_INTERFACE_SHORT -o $SENSOR_LOG_DIR/dailylogs/$TODAY/ --user `id -u $SENSOR_USER` --group `id -g $SENSOR_GROUP` -s --prefix snort.log. --interval $PCAP_SIZE $PCAP_OPTIONS $BPF_OPTION" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "$PROCESS_LOG_DIR/$SENSOR/netsniff-ng.log" "netsniff-ng (full packet data)"
++	[ "$PCAP_ENABLED" == "yes" ] && [ -z "$SKIP_PCAP" ] && process_start "netsniff-ng" "-i $SENSOR_INTERFACE_SHORT -o $SENSOR_LOG_DIR/dailylogs/$TODAY/ --user `id -u $SENSOR_USER` --group `id -g $SENSOR_GROUP` -s --prefix snort.log. --interval $PCAP_SIZE $PCAP_OPTIONS $BPF_OPTION" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "$PROCESS_LOG_DIR/$SENSOR/netsniff-ng.log" "netsniff-ng (full packet data)"
+ 
+ 	# If pcap_agent tries to start too soon, pcap logger will not have yet initialized and pcap_agent will fail.  Wait a few seconds for pcap logger to fully initialize.
+ 	sleep 5s
+ 
+ 	# start pcap_agent
+-	[ -z "$SKIP_PCAP_AGENT" ] && process_start "pcap_agent.tcl" "-c $PCAP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pcap_agent.log" "pcap_agent (sguil)"
++	[ "$PCAP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PCAP_AGENT" ] && process_start "pcap_agent.tcl" "-c $PCAP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pcap_agent.log" "pcap_agent (sguil)"
+ 
+ 	# need multiple snort_agents if running multiple snorts
+ 	if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null; then
+-		[ -z "$SKIP_SNORT_AGENT" ] && process_start "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent.log" "snort_agent (sguil)"
++		[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && process_start "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent.log" "snort_agent (sguil)"
+ 	else
+ 		# Start $IDS_LB_PROCS instances of snort_agent
+                 for i in `seq 1 $IDS_LB_PROCS`; do
+@@ -403,7 +431,7 @@ do
+ 				sed -i "s|^set PORTSCAN_DIR.*$|set PORTSCAN_DIR /nsm/sensor_data/$SENSOR/portscans-$i|g" $SNORT_AGENT_CONFIG
+ 				sed -i "s|^set WATCH_DIR.*$|set WATCH_DIR /nsm/sensor_data/$SENSOR|g" $SNORT_AGENT_CONFIG
+ 			fi
+-				[ -z "$SKIP_SNORT_AGENT" ] && process_start "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent-$i.log" "snort_agent-$i (sguil)"
++			[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && process_start "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent-$i.log" "snort_agent-$i (sguil)"
+ 		done
+ 	fi
+ 
+@@ -435,7 +463,7 @@ do
+ 		IDS_LB_PROCS=`grep IDS_LB_PROCS /etc/nsm/$SENSOR/sensor.conf | cut -d\= -f2`
+ 		sed -i "s|    threads: .*|    threads: $IDS_LB_PROCS|g" /etc/nsm/$SENSOR/suricata.yaml
+ 		# start Suricata
+-   		[ -z "$SKIP_SNORT_ALERT" ] && process_start "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --pfring=$SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $SENSOR_LOG_DIR " "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
++   		[ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && process_start "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --pfring=$SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $SENSOR_LOG_DIR " "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
+ 	else	
+ 		# Start $IDS_LB_PROCS instances of Snort using pfring load-balancing
+ 		for i in `seq 1 $IDS_LB_PROCS`; do
+@@ -445,7 +473,7 @@ do
+ 			UNI_DIR=$SENSOR_LOG_DIR/snort-$i
+ 			mkdir -p $UNI_DIR
+ 			chown $SENSOR_USER:$SENSOR_GROUP $UNI_DIR
+-   			[ -z "$SKIP_SNORT_ALERT" ] && process_start "snort" "-c $SNORT_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $UNI_DIR --perfmon-file $PERFMON $SNORT_OPTIONS" "$PID" "$LOG" "snort-$i (alert data)"
++   			[ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && process_start "snort" "-c $SNORT_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $UNI_DIR --perfmon-file $PERFMON $SNORT_OPTIONS" "$PID" "$LOG" "snort-$i (alert data)"
+ 		done
+ 	fi
+ 
+@@ -455,7 +483,7 @@ do
+ 	if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+ 	then
+ 		# we only need a single instance of barnyard2
+-		[ -z "$SKIP_BARNYARD2" ] && process_start "barnyard2" "-c $BARNYARD2_CONFIG -d $SENSOR_LOG_DIR -f snort.unified2 -w $BARNYARD2_WALDO -i 1 $BARNYARD2_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/barnyard2.pid" "$PROCESS_LOG_DIR/$SENSOR/barnyard2.log" "barnyard2 (spooler, unified2 format)"
++		[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && process_start "barnyard2" "-c $BARNYARD2_CONFIG -d $SENSOR_LOG_DIR -f snort.unified2 -w $BARNYARD2_WALDO -i 1 $BARNYARD2_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/barnyard2.pid" "$PROCESS_LOG_DIR/$SENSOR/barnyard2.log" "barnyard2 (spooler, unified2 format)"
+ 	else
+ 		# we need one instance of barnyard2 per Snort instance
+ 		for i in `seq 1 $IDS_LB_PROCS`; do
+@@ -470,13 +498,10 @@ do
+ 				PORT=`grep BY_PORT /etc/nsm/$SENSOR/snort_agent-$i.conf |awk '{print $3}'`
+ 				sed -i "s|output sguil:.*$|output sguil: sensor_name=$SENSOR-$i agent_port=$PORT|g" $BARNYARD2_CONFIG
+ 			fi
+-			[ -z "$SKIP_BARNYARD2" ] && process_start "barnyard2" "-c $BARNYARD2_CONFIG -d $UNI_DIR -f snort.unified2 -w $WALDO -i $i $BARNYARD2_OPTIONS" "$PID" "$LOG" "barnyard2-$i (spooler, unified2 format)"
++			[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && process_start "barnyard2" "-c $BARNYARD2_CONFIG -d $UNI_DIR -f snort.unified2 -w $WALDO -i $i $BARNYARD2_OPTIONS" "$PID" "$LOG" "barnyard2-$i (spooler, unified2 format)"
+ 		done
+ 	fi
+ 
+-	# start sancp
+-	#[ -z "$SKIP_SANCP" ] && process_start "sancp" "-d $SENSOR_LOG_DIR/sancp -i $SENSOR_INTERFACE_SHORT -c $SANCP_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP $SANCP_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/sancp.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp.log" "sancp (session data)"
+-
+         # start prads
+         # If the user supplies a BPF, use theirs; otherwise, exclude IPv6
+         if [ -s /etc/nsm/$SENSOR/bpf-prads.conf ]; then
+@@ -485,19 +510,19 @@ do
+                 # By default, we need to exclude IPv6 traffic from prads since Sguil doesn't grok it (yet)
+                 BPF="ip or (vlan and ip)"
+         fi
+-        [ -z "$SKIP_PRADS" ] && process_start "prads" "-i $SENSOR_INTERFACE_SHORT -c /etc/nsm/$SENSOR/prads.conf -u $SENSOR_USER -g $SENSOR_GROUP -L /nsm/sensor_data/$SENSOR/sancp/ -f /nsm/sensor_data/$SENSOR/pads.fifo $PADS_OPTIONS -b \"$BPF\"" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "$PROCESS_LOG_DIR/$SENSOR/prads.log" "prads (sessions/assets)"
++        [ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && process_start "prads" "-i $SENSOR_INTERFACE_SHORT -c /etc/nsm/$SENSOR/prads.conf -u $SENSOR_USER -g $SENSOR_GROUP -L /nsm/sensor_data/$SENSOR/sancp/ -f /nsm/sensor_data/$SENSOR/pads.fifo $PADS_OPTIONS -b \"$BPF\"" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "$PROCESS_LOG_DIR/$SENSOR/prads.log" "prads (sessions/assets)"
+ 
+ 	# start pads_agent
+-        [ -z "$SKIP_PADS_AGENT" ] && process_start "pads_agent.tcl" "-c $PADS_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pads_agent.log" "pads_agent (sguil)"
++        [ "$PADS_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PADS_AGENT" ] && process_start "pads_agent.tcl" "-c $PADS_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pads_agent.log" "pads_agent (sguil)"
+ 
+ 	# start sancp_agent
+-	[ -z "$SKIP_SANCP_AGENT" ] && process_start "sancp_agent.tcl" "-c $SANCP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp_agent.log" "sancp_agent (sguil)"
++	[ "$SANCP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SANCP_AGENT" ] && process_start "sancp_agent.tcl" "-c $SANCP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp_agent.log" "sancp_agent (sguil)"
+ 	
+ 	# start argus
+ 	mkdir -p $SENSOR_LOG_DIR/argus
+ 	chown $SENSOR_USER:$SENSOR_GROUP $SENSOR_LOG_DIR/argus
+ 	chmod 775 $SENSOR_LOG_DIR/argus
+-	[ -z "$SKIP_ARGUS" ] && process_start "argus" "-P0 -u $SENSOR_USER -g $SENSOR_GROUP -i $SENSOR_INTERFACE_SHORT -w $SENSOR_LOG_DIR/argus/$TODAY.log" "$PROCESS_PID_DIR/$SENSOR/argus.pid" "$PROCESS_LOG_DIR/$SENSOR/argus.log" "argus"
++	[ "$ARGUS_ENABLED" == "yes" ] && [ -z "$SKIP_ARGUS" ] && process_start "argus" "-P0 -u $SENSOR_USER -g $SENSOR_GROUP -i $SENSOR_INTERFACE_SHORT -w $SENSOR_LOG_DIR/argus/$TODAY.log" "$PROCESS_PID_DIR/$SENSOR/argus.pid" "$PROCESS_LOG_DIR/$SENSOR/argus.log" "argus"
+ 
+ 	# start http_agent
+ 	# http_agent is going to read the Bro http.log
+@@ -509,7 +534,7 @@ do
+ 	else
+ 		BRO_HTTP_LOG=/nsm/bro/logs/current/http_$SENSOR_INTERFACE_SHORT.log
+ 	fi
+-	[ -z "$SKIP_HTTP_AGENT" ] && process_start "http_agent.tcl" "-c /etc/nsm/$SENSOR/http_agent.conf -e /etc/nsm/$SENSOR/http_agent.exclude -f $BRO_HTTP_LOG" "$PROCESS_PID_DIR/$SENSOR/http_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/http_agent.log" "http_agent (sguil)"
++	[ "$HTTP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_HTTP_AGENT" ] && process_start "http_agent.tcl" "-c /etc/nsm/$SENSOR/http_agent.conf -e /etc/nsm/$SENSOR/http_agent.exclude -f $BRO_HTTP_LOG" "$PROCESS_PID_DIR/$SENSOR/http_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/http_agent.log" "http_agent (sguil)"
+ 
+ 	# clean disk/check crontab entry for daily restarts
+ 	sensor_cleandisk $SENSOR_LOG_DIR $SENSOR_UTC
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-status
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-status
+@@ -67,28 +67,26 @@ print_usage()
+ 	echo "Long Options: "
+ 	echo "    --sensor-name=<name>             Define specific sensor <name> to process"
+ 	echo "    --only-barnyard2                 Only process barnyard2"
+-#	echo "    --only-sancp                     Only process sancp"
+ 	echo "    --only-snort-alert               Only process snort alert"
+ 	echo "    --only-pcap                      Only process packet logger"
+ 	echo "    --only-argus                     Only process argus"
+         echo "    --only-prads                     Only process prads"
+         echo "    --only-bro                       Only process bro"
+-		echo
++	echo
+ 	echo "    --only-pcap-agent                Only process pcap_agent"
+ 	echo "    --only-sancp-agent               Only process sancp_agent"
+ 	echo "    --only-snort-agent               Only process snort_agent"
+ 	echo "    --only-http-agent                Only process http_agent"
+         echo "    --only-pads-agent                Only process pads_agent"
+         echo "    --only-ossec-agent               Only process ossec_agent"
+-		echo
++	echo
+ 	echo "    --skip-barnyard2                 Skip processing of barnyard2"
+-#	echo "    --skip-sancp                     Skip processing of sancp"
+ 	echo "    --skip-snort-alert               Skip processing of snort alert"
+ 	echo "    --skip-pcap                      Skip processing of packet logger"
+ 	echo "    --skip-argus                     Skip processing of argus"
+         echo "    --skip-prads                     Skip processing of prads"
+         echo "    --skip-bro                       Skip processing of bro"
+-		echo
++	echo
+ 	echo "    --skip-pcap-agent                Skip processing of pcap_agent"
+ 	echo "    --skip-sancp-agent               Skip processing of sancp_agent"
+ 	echo "    --skip-snort-agent               Skip processing of snort_agent"
+@@ -124,7 +122,6 @@ PROCESS_PID_DIR="/var/run/nsm"
+ 
+ # processing specific variables
+ SKIP_INVERT=""
+-#SKIP_SANCP=""
+ SKIP_SNORT_ALERT=""
+ SKIP_PCAP=""
+ SKIP_ARGUS=""
+@@ -156,15 +153,13 @@ do
+ 			;;
+ 		--sensor-name*)
+ 			SENSOR_NAME="$SENSOR_NAME $(echo $1 | cut -d "=" -f 2)"
++			SKIP_BRO=yes
++			SKIP_OSSEC_AGENT=yes
+ 			;;
+ 		--only-barnyard2)
+ 			SKIP_INVERT=yes
+ 			SKIP_BARNYARD2=yes
+ 			;;
+-#		--only-sancp)
+-#			SKIP_INVERT=yes
+-#			SKIP_SANCP=yes
+-#			;;
+ 		--only-snort-alert)
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_ALERT=yes
+@@ -212,9 +207,6 @@ do
+ 		--skip-barnyard2)
+ 			SKIP_BARNYARD2=yes
+ 			;;
+-#		--skip-sancp)
+-#			SKIP_SANCP=yes
+-#			;;
+ 		--skip-snort-alert)
+ 			SKIP_SNORT_ALERT=yes
+ 			;;
+@@ -289,19 +281,18 @@ fi
+ # invert skip as appropriate
+ if [ -n "$SKIP_INVERT" ]
+ then
+-	[ -z "$SKIP_PCAP_AGENT" ] && SKIP_PCAP_AGENT=yes || SKIP_PCAP_AGENT=""
+-	[ -z "$SKIP_SANCP_AGENT" ] && SKIP_SANCP_AGENT=yes || SKIP_SANCP_AGENT=""
+-	[ -z "$SKIP_SNORT_AGENT" ] && SKIP_SNORT_AGENT=yes || SKIP_SNORT_AGENT=""
+-	[ -z "$SKIP_HTTP_AGENT" ] && SKIP_HTTP_AGENT=yes || SKIP_HTTP_AGENT=""
+-	[ -z "$SKIP_PADS_AGENT" ] && SKIP_PADS_AGENT=yes || SKIP_PADS_AGENT=""
+-	[ -z "$SKIP_OSSEC_AGENT" ] && SKIP_OSSEC_AGENT=yes || SKIP_OSSEC_AGENT=""
+-	[ -z "$SKIP_SNORT_ALERT" ] && SKIP_SNORT_ALERT=yes || SKIP_SNORT_ALERT=""
+-#	[ -z "$SKIP_SANCP" ] && SKIP_SANCP=yes || SKIP_SANCP=""
+-	[ -z "$SKIP_BARNYARD2" ] && SKIP_BARNYARD2=yes || SKIP_BARNYARD2=""
+-	[ -z "$SKIP_PCAP" ] && SKIP_PCAP=yes || SKIP_PCAP=""
+-	[ -z "$SKIP_ARGUS" ] && SKIP_ARGUS=yes || SKIP_ARGUS=""
+-	[ -z "$SKIP_PRADS" ] && SKIP_PRADS=yes || SKIP_PRADS=""
+-	[ -z "$SKIP_BRO" ] && SKIP_BRO=yes || SKIP_BRO=""
++	[ -z "$SKIP_PCAP_AGENT" ]	&& SKIP_PCAP_AGENT=yes		|| SKIP_PCAP_AGENT=""
++	[ -z "$SKIP_SANCP_AGENT" ]	&& SKIP_SANCP_AGENT=yes	|| SKIP_SANCP_AGENT=""
++	[ -z "$SKIP_SNORT_AGENT" ]	&& SKIP_SNORT_AGENT=yes	|| SKIP_SNORT_AGENT=""
++	[ -z "$SKIP_HTTP_AGENT" ]	&& SKIP_HTTP_AGENT=yes		|| SKIP_HTTP_AGENT=""
++	[ -z "$SKIP_PADS_AGENT" ]	&& SKIP_PADS_AGENT=yes		|| SKIP_PADS_AGENT=""
++	[ -z "$SKIP_OSSEC_AGENT" ]	&& SKIP_OSSEC_AGENT=yes	|| SKIP_OSSEC_AGENT=""
++	[ -z "$SKIP_SNORT_ALERT" ]	&& SKIP_SNORT_ALERT=yes	|| SKIP_SNORT_ALERT=""
++	[ -z "$SKIP_BARNYARD2" ]	&& SKIP_BARNYARD2=yes		|| SKIP_BARNYARD2=""
++	[ -z "$SKIP_PCAP" ]		&& SKIP_PCAP=yes		|| SKIP_PCAP=""
++	[ -z "$SKIP_ARGUS" ]		&& SKIP_ARGUS=yes		|| SKIP_ARGUS=""
++	[ -z "$SKIP_PRADS" ]		&& SKIP_PRADS=yes		|| SKIP_PRADS=""
++	[ -z "$SKIP_BRO" ]		&& SKIP_BRO=yes		|| SKIP_BRO=""
+ fi
+ 
+ #
+@@ -310,12 +301,26 @@ fi
+ 
+ # Bro and OSSEC agent need to exist outside of the for-loop
+ 
+-if [ -z "$SKIP_OSSEC_AGENT" ]; then
++# check for variables in /etc/nsm/securityonion.conf
++SO_CONF="/etc/nsm/securityonion.conf"
++			
++# default values (can override in $SO_CONF)
++OSSEC_AGENT_ENABLED="yes"
++BRO_ENABLED="yes"
++
++# add parameters to $SO_CONF if they don't already exist
++grep OSSEC_AGENT_ENABLED $SO_CONF >/dev/null	|| echo "OSSEC_AGENT_ENABLED=yes" 	>> $SO_CONF
++grep BRO_ENABLED $SO_CONF >/dev/null 		|| echo "BRO_ENABLED=yes" 	>> $SO_CONF
++
++# load in user config
++. $SO_CONF
++
++if [ "$OSSEC_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_OSSEC_AGENT" ]; then
+         echo_msg 0 "Status: HIDS"
+         process_status "/etc/nsm/ossec/ossec_agent.tcl" "$PROCESS_PID_DIR/ossec_agent.pid" "ossec_agent (sguil)"
+ fi
+ 
+-if [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
++if [ "$BRO_ENABLED" == "yes" ] && [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
+         echo_msg 0 "Status: Bro"
+ 	# Update IP if necessary
+ 	if grep "^type=manager$" /opt/bro/etc/node.cfg >/dev/null 2>&1; then 
+@@ -330,66 +335,92 @@ do
+ 
+ 	echo_msg 0 "Status: ${SENSOR}"
+ 
+-	# check for sensor configuration file (ie. existence)
++	# check for sensor configuration file
+ 	SENSOR_CONF="/etc/nsm/$SENSOR/sensor.conf"
+ 	if [ ! -f "$SENSOR_CONF" ]
+ 	then
+ 		echo_error_msg 1 "sensor does not exist!"
+ 		exit 1
+ 	fi
++				
++	# default values (can override in $SENSOR_CONF)
++	PCAP_ENABLED="yes"
++	PCAP_AGENT_ENABLED="yes"
++	SNORT_AGENT_ENABLED="yes"
++	IDS_ENGINE_ENABLED="yes"
++	BARNYARD2_ENABLED="yes"
++	PRADS_ENABLED="yes"
++	SANCP_AGENT_ENABLED="yes"
++	PADS_AGENT_ENABLED="yes"
++	ARGUS_ENABLED="yes"
++	HTTP_AGENT_ENABLED="yes"
++	PCAP_SIZE="150MiB"
++
++	# add parameters to $SENSOR_CONF if they don't already exist
++	grep PCAP_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PCAP_ENABLED=\"yes\""		>> $SENSOR_CONF
++	grep PCAP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "PCAP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep SNORT_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "SNORT_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep IDS_ENGINE_ENABLED $SENSOR_CONF >/dev/null	|| echo "IDS_ENGINE_ENABLED=\"yes\""	>> $SENSOR_CONF
++	grep BARNYARD2_ENABLED $SENSOR_CONF >/dev/null		|| echo "BARNYARD2_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep PRADS_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PRADS_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep SANCP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "SANCP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep PADS_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "PADS_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep ARGUS_ENABLED $SENSOR_CONF >/dev/null 		|| echo "ARGUS_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep HTTP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "HTTP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep PCAP_SIZE $SENSOR_CONF >/dev/null			|| echo "PCAP_SIZE=\"150MiB\""		>> $SENSOR_CONF
+ 
+         # load in sensor specific details (we need $IDS_LB_PROCS)
+         . $SENSOR_CONF
+ 				
+ 	# status packet logger
+-	[ -z "$SKIP_PCAP" ] && process_status "netsniff-ng" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "netsniff-ng (full packet data)"
++	[ "$PCAP_ENABLED" == "yes" ] && [ -z "$SKIP_PCAP" ] && process_status "netsniff-ng" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "netsniff-ng (full packet data)"
+ 
+ 	# status pcap_agent
+-	[ -z "$SKIP_PCAP_AGENT" ] && process_status "pcap_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "pcap_agent (sguil)"
++	[ "$PCAP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PCAP_AGENT" ] && process_status "pcap_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "pcap_agent (sguil)"
+ 
+ 	# snort_agent
+         if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+ 	then
+-		[ -z "$SKIP_SNORT_AGENT" ] && process_status "snort_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "snort_agent (sguil)"
++		[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && process_status "snort_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "snort_agent (sguil)"
+ 	else
+                 for i in `seq 1 $IDS_LB_PROCS`; do
+-			[ -z "$SKIP_SNORT_AGENT" ] && process_status "snort_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid" "snort_agent-$i (sguil)"
++			[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && process_status "snort_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid" "snort_agent-$i (sguil)"
+ 		done
+ 	fi
+ 
+ 	# status the IDS engine
+         if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+ 	then
+-		[ -z "$SKIP_SNORT_ALERT" ] && process_status "suricata" "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "suricata (alert data)"
++		[ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && process_status "suricata" "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "suricata (alert data)"
+ 	else
+                 for i in `seq 1 $IDS_LB_PROCS`; do
+-			[ -z "$SKIP_SNORT_ALERT" ] && process_status "snort" "$PROCESS_PID_DIR/$SENSOR/snortu-$i.pid" "snort-$i (alert data)"
++			[ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && process_status "snort" "$PROCESS_PID_DIR/$SENSOR/snortu-$i.pid" "snort-$i (alert data)"
+ 		done
+ 	fi
+ 
+ 	# status barnyard2
+         if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+ 	then
+-		[ -z "$SKIP_BARNYARD2" ] && process_status "barnyard2" "$PROCESS_PID_DIR/$SENSOR/barnyard2.pid" "barnyard2 (spooler, unified2 format)"
++		[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && process_status "barnyard2" "$PROCESS_PID_DIR/$SENSOR/barnyard2.pid" "barnyard2 (spooler, unified2 format)"
+ 	else
+                 for i in `seq 1 $IDS_LB_PROCS`; do
+-			[ -z "$SKIP_BARNYARD2" ] && process_status "barnyard2" "$PROCESS_PID_DIR/$SENSOR/barnyard2-$i.pid" "barnyard2-$i (spooler, unified2 format)"
++			[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && process_status "barnyard2" "$PROCESS_PID_DIR/$SENSOR/barnyard2-$i.pid" "barnyard2-$i (spooler, unified2 format)"
+ 		done
+ 	fi
+ 
+         # status prads
+-        [ -z "$SKIP_PRADS" ] && process_status "prads" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "prads (sessions/assets)"
++        [ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && process_status "prads" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "prads (sessions/assets)"
+ 
+ 	# status sancp_agent
+-	[ -z "$SKIP_SANCP_AGENT" ] && process_status "sancp_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "sancp_agent (sguil)"
++	[ "$SANCP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SANCP_AGENT" ] && process_status "sancp_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "sancp_agent (sguil)"
+ 
+ 	# status pads_agent
+-        [ -z "$SKIP_PADS_AGENT" ] && process_status "pads_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "pads_agent (sguil)"
++        [ "$PADS_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PADS_AGENT" ] && process_status "pads_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "pads_agent (sguil)"
+ 
+ 	# status argus
+-	[ -z "$SKIP_ARGUS" ] && process_status "argus" "$PROCESS_PID_DIR/$SENSOR/argus.pid" "argus"
++	[ "$ARGUS_ENABLED" == "yes" ] && [ -z "$SKIP_ARGUS" ] && process_status "argus" "$PROCESS_PID_DIR/$SENSOR/argus.pid" "argus"
+ 
+ 	# status http_agent
+-	[ -z "$SKIP_HTTP_AGENT" ] && process_status "http_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/http_agent.pid" "http_agent (sguil)"
++	[ "$HTTP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_HTTP_AGENT" ] && process_status "http_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/http_agent.pid" "http_agent (sguil)"
+ done
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -68,28 +68,26 @@ print_usage()
+ 	echo "Long Options: "
+ 	echo "    --sensor-name=<name>             Define specific sensor <name> to process"
+ 	echo "    --only-barnyard2                 Only process barnyard2"
+-#	echo "    --only-sancp                     Only process sancp"
+ 	echo "    --only-snort-alert               Only process snort alert"
+ 	echo "    --only-pcap                      Only process packet logger"
+ 	echo "    --only-argus                     Only process argus"
+         echo "    --only-prads                     Only process prads"
+         echo "    --only-bro                       Only process bro"
+-		echo
++	echo
+ 	echo "    --only-pcap-agent                Only process pcap_agent"
+ 	echo "    --only-sancp-agent               Only process sancp_agent"
+ 	echo "    --only-snort-agent               Only process snort_agent"
+ 	echo "    --only-http-agent                Only process http_agent"
+         echo "    --only-pads-agent                Only process pads_agent"
+         echo "    --only-ossec-agent               Only process ossec_agent"
+-		echo
++	echo
+ 	echo "    --skip-barnyard2                 Skip processing of barnyard2"
+-#	echo "    --skip-sancp                     Skip processing of sancp"
+ 	echo "    --skip-snort-alert               Skip processing of snort alert"
+ 	echo "    --skip-pcap                      Skip processing of packet logger"
+ 	echo "    --skip-argus                     Skip processing of argus"
+         echo "    --skip-prads                     Skip processing of prads"
+         echo "    --skip-bro                       Skip processing of bro"
+-		echo
++	echo
+ 	echo "    --skip-pcap-agent                Skip processing of pcap_agent"
+ 	echo "    --skip-sancp-agent               Skip processing of sancp_agent"
+ 	echo "    --skip-snort-agent               Skip processing of snort_agent"
+@@ -128,7 +126,6 @@ PROCESS_PID_DIR="/var/run/nsm"
+ 
+ # processing specific variables
+ SKIP_INVERT=""
+-#SKIP_SANCP=""
+ SKIP_SNORT_ALERT=""
+ SKIP_PCAP=""
+ SKIP_ARGUS=""
+@@ -164,15 +161,13 @@ do
+ 			;;
+ 		--sensor-name*)
+ 			SENSOR_NAME="$SENSOR_NAME $(echo $1 | cut -d "=" -f 2)"
++			SKIP_BRO=yes
++			SKIP_OSSEC_AGENT=yes
+ 			;;
+ 		--only-barnyard2)
+ 			SKIP_INVERT=yes
+ 			SKIP_BARNYARD2=yes
+ 			;;
+-#		--only-sancp)
+-#			SKIP_INVERT=yes
+-#			SKIP_SANCP=yes
+-#			;;
+ 		--only-snort-alert)
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_ALERT=yes
+@@ -220,9 +215,6 @@ do
+ 		--skip-barnyard2)
+ 			SKIP_BARNYARD2=yes
+ 			;;
+-#		--skip-sancp)
+-#			SKIP_SANCP=yes
+-#			;;
+ 		--skip-snort-alert)
+ 			SKIP_SNORT_ALERT=yes
+ 			;;
+@@ -297,19 +289,18 @@ fi
+ # invert skip as appropriate
+ if [ -n "$SKIP_INVERT" ]
+ then
+-	[ -z "$SKIP_PCAP_AGENT" ] && SKIP_PCAP_AGENT=yes || SKIP_PCAP_AGENT=""
+-	[ -z "$SKIP_SANCP_AGENT" ] && SKIP_SANCP_AGENT=yes || SKIP_SANCP_AGENT=""
+-	[ -z "$SKIP_SNORT_AGENT" ] && SKIP_SNORT_AGENT=yes || SKIP_SNORT_AGENT=""
+-	[ -z "$SKIP_HTTP_AGENT" ] && SKIP_HTTP_AGENT=yes || SKIP_HTTP_AGENT=""
+-	[ -z "$SKIP_PADS_AGENT" ] && SKIP_PADS_AGENT=yes || SKIP_PADS_AGENT=""
+-	[ -z "$SKIP_OSSEC_AGENT" ] && SKIP_OSSEC_AGENT=yes || SKIP_OSSEC_AGENT=""
+-	[ -z "$SKIP_SNORT_ALERT" ] && SKIP_SNORT_ALERT=yes || SKIP_SNORT_ALERT=""
+-#	[ -z "$SKIP_SANCP" ] && SKIP_SANCP=yes || SKIP_SANCP=""
+-	[ -z "$SKIP_BARNYARD2" ] && SKIP_BARNYARD2=yes || SKIP_BARNYARD2=""
+-	[ -z "$SKIP_PCAP" ] && SKIP_PCAP=yes || SKIP_PCAP=""
+-	[ -z "$SKIP_ARGUS" ] && SKIP_ARGUS=yes || SKIP_ARGUS=""
+-	[ -z "$SKIP_PRADS" ] && SKIP_PRADS=yes || SKIP_PRADS=""
+-	[ -z "$SKIP_BRO" ] && SKIP_BRO=yes || SKIP_BRO=""
++	[ -z "$SKIP_PCAP_AGENT" ]	&& SKIP_PCAP_AGENT=yes		|| SKIP_PCAP_AGENT=""
++	[ -z "$SKIP_SANCP_AGENT" ]	&& SKIP_SANCP_AGENT=yes	|| SKIP_SANCP_AGENT=""
++	[ -z "$SKIP_SNORT_AGENT" ]	&& SKIP_SNORT_AGENT=yes	|| SKIP_SNORT_AGENT=""
++	[ -z "$SKIP_HTTP_AGENT" ]	&& SKIP_HTTP_AGENT=yes		|| SKIP_HTTP_AGENT=""
++	[ -z "$SKIP_PADS_AGENT" ]	&& SKIP_PADS_AGENT=yes		|| SKIP_PADS_AGENT=""
++	[ -z "$SKIP_OSSEC_AGENT" ]	&& SKIP_OSSEC_AGENT=yes	|| SKIP_OSSEC_AGENT=""
++	[ -z "$SKIP_SNORT_ALERT" ]	&& SKIP_SNORT_ALERT=yes	|| SKIP_SNORT_ALERT=""
++	[ -z "$SKIP_BARNYARD2" ]	&& SKIP_BARNYARD2=yes		|| SKIP_BARNYARD2=""
++	[ -z "$SKIP_PCAP" ]		&& SKIP_PCAP=yes		|| SKIP_PCAP=""
++	[ -z "$SKIP_ARGUS" ]		&& SKIP_ARGUS=yes		|| SKIP_ARGUS=""
++	[ -z "$SKIP_PRADS" ]		&& SKIP_PRADS=yes		|| SKIP_PRADS=""
++	[ -z "$SKIP_BRO" ]		&& SKIP_BRO=yes		|| SKIP_BRO=""
+ fi
+ 
+ #
+@@ -318,12 +309,26 @@ fi
+ 
+ # Bro and OSSEC agent need to exist outside of the for-loop
+ 
+-if [ -z "$SKIP_OSSEC_AGENT" ]; then
++# check for variables in /etc/nsm/securityonion.conf
++SO_CONF="/etc/nsm/securityonion.conf"
++			
++# default values (can override in $SO_CONF)
++OSSEC_AGENT_ENABLED="yes"
++BRO_ENABLED="yes"
++
++# add parameters to $SO_CONF if they don't already exist
++grep OSSEC_AGENT_ENABLED $SO_CONF >/dev/null	|| echo "OSSEC_AGENT_ENABLED=yes" 	>> $SO_CONF
++grep BRO_ENABLED $SO_CONF >/dev/null 		|| echo "BRO_ENABLED=yes" 	>> $SO_CONF
++
++# load in user config
++. $SO_CONF
++
++if [ "$OSSEC_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_OSSEC_AGENT" ]; then
+         [ "$ACTION" == "process_restart" ] && echo_msg 0 "Restarting: HIDS"
+         $ACTION "/etc/nsm/ossec/ossec_agent.tcl" "-o -f /var/ossec/logs/alerts/alerts.log -i 127.0.0.1 -p 5 -c /etc/nsm/ossec/ossec_agent.conf" "$PROCESS_PID_DIR/ossec_agent.pid" "$PROCESS_LOG_DIR/ossec_agent.log" "ossec_agent (sguil)"
+ fi
+ 
+-if [ -z "$SKIP_BRO" ] && [ "$ACTION" == "process_restart" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
++if [ "$BRO_ENABLED" == "yes" ] && [ -z "$SKIP_BRO" ] && [ "$ACTION" == "process_restart" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
+         echo_msg 0 "Restarting: Bro"
+         # Update IP if necessary
+         if grep "^type=manager$" /opt/bro/etc/node.cfg >/dev/null 2>&1; then
+@@ -339,10 +344,7 @@ do
+ 
+ 	[ "$ACTION" == "process_restart" ] && echo_msg 0 "Restarting: ${SENSOR}"
+ 
+-	# set default PCAP capture value
+-	PCAP_SIZE=150MiB
+-
+-	# check for sensor configuration file (ie. its existence)
++	# check for sensor configuration file
+ 	SENSOR_CONF="/etc/nsm/$SENSOR/sensor.conf"
+ 	if [ ! -f "$SENSOR_CONF" ]
+ 	then
+@@ -350,6 +352,32 @@ do
+ 		exit 1
+ 	fi
+ 				
++	# default values (can override in $SENSOR_CONF)
++	PCAP_ENABLED="yes"
++	PCAP_AGENT_ENABLED="yes"
++	SNORT_AGENT_ENABLED="yes"
++	IDS_ENGINE_ENABLED="yes"
++	BARNYARD2_ENABLED="yes"
++	PRADS_ENABLED="yes"
++	SANCP_AGENT_ENABLED="yes"
++	PADS_AGENT_ENABLED="yes"
++	ARGUS_ENABLED="yes"
++	HTTP_AGENT_ENABLED="yes"
++	PCAP_SIZE="150MiB"
++
++	# add parameters to $SENSOR_CONF if they don't already exist
++	grep PCAP_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PCAP_ENABLED=\"yes\""		>> $SENSOR_CONF
++	grep PCAP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "PCAP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep SNORT_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "SNORT_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep IDS_ENGINE_ENABLED $SENSOR_CONF >/dev/null	|| echo "IDS_ENGINE_ENABLED=\"yes\""	>> $SENSOR_CONF
++	grep BARNYARD2_ENABLED $SENSOR_CONF >/dev/null		|| echo "BARNYARD2_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep PRADS_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PRADS_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep SANCP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "SANCP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep PADS_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "PADS_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep ARGUS_ENABLED $SENSOR_CONF >/dev/null 		|| echo "ARGUS_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep HTTP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "HTTP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
++	grep PCAP_SIZE $SENSOR_CONF >/dev/null			|| echo "PCAP_SIZE=\"150MiB\""		>> $SENSOR_CONF
++				
+ 	# load in sensor specific details
+ 	. $SENSOR_CONF
+ 
+@@ -360,7 +388,7 @@ do
+ 	SENSOR_INTERFACE_SHORT="${SENSOR_INTERFACE%%:*}"
+ 
+ 	# restart pcap logger
+-	if [ -z "$SKIP_PCAP" ]; then
++	if [ "$PCAP_ENABLED" == "yes" ] && [ -z "$SKIP_PCAP" ]; then
+         	TODAY=$(date $DATE_OPTIONS "+%Y-%m-%d")      #-u option sets TZ to GMT
+ 		if [ ! -d "$SENSOR_LOG_DIR/dailylogs/$TODAY" ]; then
+ 			mkdir -p $SENSOR_LOG_DIR/dailylogs/$TODAY
+@@ -380,11 +408,11 @@ do
+ 	fi
+ 
+ 	# restart pcap_agent
+-	[ -z "$SKIP_PCAP_AGENT" ] && $ACTION "pcap_agent.tcl" "-c $PCAP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pcap_agent.log" "pcap_agent (sguil)"
++	[ "$PCAP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PCAP_AGENT" ] && $ACTION "pcap_agent.tcl" "-c $PCAP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pcap_agent.log" "pcap_agent (sguil)"
+ 
+ 	# restart snort_agent
+         if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null; then
+-		[ -z "$SKIP_SNORT_AGENT" ] && $ACTION "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent.log" "snort_agent (sguil)"
++		[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && $ACTION "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent.log" "snort_agent (sguil)"
+ 	else
+                 for i in `seq 1 $IDS_LB_PROCS`; do
+ 			SNORT_AGENT_CONFIG=/etc/nsm/$SENSOR/snort_agent-$i.conf
+@@ -401,7 +429,7 @@ do
+ 				sed -i "s|^set PORTSCAN_DIR.*$|set PORTSCAN_DIR /nsm/sensor_data/$SENSOR/portscans-$i|g" $SNORT_AGENT_CONFIG
+ 				sed -i "s|^set WATCH_DIR.*$|set WATCH_DIR /nsm/sensor_data/$SENSOR|g" $SNORT_AGENT_CONFIG
+ 			fi
+-			[ -z "$SKIP_SNORT_AGENT" ] && $ACTION "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$SNORT_AGENT_PID" "$SNORT_AGENT_LOG" "snort_agent-$i (sguil)"
++			[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && $ACTION "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$SNORT_AGENT_PID" "$SNORT_AGENT_LOG" "snort_agent-$i (sguil)"
+ 		done
+ 	fi
+ 
+@@ -435,7 +463,7 @@ do
+ 		IDS_LB_PROCS=`grep IDS_LB_PROCS /etc/nsm/$SENSOR/sensor.conf | cut -d\= -f2`
+                 sed -i "s|    threads: .*|    threads: $IDS_LB_PROCS|g" /etc/nsm/$SENSOR/suricata.yaml
+ 		# start Suricata
+-                [ -z "$SKIP_SNORT_ALERT" ] && $ACTION "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --pfring=$SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $SENSOR_LOG_DIR " "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
++                [ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && $ACTION "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --pfring=$SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $SENSOR_LOG_DIR " "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
+ 	else
+ 		# Need to set a unique PF_RING CLUSTER_ID for each interface
+                 CLUSTER_ID=`grep -n $SENSOR /etc/nsm/sensortab |cut -d\: -f1`; let CLUSTER_ID+=50
+@@ -448,7 +476,7 @@ do
+                         UNI_DIR=$SENSOR_LOG_DIR/snort-$i
+ 			mkdir -p $UNI_DIR
+ 			chown $SENSOR_USER:$SENSOR_GROUP $UNI_DIR
+-                        [ -z "$SKIP_SNORT_ALERT" ] && $ACTION "snort" "-c $SNORT_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $UNI_DIR --perfmon-file $PERFMON $SNORT_OPTIONS" "$PID" "$LOG" "snort-$i (alert data)"
++                        [ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && $ACTION "snort" "-c $SNORT_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $UNI_DIR --perfmon-file $PERFMON $SNORT_OPTIONS" "$PID" "$LOG" "snort-$i (alert data)"
+ 		done
+ 	fi
+ 
+@@ -458,7 +486,7 @@ do
+         if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+         then
+                 # we only have a single instance of barnyard2
+-		[ -z "$SKIP_BARNYARD2" ] && $ACTION "barnyard2" "-c $BARNYARD2_CONFIG -d $SENSOR_LOG_DIR -f snort.unified2 -w $BARNYARD2_WALDO -i 1 $BARNYARD2_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/barnyard2.pid" "$PROCESS_LOG_DIR/$SENSOR/barnyard2.log" "barnyard2 (spooler, unified2 format)"
++		[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && $ACTION "barnyard2" "-c $BARNYARD2_CONFIG -d $SENSOR_LOG_DIR -f snort.unified2 -w $BARNYARD2_WALDO -i 1 $BARNYARD2_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/barnyard2.pid" "$PROCESS_LOG_DIR/$SENSOR/barnyard2.log" "barnyard2 (spooler, unified2 format)"
+ 	else
+ 		# we have one instance of barnyard2 per Snort instance
+                 for i in `seq 1 $IDS_LB_PROCS`; do
+@@ -473,13 +501,10 @@ do
+ 				PORT=`grep BY_PORT /etc/nsm/$SENSOR/snort_agent-$i.conf |awk '{print $3}'`
+ 				sed -i "s|output sguil:.*$|output sguil: sensor_name=$SENSOR-$i agent_port=$PORT|g" $BARNYARD2_CONFIG
+ 			fi
+-			[ -z "$SKIP_BARNYARD2" ] && $ACTION "barnyard2" "-c $BARNYARD2_CONFIG -d $UNI_DIR -f snort.unified2 -w $WALDO -i $i $BARNYARD2_OPTIONS" "$PID" "$LOG" "barnyard2-$i (spooler, unified2 format)"
++			[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && $ACTION "barnyard2" "-c $BARNYARD2_CONFIG -d $UNI_DIR -f snort.unified2 -w $WALDO -i $i $BARNYARD2_OPTIONS" "$PID" "$LOG" "barnyard2-$i (spooler, unified2 format)"
+ 		done
+ 	fi
+ 
+-	# restart sancp
+-	#[ -z "$SKIP_SANCP" ] && $ACTION "sancp" "-d $SENSOR_LOG_DIR/sancp -i $SENSOR_INTERFACE_SHORT -c $SANCP_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP $SANCP_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/sancp.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp.log" "sancp (session data)"
+-
+ 	# restart prads
+ 	# If the user supplies a BPF, use theirs; otherwise, exclude IPv6
+         if [ -s /etc/nsm/$SENSOR/bpf-prads.conf ]; then
+@@ -488,16 +513,16 @@ do
+ 		# By default, we need to exclude IPv6 traffic from prads since Sguil doesn't grok it (yet)
+ 		BPF="ip or (vlan and ip)"
+ 	fi
+-	[ -z "$SKIP_PRADS" ] && $ACTION "prads" "-i $SENSOR_INTERFACE_SHORT -c /etc/nsm/$SENSOR/prads.conf -u $SENSOR_USER -g $SENSOR_GROUP -L /nsm/sensor_data/$SENSOR/sancp/ -f /nsm/sensor_data/$SENSOR/pads.fifo $PADS_OPTIONS -b \"$BPF\"" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "$PROCESS_LOG_DIR/$SENSOR/prads.log" "prads (sessions/assets)"
++	[ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && $ACTION "prads" "-i $SENSOR_INTERFACE_SHORT -c /etc/nsm/$SENSOR/prads.conf -u $SENSOR_USER -g $SENSOR_GROUP -L /nsm/sensor_data/$SENSOR/sancp/ -f /nsm/sensor_data/$SENSOR/pads.fifo $PADS_OPTIONS -b \"$BPF\"" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "$PROCESS_LOG_DIR/$SENSOR/prads.log" "prads (sessions/assets)"
+ 
+ 	# restart pads_agent
+-	[ -z "$SKIP_PADS_AGENT" ] && $ACTION "pads_agent.tcl" "-c $PADS_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pads_agent.log" "pads_agent (sguil)"
++	[ "$PADS_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PADS_AGENT" ] && $ACTION "pads_agent.tcl" "-c $PADS_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pads_agent.log" "pads_agent (sguil)"
+ 
+ 	# restart sancp_agent
+-	[ -z "$SKIP_SANCP_AGENT" ] && $ACTION "sancp_agent.tcl" "-c $SANCP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp_agent.log" "sancp_agent (sguil)"
++	[ "$SANCP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SANCP_AGENT" ] && $ACTION "sancp_agent.tcl" "-c $SANCP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp_agent.log" "sancp_agent (sguil)"
+ 
+ 	# restart argus
+-	if [ -z "$SKIP_ARGUS" ]
++	if [ "$ARGUS_ENABLED" == "yes" ] && [ -z "$SKIP_ARGUS" ]
+ 	then
+ 		mkdir -p $SENSOR_LOG_DIR/argus
+         	chown $SENSOR_USER:$SENSOR_GROUP $SENSOR_LOG_DIR/argus
+@@ -516,7 +541,7 @@ do
+         else
+                 BRO_HTTP_LOG=/nsm/bro/logs/current/http_$SENSOR_INTERFACE_SHORT.log
+         fi
+-        [ -z "$SKIP_HTTP_AGENT" ] && $ACTION "http_agent.tcl" "-c /etc/nsm/$SENSOR/http_agent.conf -e /etc/nsm/$SENSOR/http_agent.exclude -f $BRO_HTTP_LOG" "$PROCESS_PID_DIR/$SENSOR/http_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/http_agent.log" "http_agent (sguil)"
++        [ "$HTTP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_HTTP_AGENT" ] && $ACTION "http_agent.tcl" "-c /etc/nsm/$SENSOR/http_agent.conf -e /etc/nsm/$SENSOR/http_agent.exclude -f $BRO_HTTP_LOG" "$PROCESS_PID_DIR/$SENSOR/http_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/http_agent.log" "http_agent (sguil)"
+ 
+ 	# clean disk/check crontab entry for daily restarts
+ 	# commented out because we're going to run this hourly now

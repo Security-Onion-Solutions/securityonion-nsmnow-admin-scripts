@@ -1,0 +1,293 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion12) precise; urgency=low
+ .
+   * fix support for multiple snort pfring instances
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-stop
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-stop
+@@ -321,19 +321,31 @@ do
+ 		exit 1
+ 	fi
+ 				
++	# load in sensor specific details (we need $IDS_LB_PROCS)
++	. $SENSOR_CONF
++
+ 	# stop agents
+ 	[ -z "$SKIP_PCAP_AGENT" ] && process_stop "pcap_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "pcap_agent (sguil)"
+    	[ -z "$SKIP_SANCP_AGENT" ] && process_stop "sancp_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "sancp_agent (sguil)"
+-	[ -z "$SKIP_SNORT_AGENT" ] && process_stop "snort_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "snort_agent (sguil)"
+         [ -z "$SKIP_PADS_AGENT" ] && process_stop "pads_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "pads_agent (sguil)"
+ 
++	# stop the snort_agent
++        if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
++	then
++		[ -z "$SKIP_SNORT_AGENT" ] && process_stop "snort_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "snort_agent (sguil)"
++	else
++		for i in `seq 1 $IDS_LB_PROCS`; do
++			[ -z "$SKIP_SNORT_AGENT" ] && process_stop "snort_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid" "snort_agent-$i (sguil)"
++		done
++	fi
++
+ 	# stop the IDS engine
+         if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+ 	then
+    		[ -z "$SKIP_SNORT_ALERT" ] && process_stop "suricata" "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "suricata (alert data)"
+ 	else
+-		for i in `seq 1 $IDS_LB_PROC`; do
+-   			[ -z "$SKIP_SNORT_ALERT" ] && process_stop "snort" "$PROCESS_PID_DIR/$SENSOR/snortu-$i.pid" "snort (alert data)"
++		for i in `seq 1 $IDS_LB_PROCS`; do
++   			[ -z "$SKIP_SNORT_ALERT" ] && process_stop "snort" "$PROCESS_PID_DIR/$SENSOR/snortu-$i.pid" "snort-$i (alert data)"
+ 		done
+ 	fi
+ 
+@@ -342,8 +354,8 @@ do
+ 	then
+ 		[ -z "$SKIP_BARNYARD2" ] && process_stop "barnyard2" "$PROCESS_PID_DIR/$SENSOR/barnyard2.pid" "barnyard2 (spooler, unified2 format)"
+ 	else
+-		for i in `seq 1 $IDS_LB_PROC`; do
+-			[ -z "$SKIP_BARNYARD2" ] && process_stop "barnyard2" "$PROCESS_PID_DIR/$SENSOR/barnyard2-$i.pid" "barnyard2 (spooler, unified2 format)"
++		for i in `seq 1 $IDS_LB_PROCS`; do
++			[ -z "$SKIP_BARNYARD2" ] && process_stop "barnyard2" "$PROCESS_PID_DIR/$SENSOR/barnyard2-$i.pid" "barnyard2-$i (spooler, unified2 format)"
+ 		done
+ 	fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -343,17 +343,20 @@ do
+ 	then
+ 		[ -z "$SKIP_SNORT_AGENT" ] && process_start "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent.log" "snort_agent (sguil)"
+ 	else
+-		# Start $IDS_LB_PROC instances of snort_agent
+-                for i in `seq 1 $IDS_LB_PROC`; do
++		# Start $IDS_LB_PROCS instances of snort_agent
++                for i in `seq 1 $IDS_LB_PROCS`; do
++			mkdir -p $SENSOR_LOG_DIR/snort-$i/
+ 			if [ ! -f /etc/nsm/$SENSOR/snort_agent-$i.conf ]; then
+ 				cp /etc/nsm/$SENSOR/snort_agent.conf /etc/nsm/$SENSOR/snort_agent-$i.conf	
+-				sed -i 's|^set HOSTNAME.*$|set HOSTNAME $SENSOR-$i|g' /etc/nsm/$SENSOR/snort_agent-$i.conf
++				sed -i "s|^set HOSTNAME.*$|set HOSTNAME $SENSOR-$i|g" /etc/nsm/$SENSOR/snort_agent-$i.conf
+ 				OLD_PORT=`grep BY_PORT /etc/nsm/$SENSOR/snort_agent-$i.conf |awk '{print $3}'`
+ 				let NEW_PORT=OLD_PORT+$i
+-				sed -i 's|^set BY_PORT.*$|set BY_PORT $NEW_PORT|g' /etc/nsm/$SENSOR/snort_agent-$i.conf
+-				sed -i 's|snort.stats|snort-$i.stats|g' /etc/nsm/$SENSOR/snort_agent-$i.conf
++				sed -i "s|^set BY_PORT.*$|set BY_PORT $NEW_PORT|g" /etc/nsm/$SENSOR/snort_agent-$i.conf
++				sed -i "s|^set SNORT_PERF_FILE.*$|set SNORT_PERF_FILE /nsm/sensor_data/$SENSOR/snort-$i.stats|g" /etc/nsm/$SENSOR/snort_agent-$i.conf
++				sed -i "s|^set PORTSCAN_DIR.*$|set PORTSCAN_DIR /nsm/sensor_data/$SENSOR/portscans-$i|g" /etc/nsm/$SENSOR/snort_agent-$i.conf
++				sed -i "s|^set WATCH_DIR.*$|set WATCH_DIR /nsm/sensor_data/$SENSOR|g" /etc/nsm/$SENSOR/snort_agent-$i.conf
+ 			fi
+-				[ -z "$SKIP_SNORT_AGENT" ] && process_start "snort_agent.tcl" "-c /etc/nsm/$SENSOR/snort_agent-$i.conf" "$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent-$i.log" "snort_agent (sguil)"
++				[ -z "$SKIP_SNORT_AGENT" ] && process_start "snort_agent.tcl" "-c /etc/nsm/$SENSOR/snort_agent-$i.conf" "$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent-$i.log" "snort_agent-$i (sguil)"
+ 		done
+ 	fi
+ 
+@@ -375,22 +378,23 @@ do
+ 	# Start IDS Engine with unified2 output
+ 	if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+ 	then
+-		# Start Suricata using afpacket with $IDS_LB_PROC processes
++		# Start Suricata using afpacket with $IDS_LB_PROCS processes
+    		[ -z "$SKIP_SNORT_ALERT" ] && process_start "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --af-packet=$SENSOR_INTERFACE_SHORT --runmode=autofp -F /etc/nsm/$SENSOR/bpf.conf -l $SENSOR_LOG_DIR " "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
+ 		
+ 	else	
+-		# Start $IDS_LB_PROC instances of Snort using pfring load-balancing
++		# Start $IDS_LB_PROCS instances of Snort using pfring load-balancing
+ 		# it seems that pfring requires root, so let's remove user/group for now
+    		#[ -z "$SKIP_SNORT_ALERT" ] && process_start "snort" "-u $SENSOR_USER -g $SENSOR_GROUP -c $SNORT_CONFIG -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf.conf -l $SENSOR_LOG_DIR $SNORT_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/snortu.pid" "$PROCESS_LOG_DIR/$SENSOR/snortu.log" "snort (alert data)"
+-		for i in `seq 1 $IDS_LB_PROC`; do
++		for i in `seq 1 $IDS_LB_PROCS`; do
++			mkdir -p $SENSOR_LOG_DIR/snort-$i/
+ 			if [ ! -f /etc/nsm/$SENSOR/snort-$i.conf ]; then
+ 				cp /etc/nsm/$SENSOR/snort.conf /etc/nsm/$SENSOR/snort-$i.conf	
+-				sed -i 's|snort.stats|snort-$i.stats|g' /etc/nsm/$SENSOR/snort-$i.conf
++				sed -i "s|snort.stats|snort-$i.stats|g" /etc/nsm/$SENSOR/snort-$i.conf
+ 			fi
+ 			PID=$PROCESS_PID_DIR/$SENSOR/snortu-$i.pid
+ 			LOG=$PROCESS_LOG_DIR/$SENSOR/snortu-$i.log
+-			UNI_DIR=$SENSOR_LOG_DIR-$i
+-   			[ -z "$SKIP_SNORT_ALERT" ] && process_start "snort" "-c /etc/nsm/$SENSOR/snort-$i.conf -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf.conf -l $UNI_DIR $SNORT_OPTIONS" "$PID" "$LOG" "snort (alert data)"
++			UNI_DIR=$SENSOR_LOG_DIR/snort-$i
++   			[ -z "$SKIP_SNORT_ALERT" ] && process_start "snort" "-c /etc/nsm/$SENSOR/snort-$i.conf -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf.conf -l $UNI_DIR $SNORT_OPTIONS" "$PID" "$LOG" "snort-$i (alert data)"
+ 		done
+ 	fi
+ 
+@@ -403,17 +407,18 @@ do
+ 		[ -z "$SKIP_BARNYARD2" ] && process_start "barnyard2" "-c $BARNYARD2_CONFIG -d $SENSOR_LOG_DIR -f snort.unified2 -w $BARNYARD2_WALDO -i 1 $BARNYARD2_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/barnyard2.pid" "$PROCESS_LOG_DIR/$SENSOR/barnyard2.log" "barnyard2 (spooler, unified2 format)"
+ 	else
+ 		# we need one instance of barnyard2 per Snort instance
+-		for i in `seq 1 $IDS_LB_PROC`; do
+-			if [ ! -f /etc/nsm/$SENSOR/barnyard-$i.conf ]; then
+-				cp /etc/nsm/$SENSOR/barnyard.conf /etc/nsm/$SENSOR/barnyard-$i.conf	
++		for i in `seq 1 $IDS_LB_PROCS`; do
++			mkdir -p $SENSOR_LOG_DIR/snort-$i/
++			if [ ! -f /etc/nsm/$SENSOR/barnyard2-$i.conf ]; then
++				cp /etc/nsm/$SENSOR/barnyard2.conf /etc/nsm/$SENSOR/barnyard2-$i.conf	
+ 				PORT=`grep BY_PORT /etc/nsm/$SENSOR/snort_agent-$i.conf |awk '{print $3}'`
+-				sed -i 's|^output sguil: sensor_name=so-ags-eth1 agent_port=.*$|output sguil: sensor_name=so-ags-eth1 agent_port=$PORT|g' /etc/nsm/$SENSOR/barnyard-$i.conf
++				sed -i "s|agent_port=.*$|agent_port=$PORT|g" /etc/nsm/$SENSOR/barnyard2-$i.conf
+ 			fi
+-			UNI_DIR=$SENSOR_LOG_DIR-$i	
++			UNI_DIR=$SENSOR_LOG_DIR/snort-$i	
+ 			WALDO=$BARNYARD2_WALDO-$i
+ 			PID=$PROCESS_PID_DIR/$SENSOR/barnyard2-$i.pid
+ 			LOG=$PROCESS_LOG_DIR/$SENSOR/barnyard2-$i.log
+-			[ -z "$SKIP_BARNYARD2" ] && process_start "barnyard2" "-c /etc/nsm/$SENSOR/barnyard-$i.conf -d $UNI_DIR -f snort.unified2 -w $WALDO -i $i $BARNYARD2_OPTIONS" "$PID" "$LOG" "barnyard2 (spooler, unified2 format)"
++			[ -z "$SKIP_BARNYARD2" ] && process_start "barnyard2" "-c /etc/nsm/$SENSOR/barnyard2-$i.conf -d $UNI_DIR -f snort.unified2 -w $WALDO -i $i $BARNYARD2_OPTIONS" "$PID" "$LOG" "barnyard2-$i (spooler, unified2 format)"
+ 		done
+ 	fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-status
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-status
+@@ -320,20 +320,32 @@ do
+ 		echo_error_msg 1 "sensor does not exist!"
+ 		exit 1
+ 	fi
++
++        # load in sensor specific details (we need $IDS_LB_PROCS)
++        . $SENSOR_CONF
+ 				
+ 	# status agents
+ 	[ -z "$SKIP_PCAP_AGENT" ] && process_status "pcap_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "pcap_agent (sguil)"
+ 	[ -z "$SKIP_SANCP_AGENT" ] && process_status "sancp_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "sancp_agent (sguil)"
+-	[ -z "$SKIP_SNORT_AGENT" ] && process_status "snort_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "snort_agent (sguil)"
+         [ -z "$SKIP_PADS_AGENT" ] && process_status "pads_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "pads_agent (sguil)"
+ 
++	# snort_agent
++        if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
++	then
++		[ -z "$SKIP_SNORT_AGENT" ] && process_status "snort_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "snort_agent (sguil)"
++	else
++                for i in `seq 1 $IDS_LB_PROCS`; do
++			[ -z "$SKIP_SNORT_AGENT" ] && process_status "snort_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid" "snort_agent-$i (sguil)"
++		done
++	fi
++
+ 	# status the IDS engine
+         if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+ 	then
+ 		[ -z "$SKIP_SNORT_ALERT" ] && process_status "suricata" "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "suricata (alert data)"
+ 	else
+-                for i in `seq 1 $IDS_LB_PROC`; do
+-			[ -z "$SKIP_SNORT_ALERT" ] && process_status "snort" "$PROCESS_PID_DIR/$SENSOR/snortu-$i.pid" "snort (alert data)"
++                for i in `seq 1 $IDS_LB_PROCS`; do
++			[ -z "$SKIP_SNORT_ALERT" ] && process_status "snort" "$PROCESS_PID_DIR/$SENSOR/snortu-$i.pid" "snort-$i (alert data)"
+ 		done
+ 	fi
+ 
+@@ -342,8 +354,8 @@ do
+ 	then
+ 		[ -z "$SKIP_BARNYARD2" ] && process_status "barnyard2" "$PROCESS_PID_DIR/$SENSOR/barnyard2.pid" "barnyard2 (spooler, unified2 format)"
+ 	else
+-                for i in `seq 1 $IDS_LB_PROC`; do
+-			[ -z "$SKIP_BARNYARD2" ] && process_status "barnyard2" "$PROCESS_PID_DIR/$SENSOR/barnyard2-$i.pid" "barnyard2 (spooler, unified2 format)"
++                for i in `seq 1 $IDS_LB_PROCS`; do
++			[ -z "$SKIP_BARNYARD2" ] && process_status "barnyard2" "$PROCESS_PID_DIR/$SENSOR/barnyard2-$i.pid" "barnyard2-$i (spooler, unified2 format)"
+ 		done
+ 	fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -341,7 +341,17 @@ do
+ 	# restart agents
+ 	[ -z "$SKIP_PCAP_AGENT" ] && $ACTION "pcap_agent.tcl" "-c $PCAP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pcap_agent.log" "pcap_agent (sguil)"
+ 	[ -z "$SKIP_SANCP_AGENT" ] && $ACTION "sancp_agent.tcl" "-c $SANCP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp_agent.log" "sancp_agent (sguil)"
+-	[ -z "$SKIP_SNORT_AGENT" ] && $ACTION "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent.log" "snort_agent (sguil)"
++
++	# restart snort_agent
++        if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
++	then
++		[ -z "$SKIP_SNORT_AGENT" ] && $ACTION "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent.log" "snort_agent (sguil)"
++	else
++                for i in `seq 1 $IDS_LB_PROCS`; do
++			[ -z "$SKIP_SNORT_AGENT" ] && $ACTION "snort_agent.tcl" "-c /etc/nsm/$SENSOR/snort_agent-$i.conf" "$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent-$i.log" "snort_agent-$i (sguil)"
++		done
++	fi
++
+         TODAY=$(date $DATE_OPTIONS "+%Y-%m-%d")      #-u option sets TZ to GMT
+ 
+ 	# UTC specific options
+@@ -362,17 +372,17 @@ do
+ 	# restart the IDS engine
+         if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+ 	then
+-		# Restart Suricata using afpacket with $IDS_LB_PROC processes
++		# Restart Suricata using afpacket with $IDS_LB_PROCS processes
+    		[ -z "$SKIP_SNORT_ALERT" ] && $ACTION "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --af-packet=$SENSOR_INTERFACE_SHORT --runmode=autofp -F /etc/nsm/$SENSOR/bpf.conf -l $SENSOR_LOG_DIR" "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
+ 	else
+-                # Restart $IDS_LB_PROC instances of Snort using pfring load-balancing
++                # Restart $IDS_LB_PROCS instances of Snort using pfring load-balancing
+ 		# It seems that pfring requires root, so let's remove user/group for now
+    		#[ -z "$SKIP_SNORT_ALERT" ] && $ACTION "snort" "-u $SENSOR_USER -g $SENSOR_GROUP -c $SNORT_CONFIG -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf.conf -l $SENSOR_LOG_DIR $SNORT_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/snortu.pid" "$PROCESS_LOG_DIR/$SENSOR/snortu.log" "snort (alert data)"
+-		for i in `seq 1 $IDS_LB_PROC`; do
++		for i in `seq 1 $IDS_LB_PROCS`; do
+                         PID=$PROCESS_PID_DIR/$SENSOR/snortu-$i.pid
+                         LOG=$PROCESS_LOG_DIR/$SENSOR/snortu-$i.log
+-                        UNI_DIR=$SENSOR_LOG_DIR-$i
+-	   		[ -z "$SKIP_SNORT_ALERT" ] && $ACTION "snort" "-c $SNORT_CONFIG -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf.conf -l $UNI_DIR $SNORT_OPTIONS" "$PID" "$LOG" "snort (alert data)"
++                        UNI_DIR=$SENSOR_LOG_DIR/snort-$i
++	   		[ -z "$SKIP_SNORT_ALERT" ] && $ACTION "snort" "-c $SNORT_CONFIG -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf.conf -l $UNI_DIR $SNORT_OPTIONS" "$PID" "$LOG" "snort-$i (alert data)"
+ 		done
+ 	fi
+ 
+@@ -385,12 +395,12 @@ do
+ 		[ -z "$SKIP_BARNYARD2" ] && $ACTION "barnyard2" "-c $BARNYARD2_CONFIG -d $SENSOR_LOG_DIR -f snort.unified2 -w $BARNYARD2_WALDO -i 1 $BARNYARD2_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/barnyard2.pid" "$PROCESS_LOG_DIR/$SENSOR/barnyard2.log" "barnyard2 (spooler, unified2 format)"
+ 	else
+ 		# we have one instance of barnyard2 per Snort instance
+-                for i in `seq 1 $IDS_LB_PROC`; do
+-                        UNI_DIR=$SENSOR_LOG_DIR-$i
++                for i in `seq 1 $IDS_LB_PROCS`; do
++                        UNI_DIR=$SENSOR_LOG_DIR/snort-$i
+                         WALDO=$BARNYARD2_WALDO-$i
+                         PID=$PROCESS_PID_DIR/$SENSOR/barnyard2-$i.pid
+                         LOG=$PROCESS_LOG_DIR/$SENSOR/barnyard2-$i.log
+-			[ -z "$SKIP_BARNYARD2" ] && $ACTION "barnyard2" "-c $BARNYARD2_CONFIG -d $UNI_DIR -f snort.unified2 -w $WALDO -i $i $BARNYARD2_OPTIONS" "$PID" "$LOG" "barnyard2 (spooler, unified2 format)"
++			[ -z "$SKIP_BARNYARD2" ] && $ACTION "barnyard2" "-c $BARNYARD2_CONFIG -d $UNI_DIR -f snort.unified2 -w $WALDO -i $i $BARNYARD2_OPTIONS" "$PID" "$LOG" "barnyard2-$i (spooler, unified2 format)"
+ 		done
+ 	fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/lib/nsmnow/lib-nsm-common-utils
++++ securityonion-nsmnow-admin-scripts-20120724/usr/lib/nsmnow/lib-nsm-common-utils
+@@ -1055,13 +1055,17 @@ process_restart()
+ 	LOG_FILE=${4:-}
+ 	APP_DESC=${5:-}
+ 
+-	# Pull the PID out of the PID_FILE
+-	# This must be done before process_stop since it deletes PID_FILE
+-	PID=$(cat $PID_FILE)
+-	# Ask the process to shut down
+-	process_stop "$APP" "$PID_FILE" "$APP_DESC"
+-	# Wait for the process to terminate gracefully
+-	while [ `ps aux |grep $PID |grep -v grep |wc -l` -eq 1 ] ; do sleep 1; done
++        # check for PID file
++        if [ -f $PID_FILE ]
++        then
++		# Pull the PID out of the PID_FILE
++		# This must be done before process_stop since it deletes PID_FILE
++		PID=$(cat $PID_FILE)
++		# Ask the process to shut down
++		process_stop "$APP" "$PID_FILE" "$APP_DESC"
++		# Wait for the process to terminate gracefully
++		while [ `ps aux |grep $PID |grep -v grep |wc -l` -eq 1 ] ; do sleep 1; done
++	fi
+ 	# Rotate the log file and keep a maximum of 10	
+ 	mv "$LOG_FILE" "$LOG_FILE".`date +%Y%m%d%H%M%S`
+ 	[ `ls "$LOG_FILE".* |wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f

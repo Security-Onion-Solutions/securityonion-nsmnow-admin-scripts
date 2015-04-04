@@ -1,0 +1,547 @@
+#!/bin/bash
+#
+# Copyright (C) 2008-2009 SecurixLive   <dev@securixlive.com>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.  You may not use, modify or
+# distribute this program under any other version of the GNU General
+# Public License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#
+
+# Version:
+# 20120329
+
+# Changelog:
+# 20111229 - Patch by Karolis to support PADS
+# 20120329 - Add support for BPF
+
+#
+# INCLUDES
+#
+INC="/etc/nsm/administration.conf"
+. $INC
+
+. $NSM_LIB_DIR/lib-console-utils
+. $NSM_LIB_DIR/lib-nsm-common-utils
+. $NSM_LIB_DIR/lib-nsm-sensor-utils
+
+#
+# USAGE
+#
+print_usage()
+{
+	echo 
+	echo "The NSMnow Administration scripts are designed to easily configure and manage"
+	echo "your NSM installation. Bugs, comments and flames can be directed to the"
+	echo "SXL team at dev@securixlive.com"
+	echo
+	echo "The NSMnow Administration scripts come with ABSOLUTELY NO WARRANTY."
+	echo 
+	echo "Usage: $0 [options]"
+	echo
+	echo "Options:"
+	echo "    -d         Use dialog mode"
+	echo "    -y         Force yes"
+	echo "    -V         Show version information"
+	echo "    -?         Show usage information"
+	echo 
+	echo "Long Options: "
+	echo "    --sensor-name=<name>                Define name of sensor to edit"
+	echo "    --new-sensor-name=<name>            Update name of sensor as <name>"
+	echo "    --new-sensor-interface=<iface>      Update sensing interface as <iface>"
+	echo "    --new-sensor-interface-auto=yes|no  Update autoconfigure of sensing interface"
+	echo "    --new-sensor-server-host=<ip>       Update IP of server host"
+	echo "    --new-sensor-server-port=<port>     Update port of server host"
+	echo "    --new-sensor-barnyard2-port=<port>  Update port of server host"
+	echo "    --new-sensor-auto=yes|no            Update if sensor can be auto assumed"
+	echo "    --new-sensor-net-group=<id>         Update net group identifier as <id>"
+	echo "    --new-sensor-utc=yes|no             Update if sensor logs in UTC mode"
+	echo "    --new-sensor-vlan-tagging=yes|no    Update if sensor uses VLAN tagging"
+	echo
+	echo "    --dialog                            Same as -d"
+	echo "    --force-yes                         Same as -y"
+	echo
+	echo "    --version                           Same as -V"
+	echo "    --help                              Same as -?"
+	echo 
+}
+
+# script specific variables
+PROMPT_SCRIPT="Edit Sensor"
+PROMPT_MODE=cli
+FORCE_YES=""
+
+# sensor specific variables
+SENSOR_NAME=""
+NEW_SENSOR_NAME=""
+NEW_SENSOR_INTERFACE=""
+NEW_SENSOR_INTERFACE_AUTO=""
+NEW_SENSOR_SERVER_HOST=""
+NEW_SENSOR_SERVER_PORT=""
+NEW_SENSOR_BARNYARD2_PORT=""
+NEW_SENSOR_NET_GROUP="Ext_Net"
+NEW_SENSOR_VLAN_TAGGING=""
+NEW_SENSOR_AUTO=""
+NEW_SENSOR_UTC=""
+
+SENSOR_USER="sguil"
+SENSOR_GROUP="sguil"
+SENSOR_CONF_DIR="/etc/nsm"
+
+NEW_SENSOR_LOG_DIR="/nsm/sensor_data"
+NEW_SNORT_OPTIONS="-m 112"
+NEW_SANCP_OPTIONS=""
+NEW_BARNYARD2_OPTIONS=""
+NEW_PADS_OPTIONS=""
+
+# extract necessary pre-check arguments from the commandline
+while [ "$#" -gt 0 ]
+do
+	case $1 in
+		"-d" | "--dialog")
+			PROMPT_MODE=dialog
+			;;
+		"-y" | "--force-yes")
+			FORCE_YES=yes
+			;;
+		"-?" | "--help")
+			SHOW_HELP_ONLY=yes
+			;;
+		"-V" | "--version")
+			SHOW_VERSION_ONLY=yes
+			;;
+		--sensor-name*)
+			SENSOR_NAME=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--new-sensor-name*)
+			NEW_SENSOR_NAME=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--new-sensor-interface*)
+			NEW_SENSOR_INTERFACE=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--new-sensor-interface-auto*)
+			[ "$(echo $1 | cut -d '=' -f 2)" == "yes" ] && NEW_SENSOR_INTERFACE_AUTO=Y
+			;;
+		--new-sensor-vlan-tagging*)
+			[ "$(echo $1 | cut -d '=' -f 2)" == "yes" ] && NEW_SENSOR_VLAN_TAGGING=Y
+			;;
+		--new-sensor-server-host*)
+			NEW_SENSOR_SERVER_HOST=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--new-sensor-server-port*)
+			NEW_SENSOR_SERVER_PORT=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--new-sensor-barnyard2-port*)
+			NEW_SENSOR_BARNYARD2_PORT=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--new-sensor-net-group*)
+			NEW_SENSOR_NET_GROUP=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--new-sensor-auto*)
+			[ "$(echo $1 | cut -d '=' -f 2)" == "yes" ] && NEW_SENSOR_AUTO=Y
+			;;
+		--new-sensor-utc*)
+			[ "$(echo $1 | cut -d '=' -f 2)" == "yes" ] && NEW_SENSOR_UTC=Y
+			;;
+		--server*)
+			# any server directive is clearly meant for the server
+			exit 0
+			;;
+        *)
+			echo_error_msg 0 "OOPS: Unknown option \"${1}\" found!"
+			print_usage
+			exit 1
+            ;;
+	esac
+	shift
+done
+
+# check for help or version requests
+if [ -n "$SHOW_HELP_ONLY" ]
+then
+	print_usage
+	exit 0
+elif [ -n "$SHOW_VERSION_ONLY" ]
+then
+	print_version
+	exit 0
+fi
+
+# ensure we are root user before continuing any further
+is_root
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 0 "OOPS: Must be root to run this script!"
+	exit 1;
+fi
+	
+#
+# COLLECT INPUT
+#
+
+# collect sensor name
+if [ -z "$SENSOR_NAME" ]
+then
+	if [ -z "$(sensortab_names_get)" ]
+	then
+		echo_error_msg 0 "OOPS: The sensortab is empty, missing or corrupt!"
+		exit 1
+	fi
+
+	prompt_user_radiolist "Select Sensor" "Select the sensor you wish to edit:" "${SENSOR_NAME}" "$(sensortab_names_get)"
+	[ "$?" -ne 0 ] && exit 1
+	SENSOR_NAME=$PROMPT_RET
+fi
+
+# double check a sensor name was given
+if [ -z "$SENSOR_NAME" ]
+then
+	echo_error_msg 0 "OOPS: You have to specify a sensor name!"
+	exit 1
+fi
+
+# check that the sensor DOES exists via it's config
+if [ ! -f "/etc/nsm/$SENSOR_NAME/sensor.conf" ]
+then
+	echo_error_msg 0 "OOPS: The sensor \"$SENSOR_NAME\" does not exist!"
+	exit 1
+else
+	# load existing variables for the sensor
+	. /etc/nsm/$SENSOR_NAME/sensor.conf
+fi
+
+# collect the new sensor name
+if [ -z "$NEW_SENSOR_NAME" ]
+then
+	prompt_user_input "Sensor Name" "Edit the name of the sensor" "$SENSOR_NAME"
+
+	[ "$?" -ne 0 ] && exit 1
+	NEW_SENSOR_NAME=$PROMPT_RET
+fi
+
+NEW_SENSOR_LOG_DIR="$NEW_SENSOR_LOG_DIR/$NEW_SENSOR_NAME"
+
+
+# collect the new sensor interface
+if [ -z "$NEW_SENSOR_INTERFACE" ]
+then
+	prompt_user_input "Sensor Interface" "Edit the interface this sensor will listen on" "$SENSOR_INTERFACE"
+	[ "$?" -ne 0 ] && exit 1
+	NEW_SENSOR_INTERFACE=$PROMPT_RET
+fi
+
+# collect the new sensor interface autoconfigure
+if [ -z "$NEW_SENSOR_INTERFACE_AUTO" ]
+then
+	prompt_user_yesno "Autoconfigure Sensor Interface" "Do you want the defined sensor interface to be autoconfigured by the NSMnow Administration scripts?" "$SENSOR_INTERFACE_AUTO"
+	[ "$?" -ne 0 ] && exit 1
+	NEW_SENSOR_INTERFACE_AUTO=$PROMPT_RET
+fi
+
+# collect new server host
+if [ -z "$NEW_SENSOR_SERVER_HOST" ]
+then
+	prompt_user_input "Server Host" "Edit the hostname or IP of the server this sensor will connect to" "$SENSOR_SERVER_HOST"
+	[ "$?" -ne 0 ] && exit 1
+	NEW_SENSOR_SERVER_HOST=$PROMPT_RET
+fi
+
+# collect new server port
+if [ -z "$NEW_SENSOR_SERVER_PORT" ]
+then
+	prompt_user_input "Server Port" "Edit the listening port of the server this sensor will connect to" "$SENSOR_SERVER_PORT"
+	[ "$?" -ne 0 ] && exit 1
+	NEW_SENSOR_SERVER_PORT=$PROMPT_RET
+fi
+
+#TODO: sanity check connectivity
+
+# collect new barnyard2 port
+while [ -z "$NEW_SENSOR_BARNYARD2_PORT" ] || [ "$NEW_SENSOR_BARNYARD2_PORT" != "$SENSOR_BARNYARD2_PORT" -a -n "$(sensortab_names_get_on_port $NEW_SENSOR_BARNYARD2_PORT)" ]
+do
+	prompt_user_input "Barynard2 Port" "Edit the local listening port to be used by barnyard2 and the snort_agent. This port must not conflict with other local services, including existing active sensors." "$SENSOR_BARNYARD2_PORT"
+	[ "$?" -ne 0 ] && exit 1
+	NEW_SENSOR_BARNYARD2_PORT=$PROMPT_RET
+done
+
+# collect new autostart requirements
+if [ -z "$NEW_SENSOR_AUTO" ]
+then
+	prompt_user_yesno "Auto" "Do you want this sensor to be auto assumed with the NSMnow Administration scripts?" "$SENSOR_AUTO"
+	[ "$?" -ne 0 ] && exit 1
+	NEW_SENSOR_AUTO=$PROMPT_RET
+fi
+
+# collect new utc requirements
+if [ -z "$NEW_SENSOR_UTC" ]
+then
+	prompt_user_yesno "UTC" "Do you want this sensor to log in UTC mode?" "$SENSOR_UTC"
+	[ "$?" -ne 0 ] && exit 1
+	NEW_SENSOR_UTC=$PROMPT_RET
+fi
+
+# collect vlan requirements
+if [ -z "$NEW_SENSOR_VLAN_TAGGING" ]
+then
+	prompt_user_yesno "VLAN Tagging" "Is this sensor monitoring VLAN or encapsulated traffic?" "$SENSOR_VLAN_TAGGING"
+	[ "$?" -ne 0 ] && exit 1
+	NEW_SENSOR_VLAN_TAGGING=$PROMPT_RET
+fi
+
+# prompt to create the sensor
+prompt_user_yesno "Apply Changes" "The following information has been collected/revised:\n\n  name:        $NEW_SENSOR_NAME\n  net group:   $NEW_SENSOR_NET_GROUP\n  interface:   $NEW_SENSOR_INTERFACE\n  auto (if):   $NEW_SENSOR_INTERFACE_AUTO\n  server:      $NEW_SENSOR_SERVER_HOST:$NEW_SENSOR_SERVER_PORT\n  barnyard2:   $NEW_SENSOR_BARNYARD2_PORT\n  auto:        $NEW_SENSOR_AUTO\n  utc:         $NEW_SENSOR_UTC\n  vlan:        $NEW_SENSOR_VLAN_TAGGING\n\nDo you want to update?" "Y"
+[ "$?" -ne 0 ] && exit 1
+
+if [ "$PROMPT_RET" != "Y" -a "$PROMPT_RET" != "y" ]
+then
+	exit 1
+fi
+
+#
+# EDIT
+#
+
+echo_msg 0 "Updating sensor: $SENSOR_NAME"
+
+# change the directories
+if [ "$NEW_SENSOR_NAME" != "$SENSOR_NAME" ]
+then
+	mv /nsm/sensor_data/$SENSOR_NAME /nsm/sensor_data/$NEW_SENSOR_NAME
+	mv /etc/nsm/$SENSOR_NAME /etc/nsm/$NEW_SENSOR_NAME
+    
+    # update any mandatory access control requirements (eg. AppArmor)
+    is_ubuntu "9.04+"
+    if [ "$?" -eq 0 ]
+    then
+        apparmor_update "/etc/apparmor.d/usr.sbin.tcpdump" "/nsm/sensor_data/${SENSOR_NAME}/dailylogs/**[^/] r" "/nsm/sensor_data/${NEW_SENSOR_NAME}/dailylogs/**[^/] r"
+        if [ "$?" -ne 0 ]
+        then
+            echo_error_msg 1 "unable to update the apparmor profile for MySQL (see README.apparmor)"
+        fi
+    fi
+fi
+
+# rebuild the configuration files if needed
+THE_TIME=$(date)
+cat >/etc/nsm/$NEW_SENSOR_NAME/sensor.conf << EOF_SENSOR
+# sensor.conf: auto-generated by NSMnow Administration on $THE_TIME
+SENSOR_NAME="${NEW_SENSOR_NAME}"
+
+SENSOR_INTERFACE="${NEW_SENSOR_INTERFACE}"
+SENSOR_INTERFACE_AUTO="${NEW_SENSOR_INTERFACE_AUTO}"
+SENSOR_NET_GROUP="${NEW_SENSOR_NET_GROUP}"
+
+SENSOR_SERVER_HOST="${NEW_SENSOR_SERVER_HOST}"
+SENSOR_SERVER_PORT="${NEW_SENSOR_SERVER_PORT}"
+SENSOR_BARNYARD2_PORT="${NEW_SENSOR_BARNYARD2_PORT}"
+
+SENSOR_USER="${SENSOR_USER}"
+SENSOR_GROUP="${SENSOR_GROUP}"
+SENSOR_LOG_DIR="${NEW_SENSOR_LOG_DIR}"
+SENSOR_VLAN_TAGGING="${SENSOR_VLAN_TAGGING}"
+SENSOR_AUTO="${NEW_SENSOR_AUTO}"
+SENSOR_UTC="${NEW_SENSOR_UTC}"
+
+PCAP_AGENT_CONFIG="${SENSOR_CONF_DIR}/${NEW_SENSOR_NAME}/pcap_agent.conf"
+SANCP_AGENT_CONFIG="${SENSOR_CONF_DIR}/${NEW_SENSOR_NAME}/sancp_agent.conf"
+SNORT_AGENT_CONFIG="${SENSOR_CONF_DIR}/${NEW_SENSOR_NAME}/snort_agent.conf"
+SNORT_CONFIG="${SENSOR_CONF_DIR}/${NEW_SENSOR_NAME}/snort.conf"
+SNORT_OPTIONS="${NEW_SNORT_OPTIONS}"
+BARNYARD2_CONFIG="${SENSOR_CONF_DIR}/${NEW_SENSOR_NAME}/barnyard2.conf"
+BARNYARD2_WALDO="${SENSOR_CONF_DIR}/${NEW_SENSOR_NAME}/barnyard2.waldo"
+BARNYARD2_OPTIONS="${NEW_BARNYARD2_OPTIONS}"
+SANCP_CONFIG="${SENSOR_CONF_DIR}/${NEW_SENSOR_NAME}/sancp.conf"
+SANCP_OPTIONS="${NEW_SANCP_OPTIONS}"
+PADS_AGENT_CONFIG="${SENSOR_CONF_DIR}/${NEW_SENSOR_NAME}/pads_agent.conf"
+PADS_CONFIG="${SENSOR_CONF_DIR}/${NEW_SENSOR_NAME}/pads.conf"
+PADS_OPTIONS="${NEW_PADS_OPTIONS}"
+EOF_SENSOR
+
+THE_TIME=$(date)
+[ "${NEW_SENSOR_VLAN_TAGGING}" == "Y" ] && NEW_SENSOR_VLAN_TAGGING=1 || NEW_SENSOR_VLAN_TAGGING=0
+cat >/etc/nsm/$NEW_SENSOR_NAME/pcap_agent.conf << EOF_PCAP_AGENT
+# pcap_agent.conf: auto-generated by NSMnow Administration on $THE_TIME
+# DEBUG is VERY chatty. Use it only when needed (1=on, 0=off)
+set DEBUG 1
+# Run in background (1=yes, 0=no)
+set DAEMON 0
+# Name of sguild server
+set SERVER_HOST $NEW_SENSOR_SERVER_HOST
+# Port sguild listens on for sensor connects
+set SERVER_PORT $NEW_SENSOR_SERVER_PORT
+# Local hostname (sensors monitoring multiple interfaces need to use a unique 'hostname' for each interface)
+set HOSTNAME $NEW_SENSOR_NAME
+# The net id is used to correlate data from different agents.
+set NET_GROUP $NEW_SENSOR_NET_GROUP
+# The root of your log dir for data like pcap, portscans, sessions, etc
+set LOG_DIR /nsm/sensor_data
+# Where raw/pcap files are being logged to and will be read from.
+set RAW_LOG_DIR \${LOG_DIR}/\${HOSTNAME}/dailylogs
+# Path to tcpdump. Used for parsing pcap files.
+set TCPDUMP "/usr/sbin/tcpdump"
+# If you do VLAN tagging then set this to 1 so the right filter is passed to tcpdump.
+set VLAN $NEW_SENSOR_VLAN_TAGGING
+# Directory to store the temp pcap files
+set TMP_DIR "/tmp"
+# sensor agent reports current disk use up to sguild
+set WATCH_DIR \${LOG_DIR}/\${HOSTNAME}
+# Delay in milliseconds for doing different functions.
+set FILE_CHECK_IN_MSECS 300000
+# Disk space
+set DISK_CHECK_DELAY_IN_MSECS 1800000
+# Keep a heartbeat going w/PING PONG in milliseconds. (0 to disable)
+set PING_DELAY 300000
+EOF_PCAP_AGENT
+		
+THE_TIME=$(date)
+cat >/etc/nsm/$NEW_SENSOR_NAME/sancp_agent.conf << EOF_SANCP_AGENT
+# sancp_agent.conf: auto-generated by NSMnow Administration on $THE_TIME
+# DEBUG is VERY chatty. Use it only when needed (1=on, 0=off)
+set DEBUG 1
+# Run in background (1=yes, 0=no)
+set DAEMON 0
+# Name of sguild server
+set SERVER_HOST $NEW_SENSOR_SERVER_HOST 
+# Port sguild listens on for sensor connects
+set SERVER_PORT $NEW_SENSOR_SERVER_PORT
+# Local hostname (sensors monitoring multiple interfaces need to use a unique 'hostname' for each interface)
+set HOSTNAME $NEW_SENSOR_NAME
+# The net id is used to correlate data from different agents. 
+set NET_GROUP $NEW_SENSOR_NET_GROUP 
+# The root of your log dir for data like pcap, portscans, sessions, etc
+set LOG_DIR /nsm/sensor_data 
+# Enable sancp stats (1=enable 0=disable)
+set SANCP 1
+# Where stats from sancp are kept
+set SANCP_DIR \${LOG_DIR}/\${HOSTNAME}/sancp
+# Keep a heartbeat going w/PING PONG in milliseconds. (0 to disable)
+set PING_DELAY 300000 
+# SANCP files
+set SANCP_CHECK_DELAY_IN_MSECS 10000
+set MAX_COPY 10
+EOF_SANCP_AGENT
+
+THE_TIME=$(date)
+cat >/etc/nsm/$NEW_SENSOR_NAME/snort_agent.conf << EOF_SNORT_AGENT
+# snort_agent.conf: auto-generated by NSMnow Administration on $THE_TIME
+# DEBUG is VERY chatty. Use it only when needed (1=on, 0=off)
+set DEBUG 1
+# Run in background (1=yes, 0=no)
+set DAEMON 0
+# Name of sguild server
+set SERVER_HOST $NEW_SENSOR_SERVER_HOST
+# Port sguild listens on for sensor connects
+set SERVER_PORT $NEW_SENSOR_SERVER_PORT
+# Port snort_agent listens on for barnyard2 connects
+set BY_PORT $NEW_SENSOR_BARNYARD2_PORT
+# Local hostname (sensors monitoring multiple interfaces need to use a unique 'hostname' for each interface)
+set HOSTNAME $NEW_SENSOR_NAME
+# The net id is used to correlate data from different agents.
+set NET_GROUP $NEW_SENSOR_NET_GROUP
+# The root of your log dir for data like pcap, portscans, sessions, etc
+set LOG_DIR /nsm/sensor_data
+# Check for Portscan (spp_portscan) data files (0=off, 1=on)
+set PORTSCAN 0
+# Where to look for files created by modded spp_portscan
+set PORTSCAN_DIR \${LOG_DIR}/\${HOSTNAME}/portscans
+# Snort Perfmonitor Stats (1=enable, 0=disable)
+set SNORT_PERF_STATS 1
+# File being logged to:
+set SNORT_PERF_FILE "\${LOG_DIR}/\${HOSTNAME}/snort.stats"
+# sensor agent reports current disk use up to sguild
+set WATCH_DIR \${LOG_DIR}/\${HOSTNAME}
+# Portscan files
+set PS_CHECK_DELAY_IN_MSECS 10000 
+# Disk space
+set DISK_CHECK_DELAY_IN_MSECS 1800000 
+# Keep a heartbeat going w/PING PONG in milliseconds. (0 to disable)
+set PING_DELAY 300000 
+EOF_SNORT_AGENT
+
+THE_TIME=$(date)
+cat >/etc/nsm/$NEW_SENSOR_NAME/pads_agent.conf << EOF_PADS_AGENT
+# pads_agent.conf: auto-generated by NSMnow Administration on $THE_TIME
+# $Id: pads_agent.conf,v 1.1 2007/03/01 05:06:43 bamm Exp $ #
+
+#
+# Configuration file for pads_agent.tcl - http://sguil.sf.net
+#
+
+# DEBUG is VERY chatty. Use it only when needed.
+# 1=on 0=off
+set DEBUG 1
+
+# Run in background
+# 1=yes 0=no
+set DAEMON 0
+
+# Name of sguild server
+set SERVER_HOST $NEW_SENSOR_SERVER_HOST
+# Port sguild listens on for sensor connects
+set SERVER_PORT $NEW_SENSOR_SERVER_PORT
+# Local hostname - that means this machines name
+# Note: Sensors monitoring multiple interfaces need to use a unique hostname
+#       for each interface. Make sure this name is the same in the respective
+#       log_packets.sh
+set HOSTNAME $NEW_SENSOR_NAME
+# The net id is used to correlate data from different agents. This number should match
+# the number of the pcap_agent.
+set NET_GROUP $NEW_SENSOR_NET_GROUP
+
+set LOG_DIR /nsm/sensor_data
+
+# FIFO to watch for pads writes
+set PADS_FIFO \${LOG_DIR}/\${HOSTNAME}/pads.fifo
+
+# Keep a heartbeat going w/PING PONG.
+# 0 to disable else time in milliseconds.
+set PING_DELAY 300000
+EOF_PADS_AGENT
+
+THE_TIME=$(date)
+cat >/etc/nsm/$NEW_SENSOR_NAME/barnyard2.conf << EOF_BARNYARD2
+# barnyard2.conf: auto-generated by NSMnow Administration on $THE_TIME
+config logdir: $NEW_SENSOR_LOG_DIR
+config classification_file: /etc/nsm/$NEW_SENSOR_NAME/classification.config
+config reference_file:      /etc/nsm/$NEW_SENSOR_NAME/reference.config
+config sid_file:            /etc/nsm/$NEW_SENSOR_NAME/sid-msg.map
+config gen_file:            /etc/nsm/$NEW_SENSOR_NAME/gen-msg.map
+config hostname: $NEW_SENSOR_NAME
+config interface: $NEW_SENSOR_INTERFACE
+input unified2
+output sguil: sensor_name=$NEW_SENSOR_NAME agent_port=$NEW_SENSOR_BARNYARD2_PORT
+EOF_BARNYARD2
+
+# udpate sensortab (remove old and add the new)
+sensortab_entry_del $SENSOR_NAME
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 1 "OOPS: Unable to remove old entry from the sensor table!"
+	exit 1
+fi
+
+sensortab_entry_add $NEW_SENSOR_NAME $NEW_SENSOR_AUTO $NEW_SENSOR_BARNYARD2_PORT $SENSOR_INTERFACE
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 1 "OOPS: Unable to add new entry to the sensor table!"
+	exit 1
+fi
+
+# add all files into tracking cache after removing the old
+cache_group_remove "sensor:$SENSOR_NAME"
+find /etc/nsm/$NEW_SENSOR_NAME /nsm/sensor_data/$NEW_SENSOR_NAME -type f | while read FILE
+do
+	cache_file_add $FILE "sensor:$NEW_SENSOR_NAME"
+done
+
+exit 0

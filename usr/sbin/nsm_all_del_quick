@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Check for root
+[ "$(id -u)" -ne 0 ] && echo "This script must be run using sudo!" && exit 1
+
+# First, stop all services
+service nsm stop
+
+# Delete all sensors
+if [ -f /etc/nsm/sensortab ]; then
+	for INTERFACE in `cat "/etc/nsm/sensortab" | grep -v "^#" |cut -f1`; do
+		echo y | nsm_sensor_del --sensor-name="$INTERFACE"
+	done
+fi
+
+# Delete all servers (should only be one)
+if [ -f /etc/nsm/servertab ]; then
+	for SERVER in `cat "/etc/nsm/servertab" | grep -v "^#" |cut -f1`; do
+		echo y | nsm_server_del --server-name="$SERVER"
+	done
+fi
+
+# Remove old Bro logs
+rm -rf /nsm/bro/logs/*
+
+# Remove old Bro extracted files
+rm -rf /nsm/bro/extracted/*
+
+# Remove old log files
+rm -rf /var/*/nsm/*

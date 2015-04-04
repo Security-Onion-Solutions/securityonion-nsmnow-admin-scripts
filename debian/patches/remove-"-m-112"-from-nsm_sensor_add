@@ -1,0 +1,36 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion98) precise; urgency=low
+ .
+   * remove "-m 112" from nsm_sensor_add
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_add
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_add
+@@ -103,7 +103,7 @@ SENSOR_GROUP="sguil"
+ SENSOR_LOG_DIR="/nsm/sensor_data"
+ SENSOR_CONF_DIR="/etc/nsm"
+ 
+-SNORT_OPTIONS="-m 112"
++SNORT_OPTIONS=""
+ SANCP_OPTIONS=""
+ BARNYARD2_OPTIONS=""
+ PADS_OPTIONS=""

@@ -1,0 +1,16 @@
+# /etc/cron.d/sensor-newday
+#
+# crontab entry to restart sensor processes
+
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+00 0	* * * root /usr/sbin/nsm_sensor_ps-daily-restart
+01 0	* * * root /etc/init.d/syslog-ng restart >/dev/null 2>&1
+10 0	* * * root /etc/init.d/syslog-ng restart >/dev/null 2>&1
+00 12    * * * root /usr/sbin/nsm_sensor_ps-restart --only-sancp-agent >/dev/null
+01 12    * * * root /usr/sbin/nsm_sensor_ps-restart --only-http-agent >/dev/null
+02 12    * * * root /usr/sbin/nsm_sensor_ps-restart --only-ossec-agent >/dev/null
+03 12    * * * root /usr/sbin/nsm_sensor_ps-restart --only-pads-agent >/dev/null
+04 12    * * * root /usr/sbin/nsm_sensor_ps-restart --only-pcap-agent >/dev/null
+05 12    * * * root /usr/sbin/nsm_sensor_ps-restart --only-snort-agent >/dev/null

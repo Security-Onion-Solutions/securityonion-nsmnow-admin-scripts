@@ -1,0 +1,443 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion30) precise; urgency=low
+ .
+   * convert from daemonlogger to netsniff-ng
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-stop
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-stop
+@@ -69,7 +69,7 @@ print_usage()
+ 	echo "    --only-barnyard2                 Only process barnyard2"
+ #	echo "    --only-sancp                     Only process sancp"
+ 	echo "    --only-snort-alert               Only process snort alert"
+-	echo "    --only-daemonlogger              Only process daemonlogger"
++	echo "    --only-pcap                      Only process packet logger"
+ 	echo "    --only-argus                     Only process argus"
+         echo "    --only-prads                     Only process prads"
+         echo "    --only-bro                       Only process bro"
+@@ -84,7 +84,7 @@ print_usage()
+ 	echo "    --skip-barnyard2                 Skip processing of barnyard2"
+ #	echo "    --skip-sancp                     Skip processing of sancp"
+ 	echo "    --skip-snort-alert               Skip processing of snort alert"
+-	echo "    --skip-daemonlogger              Skip processing of daemonlogger"
++	echo "    --skip-pcap                      Skip processing of packet logger"
+ 	echo "    --skip-argus                     Skip processing of argus"
+         echo "    --skip-prads                     Skip processing of prads"
+         echo "    --skip-bro                       Skip processing of bro"
+@@ -126,7 +126,7 @@ PROCESS_PID_DIR="/var/run/nsm"
+ SKIP_INVERT=""
+ #SKIP_SANCP=""
+ SKIP_SNORT_ALERT=""
+-SKIP_DAEMONLOGGER=""
++SKIP_PCAP=""
+ SKIP_ARGUS=""
+ SKIP_PRADS=""
+ SKIP_BRO=""
+@@ -169,9 +169,9 @@ do
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_ALERT=yes
+ 			;;
+-		--only-daemonlogger)
++		--only-pcap)
+ 			SKIP_INVERT=yes
+-			SKIP_DAEMONLOGGER=yes
++			SKIP_PCAP=yes
+ 			;;
+ 		--only-argus)
+ 			SKIP_INVERT=yes
+@@ -218,8 +218,8 @@ do
+ 		--skip-snort-alert)
+ 			SKIP_SNORT_ALERT=yes
+ 			;;
+-		--skip-daemonlogger)
+-			SKIP_DAEMONLOGGER=yes
++		--skip-pcap)
++			SKIP_PCAP=yes
+ 			;;
+ 		--skip-argus)
+ 			SKIP_ARGUS=yes
+@@ -298,7 +298,7 @@ then
+ 	[ -z "$SKIP_SNORT_ALERT" ] && SKIP_SNORT_ALERT=yes || SKIP_SNORT_ALERT=""
+ #	[ -z "$SKIP_SANCP" ] && SKIP_SANCP=yes || SKIP_SANCP=""
+ 	[ -z "$SKIP_BARNYARD2" ] && SKIP_BARNYARD2=yes || SKIP_BARNYARD2=""
+-	[ -z "$SKIP_DAEMONLOGGER" ] && SKIP_DAEMONLOGGER=yes || SKIP_DAEMONLOGGER=""
++	[ -z "$SKIP_PCAP" ] && SKIP_PCAP=yes || SKIP_PCAP=""
+ 	[ -z "$SKIP_ARGUS" ] && SKIP_ARGUS=yes || SKIP_ARGUS=""
+ 	[ -z "$SKIP_PRADS" ] && SKIP_PRADS=yes || SKIP_PRADS=""
+ 	[ -z "$SKIP_BRO" ] && SKIP_BRO=yes || SKIP_BRO=""
+@@ -336,10 +336,11 @@ do
+ 	# load in sensor specific details (we need $IDS_LB_PROCS)
+ 	. $SENSOR_CONF
+ 
++	# stop pcap logger
++	[ -z "$SKIP_PCAP" ] && process_stop "netsniff-ng" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "netsniff-ng (full packet data)"
++
+ 	# stop agents
+ 	[ -z "$SKIP_PCAP_AGENT" ] && process_stop "pcap_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "pcap_agent (sguil)"
+-   	[ -z "$SKIP_SANCP_AGENT" ] && process_stop "sancp_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "sancp_agent (sguil)"
+-        [ -z "$SKIP_PADS_AGENT" ] && process_stop "pads_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "pads_agent (sguil)"
+ 
+ 	# stop the snort_agent
+         if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+@@ -371,14 +372,14 @@ do
+ 		done
+ 	fi
+ 
+-	# stop sancp
+-	#[ -z "$SKIP_SANCP" ] && process_stop "sancp" "$PROCESS_PID_DIR/$SENSOR/sancp.pid" "sancp (session data)"
+-
+         # stop prads
+         [ -z "$SKIP_PRADS" ] && process_stop "prads" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "prads (sessions/assets)"
+ 
+-	# stop daemonlogger
+-	[ -z "$SKIP_DAEMONLOGGER" ] && process_stop "daemonlogger" "$PROCESS_PID_DIR/$SENSOR/daemonlogger.pid" "daemonlogger (full packet data)"
++	# stop sancp_agent
++   	[ -z "$SKIP_SANCP_AGENT" ] && process_stop "sancp_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "sancp_agent (sguil)"
++
++	# stop pads_agent
++        [ -z "$SKIP_PADS_AGENT" ] && process_stop "pads_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "pads_agent (sguil)"
+ 
+ 	# stop argus
+ 	[ -z "$SKIP_ARGUS" ] && process_stop "argus" "$PROCESS_PID_DIR/$SENSOR/argus.pid" "argus"
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-daily-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-daily-restart
+@@ -1,7 +1,7 @@
+ #!/bin/bash
+ 
+-date >> /var/log/nsm/sensor-newday-daemonlogger.log
+-/usr/sbin/nsm --sensor --restart --only-daemonlogger >> /var/log/nsm/sensor-newday-daemonlogger.log
++date >> /var/log/nsm/sensor-newday-pcap.log
++/usr/sbin/nsm --sensor --restart --only-pcap >> /var/log/nsm/sensor-newday-pcap.log
+ 
+ date >> /var/log/nsm/sensor-newday-argus.log
+ /usr/sbin/nsm --sensor --restart --only-argus >> /var/log/nsm/sensor-newday-argus.log
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -73,7 +73,7 @@ print_usage()
+ 	echo "    --only-barnyard2                 Only process barnyard2"
+ #	echo "    --only-sancp                     Only process sancp"
+ 	echo "    --only-snort-alert               Only process snort alert"
+-	echo "    --only-daemonlogger              Only process daemonlogger"
++	echo "    --only-pcap                      Only process packet logger"
+ 	echo "    --only-argus                     Only process argus"
+         echo "    --only-prads                     Only process prads"
+         echo "    --only-bro                       Only process bro"
+@@ -88,7 +88,7 @@ print_usage()
+ 	echo "    --skip-barnyard2                 Skip processing of barnyard2"
+ #	echo "    --skip-sancp                     Skip processing of sancp"
+ 	echo "    --skip-snort-alert               Skip processing of snort alert"
+-	echo "    --skip-daemonlogger              Skip processing of daemonlogger"
++	echo "    --skip-pcap                      Skip processing of packet logger"
+ 	echo "    --skip-argus                     Skip processing of argus"
+         echo "    --skip-prads                     Skip processing of prads"
+         echo "    --skip-bro                       Skip processing of bro"
+@@ -130,7 +130,7 @@ PROCESS_PID_DIR="/var/run/nsm"
+ SKIP_INVERT=""
+ #SKIP_SANCP=""
+ SKIP_SNORT_ALERT=""
+-SKIP_DAEMONLOGGER=""
++SKIP_PCAP=""
+ SKIP_ARGUS=""
+ SKIP_PRADS=""
+ SKIP_BRO=""
+@@ -173,9 +173,9 @@ do
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_ALERT=yes
+ 			;;
+-		--only-daemonlogger)
++		--only-pcap)
+ 			SKIP_INVERT=yes
+-			SKIP_DAEMONLOGGER=yes
++			SKIP_PCAP=yes
+ 			;;
+ 		--only-argus)
+ 			SKIP_INVERT=yes
+@@ -222,8 +222,8 @@ do
+ 		--skip-snort-alert)
+ 			SKIP_SNORT_ALERT=yes
+ 			;;
+-		--skip-daemonlogger)
+-			SKIP_DAEMONLOGGER=yes
++		--skip-pcap)
++			SKIP_PCAP=yes
+ 			;;
+ 		--skip-argus)
+ 			SKIP_ARGUS=yes
+@@ -302,7 +302,7 @@ then
+ 	[ -z "$SKIP_SNORT_ALERT" ] && SKIP_SNORT_ALERT=yes || SKIP_SNORT_ALERT=""
+ #	[ -z "$SKIP_SANCP" ] && SKIP_SANCP=yes || SKIP_SANCP=""
+ 	[ -z "$SKIP_BARNYARD2" ] && SKIP_BARNYARD2=yes || SKIP_BARNYARD2=""
+-	[ -z "$SKIP_DAEMONLOGGER" ] && SKIP_DAEMONLOGGER=yes || SKIP_DAEMONLOGGER=""
++	[ -z "$SKIP_PCAP" ] && SKIP_PCAP=yes || SKIP_PCAP=""
+ 	[ -z "$SKIP_ARGUS" ] && SKIP_ARGUS=yes || SKIP_ARGUS=""
+ 	[ -z "$SKIP_PRADS" ] && SKIP_PRADS=yes || SKIP_PRADS=""
+ 	[ -z "$SKIP_BRO" ] && SKIP_BRO=yes || SKIP_BRO=""
+@@ -346,10 +346,20 @@ do
+ 	# grab short name of interface, just in case bonding is configured
+ 	SENSOR_INTERFACE_SHORT="${SENSOR_INTERFACE%%:*}"
+ 
+-	# start agents
++	# start packet logger
++	TODAY=$(date $DATE_OPTIONS "+%Y-%m-%d")      #-u option sets TZ to GMT
++	if [ ! -d "$SENSOR_LOG_DIR/dailylogs/$TODAY" ]
++	then
++		mkdir -p $SENSOR_LOG_DIR/dailylogs/$TODAY
++		chown $SENSOR_USER:$SENSOR_GROUP $SENSOR_LOG_DIR/dailylogs/$TODAY
++		chmod 775 $SENSOR_LOG_DIR/dailylogs/$TODAY
++	fi
++	# TODO: convert bpf
++	[ -z "$SKIP_PCAP" ] && process_start "netsniff-ng" "-i $SENSOR_INTERFACE_SHORT -o $SENSOR_LOG_DIR/dailylogs/$TODAY -s --prefix snort.log. --interval 150MiB" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "$PROCESS_LOG_DIR/$SENSOR/netsniff-ng.log" "netsniff-ng (full packet data)"
++
++	# start pcap_agent
+ 	[ -z "$SKIP_PCAP_AGENT" ] && process_start "pcap_agent.tcl" "-c $PCAP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pcap_agent.log" "pcap_agent (sguil)"
+-	[ -z "$SKIP_SANCP_AGENT" ] && process_start "sancp_agent.tcl" "-c $SANCP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp_agent.log" "sancp_agent (sguil)"
+-	
++
+ 	# need multiple snort_agents if running multiple snorts
+ 	if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+ 	then
+@@ -460,16 +470,9 @@ do
+ 	# start pads_agent
+         [ -z "$SKIP_PADS_AGENT" ] && process_start "pads_agent.tcl" "-c $PADS_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pads_agent.log" "pads_agent (sguil)"
+ 
+-	# start daemonlogger
+-	TODAY=$(date $DATE_OPTIONS "+%Y-%m-%d")      #-u option sets TZ to GMT
+-	if [ ! -d "$SENSOR_LOG_DIR/dailylogs/$TODAY" ]
+-	then
+-		mkdir -p $SENSOR_LOG_DIR/dailylogs/$TODAY
+-		chown $SENSOR_USER:$SENSOR_GROUP $SENSOR_LOG_DIR/dailylogs/$TODAY
+-		chmod 775 $SENSOR_LOG_DIR/dailylogs/$TODAY
+-	fi
+-	[ -z "$SKIP_DAEMONLOGGER" ] && process_start "daemonlogger" "-u $SENSOR_USER -g $SENSOR_GROUP -i $SENSOR_INTERFACE_SHORT -f /etc/nsm/$SENSOR/bpf-pcap.conf -l $SENSOR_LOG_DIR/dailylogs/$TODAY -n snort.log -s 134217728" "$PROCESS_PID_DIR/$SENSOR/daemonlogger.pid" "$PROCESS_LOG_DIR/$SENSOR/daemonlogger.log" "daemonlogger (full packet data)"
+-
++	# start sancp_agent
++	[ -z "$SKIP_SANCP_AGENT" ] && process_start "sancp_agent.tcl" "-c $SANCP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp_agent.log" "sancp_agent (sguil)"
++	
+ 	# start argus
+ 	mkdir -p $SENSOR_LOG_DIR/argus
+ 	chown $SENSOR_USER:$SENSOR_GROUP $SENSOR_LOG_DIR/argus
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-status
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-status
+@@ -69,7 +69,7 @@ print_usage()
+ 	echo "    --only-barnyard2                 Only process barnyard2"
+ #	echo "    --only-sancp                     Only process sancp"
+ 	echo "    --only-snort-alert               Only process snort alert"
+-	echo "    --only-daemonlogger              Only process daemonlogger"
++	echo "    --only-pcap                      Only process packet logger"
+ 	echo "    --only-argus                     Only process argus"
+         echo "    --only-prads                     Only process prads"
+         echo "    --only-bro                       Only process bro"
+@@ -84,7 +84,7 @@ print_usage()
+ 	echo "    --skip-barnyard2                 Skip processing of barnyard2"
+ #	echo "    --skip-sancp                     Skip processing of sancp"
+ 	echo "    --skip-snort-alert               Skip processing of snort alert"
+-	echo "    --skip-daemonlogger              Skip processing of daemonlogger"
++	echo "    --skip-pcap                      Skip processing of packet logger"
+ 	echo "    --skip-argus                     Skip processing of argus"
+         echo "    --skip-prads                     Skip processing of prads"
+         echo "    --skip-bro                       Skip processing of bro"
+@@ -126,7 +126,7 @@ PROCESS_PID_DIR="/var/run/nsm"
+ SKIP_INVERT=""
+ #SKIP_SANCP=""
+ SKIP_SNORT_ALERT=""
+-SKIP_DAEMONLOGGER=""
++SKIP_PCAP=""
+ SKIP_ARGUS=""
+ SKIP_PRADS=""
+ SKIP_BRO=""
+@@ -169,9 +169,9 @@ do
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_ALERT=yes
+ 			;;
+-		--only-daemonlogger)
++		--only-pcap)
+ 			SKIP_INVERT=yes
+-			SKIP_DAEMONLOGGER=yes
++			SKIP_PCAP=yes
+ 			;;
+ 		--only-argus)
+ 			SKIP_INVERT=yes
+@@ -218,8 +218,8 @@ do
+ 		--skip-snort-alert)
+ 			SKIP_SNORT_ALERT=yes
+ 			;;
+-		--skip-daemonlogger)
+-			SKIP_DAEMONLOGGER=yes
++		--skip-pcap)
++			SKIP_PCAP=yes
+ 			;;
+ 		--skip-argus)
+ 			SKIP_ARGUS=yes
+@@ -298,7 +298,7 @@ then
+ 	[ -z "$SKIP_SNORT_ALERT" ] && SKIP_SNORT_ALERT=yes || SKIP_SNORT_ALERT=""
+ #	[ -z "$SKIP_SANCP" ] && SKIP_SANCP=yes || SKIP_SANCP=""
+ 	[ -z "$SKIP_BARNYARD2" ] && SKIP_BARNYARD2=yes || SKIP_BARNYARD2=""
+-	[ -z "$SKIP_DAEMONLOGGER" ] && SKIP_DAEMONLOGGER=yes || SKIP_DAEMONLOGGER=""
++	[ -z "$SKIP_PCAP" ] && SKIP_PCAP=yes || SKIP_PCAP=""
+ 	[ -z "$SKIP_ARGUS" ] && SKIP_ARGUS=yes || SKIP_ARGUS=""
+ 	[ -z "$SKIP_PRADS" ] && SKIP_PRADS=yes || SKIP_PRADS=""
+ 	[ -z "$SKIP_BRO" ] && SKIP_BRO=yes || SKIP_BRO=""
+@@ -336,10 +336,11 @@ do
+         # load in sensor specific details (we need $IDS_LB_PROCS)
+         . $SENSOR_CONF
+ 				
+-	# status agents
++	# status packet logger
++	[ -z "$SKIP_PCAP" ] && process_status "netsniff-ng" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "netsniff-ng (full packet data)"
++
++	# status pcap_agent
+ 	[ -z "$SKIP_PCAP_AGENT" ] && process_status "pcap_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "pcap_agent (sguil)"
+-	[ -z "$SKIP_SANCP_AGENT" ] && process_status "sancp_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "sancp_agent (sguil)"
+-        [ -z "$SKIP_PADS_AGENT" ] && process_status "pads_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "pads_agent (sguil)"
+ 
+ 	# snort_agent
+         if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+@@ -371,15 +372,14 @@ do
+ 		done
+ 	fi
+ 
+-
+-	# status sancp
+-	#[ -z "$SKIP_SANCP" ] && process_status "sancp" "$PROCESS_PID_DIR/$SENSOR/sancp.pid" "sancp (session data)"
+-
+         # status prads
+         [ -z "$SKIP_PRADS" ] && process_status "prads" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "prads (sessions/assets)"
+ 
+-	# status daemonlogger
+-	[ -z "$SKIP_DAEMONLOGGER" ] && process_status "daemonlogger" "$PROCESS_PID_DIR/$SENSOR/daemonlogger.pid" "daemonlogger (full packet data)"
++	# status sancp_agent
++	[ -z "$SKIP_SANCP_AGENT" ] && process_status "sancp_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "sancp_agent (sguil)"
++
++	# status pads_agent
++        [ -z "$SKIP_PADS_AGENT" ] && process_status "pads_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "pads_agent (sguil)"
+ 
+ 	# status argus
+ 	[ -z "$SKIP_ARGUS" ] && process_status "argus" "$PROCESS_PID_DIR/$SENSOR/argus.pid" "argus"
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -70,7 +70,7 @@ print_usage()
+ 	echo "    --only-barnyard2                 Only process barnyard2"
+ #	echo "    --only-sancp                     Only process sancp"
+ 	echo "    --only-snort-alert               Only process snort alert"
+-	echo "    --only-daemonlogger              Only process daemonlogger"
++	echo "    --only-pcap                      Only process packet logger"
+ 	echo "    --only-argus                     Only process argus"
+         echo "    --only-prads                     Only process prads"
+         echo "    --only-bro                       Only process bro"
+@@ -85,7 +85,7 @@ print_usage()
+ 	echo "    --skip-barnyard2                 Skip processing of barnyard2"
+ #	echo "    --skip-sancp                     Skip processing of sancp"
+ 	echo "    --skip-snort-alert               Skip processing of snort alert"
+-	echo "    --skip-daemonlogger              Skip processing of daemonlogger"
++	echo "    --skip-pcap                      Skip processing of packet logger"
+ 	echo "    --skip-argus                     Skip processing of argus"
+         echo "    --skip-prads                     Skip processing of prads"
+         echo "    --skip-bro                       Skip processing of bro"
+@@ -130,7 +130,7 @@ PROCESS_PID_DIR="/var/run/nsm"
+ SKIP_INVERT=""
+ #SKIP_SANCP=""
+ SKIP_SNORT_ALERT=""
+-SKIP_DAEMONLOGGER=""
++SKIP_PCAP=""
+ SKIP_ARGUS=""
+ SKIP_PRADS=""
+ SKIP_BRO=""
+@@ -177,9 +177,9 @@ do
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_ALERT=yes
+ 			;;
+-		--only-daemonlogger)
++		--only-pcap)
+ 			SKIP_INVERT=yes
+-			SKIP_DAEMONLOGGER=yes
++			SKIP_PCAP=yes
+ 			;;
+ 		--only-argus)
+ 			SKIP_INVERT=yes
+@@ -226,8 +226,8 @@ do
+ 		--skip-snort-alert)
+ 			SKIP_SNORT_ALERT=yes
+ 			;;
+-		--skip-daemonlogger)
+-			SKIP_DAEMONLOGGER=yes
++		--skip-pcap)
++			SKIP_PCAP=yes
+ 			;;
+ 		--skip-argus)
+ 			SKIP_ARGUS=yes
+@@ -306,7 +306,7 @@ then
+ 	[ -z "$SKIP_SNORT_ALERT" ] && SKIP_SNORT_ALERT=yes || SKIP_SNORT_ALERT=""
+ #	[ -z "$SKIP_SANCP" ] && SKIP_SANCP=yes || SKIP_SANCP=""
+ 	[ -z "$SKIP_BARNYARD2" ] && SKIP_BARNYARD2=yes || SKIP_BARNYARD2=""
+-	[ -z "$SKIP_DAEMONLOGGER" ] && SKIP_DAEMONLOGGER=yes || SKIP_DAEMONLOGGER=""
++	[ -z "$SKIP_PCAP" ] && SKIP_PCAP=yes || SKIP_PCAP=""
+ 	[ -z "$SKIP_ARGUS" ] && SKIP_ARGUS=yes || SKIP_ARGUS=""
+ 	[ -z "$SKIP_PRADS" ] && SKIP_PRADS=yes || SKIP_PRADS=""
+ 	[ -z "$SKIP_BRO" ] && SKIP_BRO=yes || SKIP_BRO=""
+@@ -351,9 +351,23 @@ do
+ 	# grab short name of interface, just in case bonding is configured
+ 	SENSOR_INTERFACE_SHORT="${SENSOR_INTERFACE%%:*}"
+ 
+-	# restart agents
++	# restart pcap logger
++	if [ -z "$SKIP_PCAP" ]
++	then
++        TODAY=$(date $DATE_OPTIONS "+%Y-%m-%d")      #-u option sets TZ to GMT
++		if [ ! -d "$SENSOR_LOG_DIR/dailylogs/$TODAY" ]
++		then
++			mkdir -p $SENSOR_LOG_DIR/dailylogs/$TODAY
++			chown $SENSOR_USER:$SENSOR_GROUP $SENSOR_LOG_DIR/dailylogs/$TODAY
++			chmod 775 $SENSOR_LOG_DIR/dailylogs/$TODAY
++		fi
++
++		# TODO: convert bpf
++		$ACTION_PCAP "netsniff-ng" "-i $SENSOR_INTERFACE_SHORT -o $SENSOR_LOG_DIR/dailylogs/$TODAY -s --prefix snort.log. --interval 150MiB" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "$PROCESS_LOG_DIR/$SENSOR/netsniff-ng.log" "netsniff-ng (full packet data)"
++	fi
++
++	# restart pcap_agent
+ 	[ -z "$SKIP_PCAP_AGENT" ] && $ACTION "pcap_agent.tcl" "-c $PCAP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pcap_agent.log" "pcap_agent (sguil)"
+-	[ -z "$SKIP_SANCP_AGENT" ] && $ACTION "sancp_agent.tcl" "-c $SANCP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp_agent.log" "sancp_agent (sguil)"
+ 
+ 	# restart snort_agent
+         if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+@@ -460,19 +474,8 @@ do
+ 	# restart pads_agent
+ 	[ -z "$SKIP_PADS_AGENT" ] && $ACTION "pads_agent.tcl" "-c $PADS_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pads_agent.log" "pads_agent (sguil)"
+ 
+-	# restart daemonlogger
+-	if [ -z "$SKIP_DAEMONLOGGER" ]
+-	then
+-        TODAY=$(date $DATE_OPTIONS "+%Y-%m-%d")      #-u option sets TZ to GMT
+-		if [ ! -d "$SENSOR_LOG_DIR/dailylogs/$TODAY" ]
+-		then
+-			mkdir -p $SENSOR_LOG_DIR/dailylogs/$TODAY
+-			chown $SENSOR_USER:$SENSOR_GROUP $SENSOR_LOG_DIR/dailylogs/$TODAY
+-			chmod 775 $SENSOR_LOG_DIR/dailylogs/$TODAY
+-		fi
+-
+-		$ACTION_PCAP "daemonlogger" "-u $SENSOR_USER -g $SENSOR_GROUP -i $SENSOR_INTERFACE_SHORT -f /etc/nsm/$SENSOR/bpf-pcap.conf -l $SENSOR_LOG_DIR/dailylogs/$TODAY -n snort.log -s 134217728" "$PROCESS_PID_DIR/$SENSOR/daemonlogger.pid" "$PROCESS_LOG_DIR/$SENSOR/daemonlogger.log" "daemonlogger (full packet data)"
+-	fi
++	# restart sancp_agent
++	[ -z "$SKIP_SANCP_AGENT" ] && $ACTION "sancp_agent.tcl" "-c $SANCP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp_agent.log" "sancp_agent (sguil)"
+ 
+ 	# restart argus
+ 	if [ -z "$SKIP_ARGUS" ]

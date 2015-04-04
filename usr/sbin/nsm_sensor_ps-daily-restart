@@ -1,0 +1,14 @@
+#!/bin/bash
+
+sleep 1
+
+date >> /var/log/nsm/sensor-newday-argus.log
+/usr/sbin/nsm --sensor --restart --only-argus >> /var/log/nsm/sensor-newday-argus.log
+
+date >> /var/log/nsm/sensor-newday-http-agent.log
+/usr/sbin/nsm --sensor --restart --only-http-agent >> /var/log/nsm/sensor-newday-http-agent.log
+
+sleep 1
+
+date >> /var/log/nsm/sensor-newday-pcap.log
+/usr/sbin/nsm --sensor --restart --only-pcap >> /var/log/nsm/sensor-newday-pcap.log
