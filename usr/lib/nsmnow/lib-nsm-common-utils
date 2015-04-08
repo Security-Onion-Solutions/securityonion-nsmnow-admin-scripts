@@ -32,8 +32,6 @@
 #	     Rotate log files and keep a maximum of 10
 # 20120202 - process_restart needs to wait for process to terminate gracefully before
 #	     rotating log file
-# 20150407 - timeout created for hung processes during restart
-#	     correct erroneous string match in 'ps' of running process (credit Mark Seiden). - Tim Whisnant
 
 #
 # GLOBAL CONSTANTS
@@ -918,8 +916,7 @@ process_start()
         	PID=$(cat $PID_FILE)
 
 		# confirm if expect is running (ie. possible stale PID)
-		#if [ -z "${PID}" ] || [ $(ps -ef | grep $APP | grep $PID | grep -v grep | wc -l) -eq 0 ]
-		if [ -z "${PID}" ] || [ $(ps -f --no-headers -p ${PID} | wc -l) -eq 0 ]
+		if [ -z "${PID}" ] || [ $(ps -ef | grep $APP | grep $PID | grep -v grep | wc -l) -eq 0 ]
 		then
 			STALE_PID_FOUND="yes"
 			echo_msg_end 2 "stale PID file found, deleting!"
@@ -977,14 +974,12 @@ process_start()
 	PID_ALT=$(ps ax | grep -v grep | grep "$APP $APP_OPTIONS" | awk '{print $1}' | head -n 1)
 
 	# confirm we are running by checking PID is still valid
-	#if [ "$(ps ax | awk '{print $1}' | grep $PID | grep -v grep | wc -l)" -ne 0 ]
-	if [ "$(ps -f --no-headers -p ${PID} | wc -l)" -ne 0 ]
+	if [ "$(ps ax | awk '{print $1}' | grep $PID | grep -v grep | wc -l)" -ne 0 ]
 	then
 		echo_msg_end 0
 		echo $PID >$PID_FILE
 	# alternatively check if PID_ALT is still valid
-	#elif [ -n "${PID_ALT}" ] && [ "$(ps ax | awk '{print $1}' | grep $PID_ALT | grep -v grep | wc -l)" -ne 0 ]
-	elif [ -n "${PID_ALT}" ] && [ "$(ps -f --no-headers -p ${PID_ALT} | wc -l)" -ne 0 ]
+	elif [ -n "${PID_ALT}" ] && [ "$(ps ax | awk '{print $1}' | grep $PID_ALT | grep -v grep | wc -l)" -ne 0 ]
 	then
 		echo_msg_end 0
 		echo $PID_ALT >$PID_FILE
@@ -1028,23 +1023,20 @@ process_stop()
 		PID=$(cat $PID_FILE)
 
 		# check if PID already running
-		if [ -z "${PID}" ] || [ $(ps -f --no-headers -p ${PID} | wc -l) -eq 0 ]
+		if [ -z "${PID}" ] || [ $(ps -ef | grep $APP | grep $PID | grep -v grep | wc -l) -eq 0 ]
 		then
 		    echo_msg_end 2 "not running"
 		    echo_msg 2 "stale PID file found, deleting!"
 		    rm -f $PID_FILE
 		else
 			kill $PID
-			WaitCount=1
-			while [[ `ps -f --no-headers -p ${PID} | wc -l` -eq 1 && $WaitCount -le 30 ]]; do sleep 1 && WaitCount=$((WaitCount+1)); done
-			if [[ $(ps -f --no-headers -p ${PID} | wc -l) -eq 1 && $WaitCount -gt 30 ]];
-				then
-					#"Process hung, killed forcibly"
-					kill -9 $PID
+			if [ ${?} -eq 0 ]
+			then
+				rm -f $PID_FILE
+				echo_msg_end 0
+			else
+				echo_msg_end 1
 			fi
-				
-			rm -f $PID_FILE
-			echo_msg_end 0
 		fi
     else
         echo_msg_end 2 "not running"
@@ -1091,8 +1083,7 @@ process_restart()
 		# Ask the process to shut down
 		process_stop "$APP" "$PID_FILE" "$APP_DESC"
 		# Wait for the process to terminate gracefully
-		#while [ `ps aux |grep $APP |grep $PID |grep -v grep |wc -l` -eq 1 ] ; do sleep 1; done
-		while [ `ps -f --no-headers -p ${PID} | wc -l` -eq 1 ] ; do sleep 1; done
+		while [ `ps aux |grep $PID |grep -v grep |wc -l` -eq 1 ] ; do sleep 1; done
 	fi
 
 	# Rotate the log file and keep a maximum of 10	
@@ -1145,8 +1136,7 @@ process_restart_if_stale()
                 PID=$(cat $PID_FILE)
 
                 # check if PID already running
-                #if [ "$(ps -ef | grep $APP | grep $PID | grep -v grep | wc -l)" -eq 0 ]
-		if [ $(ps -f --no-headers -p ${PID} | wc -l) -eq 0 ]
+                if [ "$(ps -ef | grep $APP | grep $PID | grep -v grep | wc -l)" -eq 0 ]
                 then
                         #echo_msg_end 1
                         echo_msg 1 "stale PID file found, deleting!"
@@ -1204,8 +1194,7 @@ process_restart_with_overlap()
 	if [ -f "${PID_FILE}" ]
 	then
         	OLD_PID=$(cat $PID_FILE)
-		#if [ -z "${OLD_PID}" ] || [ $(ps -ef | grep $APP | grep $OLD_PID | grep -v grep | wc -l) -eq 0 ]
-		if [ -z "${OLD_PID}" ] || [ $(ps -f --no-headers -p ${OLD_PID} | wc -l) -eq 0 ]
+		if [ -z "${OLD_PID}" ] || [ $(ps -ef | grep $APP | grep $OLD_PID | grep -v grep | wc -l) -eq 0 ]
 		then
 			echo_msg 2 "stale PID file found, deleting!"
 			rm -f $PID_FILE
@@ -1262,8 +1251,7 @@ process_status()
 		PID=$(cat $PID_FILE)
 
 		# check if PID already running
-		#if [ "$(ps -ef | grep $APP | grep $PID | grep -v grep | wc -l)" -eq 0 ]
-		if [ $(ps -f --no-headers -p ${PID} | wc -l) -eq 0 ]
+		if [ "$(ps -ef | grep $APP | grep $PID | grep -v grep | wc -l)" -eq 0 ]
 		then
 			echo_msg_end 1
 			echo_msg 1 "stale PID file found, process will be restarted at the next 5-minute interval!"
