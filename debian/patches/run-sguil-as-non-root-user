@@ -1,0 +1,322 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion105) precise; urgency=low
+ .
+   * run sguil as non-root user
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -320,6 +320,11 @@ if ! grep OSSEC_AGENT_LEVEL $SO_CONF >/d
+         echo "# OSSEC_AGENT_LEVEL specifies the level at which OSSEC alerts are sent to sguild." >> $SO_CONF
+         echo "OSSEC_AGENT_LEVEL=5"      >> $SO_CONF
+ fi
++if ! grep OSSEC_AGENT_USER $SO_CONF >/dev/null; then   
++        echo >> $SO_CONF
++        echo "# OSSEC_AGENT_USER specifies the user account used to start the OSSEC agent for Sguil." >> $SO_CONF
++        echo "OSSEC_AGENT_USER=sguil"      >> $SO_CONF
++fi
+ if ! grep BRO_USER $SO_CONF >/dev/null; then   
+         echo >> $SO_CONF
+         echo "# BRO_USER specifies the user account used to start Bro." >> $SO_CONF
+@@ -331,9 +336,12 @@ fi
+ . $SO_CONF
+ 
+ if [ "$OSSEC_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_OSSEC_AGENT" ]; then
++
+ 	echo_msg 0 "Starting: HIDS"
++
+ 	# NSM scripts expect spawned process to NOT daemonize
+ 	sed -i 's|set DAEMON 1|set DAEMON 0|g' /etc/nsm/ossec/ossec_agent.conf
++
+ 	# Fix default domain name
+ 	if grep "set DEFAULT_DNS_DOMAIN test.com" /etc/nsm/ossec/ossec_agent.conf >/dev/null 2>&1; then 
+ 		# in case /etc/resolv.conf doesn't contain any search directives, fall back to localdomain
+@@ -341,7 +349,13 @@ if [ "$OSSEC_AGENT_ENABLED" == "yes" ] &
+ 		grep "^search " /etc/resolv.conf >/dev/null 2>&1 && DOMAIN=$(grep "^search " /etc/resolv.conf | tail -1 | awk '{print $2}')
+ 		sed -i "s|set DEFAULT_DNS_DOMAIN test.com|set DEFAULT_DNS_DOMAIN $DOMAIN|g" /etc/nsm/ossec/ossec_agent.conf
+ 	fi
+-	process_start "/etc/nsm/ossec/ossec_agent.tcl" "-o -f /var/ossec/logs/alerts/alerts.log -i 127.0.0.1 -p $OSSEC_AGENT_LEVEL -c /etc/nsm/ossec/ossec_agent.conf" "$PROCESS_PID_DIR/ossec_agent.pid" "$PROCESS_LOG_DIR/ossec_agent.log" "ossec_agent (sguil)"
++
++	# Add OSSEC_AGENT_USER to ossec group
++	adduser $OSSEC_AGENT_USER ossec >/dev/null
++
++	# start OSSEC agent
++	process_start "/etc/nsm/ossec/ossec_agent.tcl" "-o -f /var/ossec/logs/alerts/alerts.log -i 127.0.0.1 -p $OSSEC_AGENT_LEVEL -c /etc/nsm/ossec/ossec_agent.conf" "$PROCESS_PID_DIR/ossec_agent.pid" "$PROCESS_LOG_DIR/ossec_agent.log" "ossec_agent (sguil)" "$OSSEC_AGENT_USER"
++
+ fi
+ 
+ if [ "$BRO_ENABLED" == "yes" ] && [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
+@@ -452,11 +466,11 @@ do
+ 	fi
+ 
+ 	# start pcap_agent
+-	[ "$PCAP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PCAP_AGENT" ] && process_start "pcap_agent.tcl" "-c $PCAP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pcap_agent.log" "pcap_agent (sguil)"
++	[ "$PCAP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PCAP_AGENT" ] && process_start "/usr/bin/pcap_agent.tcl" "-c $PCAP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pcap_agent.log" "pcap_agent (sguil)" "$SENSOR_USER"
+ 
+ 	# need multiple snort_agents if running multiple snorts
+ 	if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null; then
+-		[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && process_start "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent.log" "snort_agent (sguil)"
++		[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && process_start "/usr/bin/snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent.log" "snort_agent (sguil)" "$SENSOR_USER"
+ 	else
+ 		# Start $IDS_LB_PROCS instances of snort_agent
+                 for i in `seq 1 $IDS_LB_PROCS`; do
+@@ -479,7 +493,7 @@ do
+ 				sed -i "s|^set PORTSCAN_DIR.*$|set PORTSCAN_DIR /nsm/sensor_data/$SENSOR/portscans-$i|g" $SNORT_AGENT_CONFIG
+ 				sed -i "s|^set WATCH_DIR.*$|set WATCH_DIR /nsm/sensor_data/$SENSOR|g" $SNORT_AGENT_CONFIG
+ 			fi
+-			[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && process_start "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent-$i.log" "snort_agent-$i (sguil)"
++			[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && process_start "/usr/bin/snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent-$i.log" "snort_agent-$i (sguil)" "$SENSOR_USER"
+ 		done
+ 	fi
+ 
+@@ -589,10 +603,11 @@ do
+         [ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && [ "$PADS_AGENT_ENABLED" == "no" ]  && [ "$SANCP_AGENT_ENABLED" == "no" ]  && echo_error_msg 1 "Warning: PRADS is enabled but will not start because both SANCP AGENT and PADS AGENT are disabled!"
+ 
+ 	# start pads_agent
+-        [ "$PADS_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PADS_AGENT" ] && process_start "pads_agent.tcl" "-c $PADS_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pads_agent.log" "pads_agent (sguil)"
++	chown $SENSOR_USER:$SENSOR_GROUP $SENSOR_LOG_DIR/pads.fifo
++        [ "$PADS_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PADS_AGENT" ] && process_start "/usr/bin/pads_agent.tcl" "-c $PADS_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pads_agent.log" "pads_agent (sguil)" "$SENSOR_USER"
+ 
+ 	# start sancp_agent
+-	[ "$SANCP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SANCP_AGENT" ] && process_start "sancp_agent.tcl" "-c $SANCP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp_agent.log" "sancp_agent (sguil)"
++	[ "$SANCP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SANCP_AGENT" ] && process_start "/usr/bin/sancp_agent.tcl" "-c $SANCP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp_agent.log" "sancp_agent (sguil)" "$SENSOR_USER"
+ 	
+ 	# start argus
+ 	mkdir -p $SENSOR_LOG_DIR/argus
+@@ -615,7 +630,7 @@ do
+ 	else
+ 		BRO_HTTP_LOG=/nsm/bro/logs/current/http_$SENSOR_INTERFACE_SHORT.log
+ 	fi
+-	[ "$HTTP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_HTTP_AGENT" ] && process_start "http_agent.tcl" "-c /etc/nsm/$SENSOR/http_agent.conf -e /etc/nsm/$SENSOR/http_agent.exclude -f $BRO_HTTP_LOG" "$PROCESS_PID_DIR/$SENSOR/http_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/http_agent.log" "http_agent (sguil)"
++	[ "$HTTP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_HTTP_AGENT" ] && process_start "/usr/bin/http_agent.tcl" "-c /etc/nsm/$SENSOR/http_agent.conf -e /etc/nsm/$SENSOR/http_agent.exclude -f $BRO_HTTP_LOG" "$PROCESS_PID_DIR/$SENSOR/http_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/http_agent.log" "http_agent (sguil)" "$SENSOR_USER"
+ 
+ 	# clean disk/check crontab entry for daily restarts
+ 	# don't need to run sensor_cleandisk anymore, it's being run by a cron job every 5 minutes
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -19,25 +19,6 @@
+ #
+ 
+ # Modified by Doug Burks for Security Onion
+-#
+-# Version:
+-# 20120511
+-#
+-# Changelog:
+-# 20110916 - Added support for Argus
+-# 20110922 - Added support for httpry
+-# 20111020 - Perform full packet capture using daemonlogger instead of snort
+-# 20111127 - Configure Suricata to run in AF_PACKET mode
+-# 20111214 - Sensor restart shouldn't run cleandisk
+-# 20111229 -	Karolis - added support for PADS
+-#		Doug Burks - added --if-stale option
+-# 20120123 - Add support for Bro
+-# 20120124 - Add support for OSSEC agent
+-# 20120329 - Issue 114: Add support for BPF
+-#            Issue 242: Set Suricata runmode to autofp
+-# 20120511
+-# Issue 265:	Upgrade httpry_agent to http_agent to support Bro logs
+-# http://code.google.com/p/security-onion/issues/detail?id=265
+ 
+ #
+ # INCLUDES
+@@ -324,6 +305,11 @@ if ! grep OSSEC_AGENT_LEVEL $SO_CONF >/d
+ 	echo "# OSSEC_AGENT_LEVEL specifies the level at which OSSEC alerts are sent to sguild." >> $SO_CONF
+ 	echo "OSSEC_AGENT_LEVEL=5" 	>> $SO_CONF
+ fi
++if ! grep OSSEC_AGENT_USER $SO_CONF >/dev/null; then
++        echo >> $SO_CONF
++        echo "# OSSEC_AGENT_USER specifies the user account used to start the OSSEC agent for Sguil." >> $SO_CONF
++        echo "OSSEC_AGENT_USER=sguil"      >> $SO_CONF
++fi
+ if ! grep BRO_USER $SO_CONF >/dev/null; then         
+         echo >> $SO_CONF
+         echo "# BRO_USER specifies the user account used to start Bro." >> $SO_CONF
+@@ -335,9 +321,12 @@ fi
+ . $SO_CONF
+ 
+ if [ "$OSSEC_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_OSSEC_AGENT" ]; then
++
+         [ "$ACTION" == "process_restart" ] && echo_msg 0 "Restarting: HIDS"
++
+ 	# NSM scripts expect spawned processes to NOT daemonize
+ 	sed -i 's|set DAEMON 1|set DAEMON 0|g' /etc/nsm/ossec/ossec_agent.conf
++
+ 	# Fix default domain
+ 	if grep "set DEFAULT_DNS_DOMAIN test.com" /etc/nsm/ossec/ossec_agent.conf >/dev/null 2>&1; then 
+ 		# in case /etc/resolv.conf doesn't contain any search directives, fall back to localdomain
+@@ -345,7 +334,12 @@ if [ "$OSSEC_AGENT_ENABLED" == "yes" ] &
+ 		grep "^search " /etc/resolv.conf >/dev/null 2>&1 && DOMAIN=$(grep "^search " /etc/resolv.conf | tail -1 | awk '{print $2}')
+ 		sed -i "s|set DEFAULT_DNS_DOMAIN test.com|set DEFAULT_DNS_DOMAIN $DOMAIN|g" /etc/nsm/ossec/ossec_agent.conf
+ 	fi
+-        $ACTION "/etc/nsm/ossec/ossec_agent.tcl" "-o -f /var/ossec/logs/alerts/alerts.log -i 127.0.0.1 -p $OSSEC_AGENT_LEVEL -c /etc/nsm/ossec/ossec_agent.conf" "$PROCESS_PID_DIR/ossec_agent.pid" "$PROCESS_LOG_DIR/ossec_agent.log" "ossec_agent (sguil)"
++
++        # Add OSSEC_AGENT_USER to ossec group
++        adduser $OSSEC_AGENT_USER ossec >/dev/null
++
++        $ACTION "/etc/nsm/ossec/ossec_agent.tcl" "-o -f /var/ossec/logs/alerts/alerts.log -i 127.0.0.1 -p $OSSEC_AGENT_LEVEL -c /etc/nsm/ossec/ossec_agent.conf" "$PROCESS_PID_DIR/ossec_agent.pid" "$PROCESS_LOG_DIR/ossec_agent.log" "ossec_agent (sguil)" "$OSSEC_AGENT_USER"
++
+ fi
+ 
+ if [ "$BRO_ENABLED" == "yes" ] && [ -z "$SKIP_BRO" ] && [ "$ACTION" == "process_restart" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
+@@ -450,11 +444,11 @@ do
+ 	fi
+ 
+ 	# restart pcap_agent
+-	[ "$PCAP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PCAP_AGENT" ] && $ACTION "pcap_agent.tcl" "-c $PCAP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pcap_agent.log" "pcap_agent (sguil)"
++	[ "$PCAP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PCAP_AGENT" ] && $ACTION "/usr/bin/pcap_agent.tcl" "-c $PCAP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pcap_agent.log" "pcap_agent (sguil)" "$SENSOR_USER"
+ 
+ 	# restart snort_agent
+         if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null; then
+-		[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && $ACTION "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent.log" "snort_agent (sguil)"
++		[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && $ACTION "/usr/bin/snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent.log" "snort_agent (sguil)" "$SENSOR_USER"
+ 	else
+                 for i in `seq 1 $IDS_LB_PROCS`; do
+ 			SNORT_AGENT_CONFIG=/etc/nsm/$SENSOR/snort_agent-$i.conf
+@@ -471,7 +465,7 @@ do
+ 				sed -i "s|^set PORTSCAN_DIR.*$|set PORTSCAN_DIR /nsm/sensor_data/$SENSOR/portscans-$i|g" $SNORT_AGENT_CONFIG
+ 				sed -i "s|^set WATCH_DIR.*$|set WATCH_DIR /nsm/sensor_data/$SENSOR|g" $SNORT_AGENT_CONFIG
+ 			fi
+-			[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && $ACTION "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$SNORT_AGENT_PID" "$SNORT_AGENT_LOG" "snort_agent-$i (sguil)"
++			[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && $ACTION "/usr/bin/snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$SNORT_AGENT_PID" "$SNORT_AGENT_LOG" "snort_agent-$i (sguil)" "$SENSOR_USER"
+ 		done
+ 	fi
+ 
+@@ -586,10 +580,11 @@ do
+         [ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && [ "$PADS_AGENT_ENABLED" == "no" ]  && [ "$SANCP_AGENT_ENABLED" == "no" ]  && echo_error_msg 1 "Warning: PRADS is enabled but will not start because both SANCP AGENT and PADS AGENT are disabled!"
+ 
+ 	# restart pads_agent
+-	[ "$PADS_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PADS_AGENT" ] && $ACTION "pads_agent.tcl" "-c $PADS_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pads_agent.log" "pads_agent (sguil)"
++        chown $SENSOR_USER:$SENSOR_GROUP $SENSOR_LOG_DIR/pads.fifo
++	[ "$PADS_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PADS_AGENT" ] && $ACTION "/usr/bin/pads_agent.tcl" "-c $PADS_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pads_agent.log" "pads_agent (sguil)" "$SENSOR_USER"
+ 
+ 	# restart sancp_agent
+-	[ "$SANCP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SANCP_AGENT" ] && $ACTION "sancp_agent.tcl" "-c $SANCP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp_agent.log" "sancp_agent (sguil)"
++	[ "$SANCP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SANCP_AGENT" ] && $ACTION "/usr/bin/sancp_agent.tcl" "-c $SANCP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp_agent.log" "sancp_agent (sguil)" "$SENSOR_USER"
+ 
+ 	# restart argus
+ 	if [ "$ARGUS_ENABLED" == "yes" ] && [ -z "$SKIP_ARGUS" ]
+@@ -616,7 +611,7 @@ do
+         else
+                 BRO_HTTP_LOG=/nsm/bro/logs/current/http_$SENSOR_INTERFACE_SHORT.log
+         fi
+-        [ "$HTTP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_HTTP_AGENT" ] && $ACTION "http_agent.tcl" "-c /etc/nsm/$SENSOR/http_agent.conf -e /etc/nsm/$SENSOR/http_agent.exclude -f $BRO_HTTP_LOG" "$PROCESS_PID_DIR/$SENSOR/http_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/http_agent.log" "http_agent (sguil)"
++        [ "$HTTP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_HTTP_AGENT" ] && $ACTION "/usr/bin/http_agent.tcl" "-c /etc/nsm/$SENSOR/http_agent.conf -e /etc/nsm/$SENSOR/http_agent.exclude -f $BRO_HTTP_LOG" "$PROCESS_PID_DIR/$SENSOR/http_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/http_agent.log" "http_agent (sguil)" "$SENSOR_USER"
+ 
+ 	# clean disk/check crontab entry for daily restarts
+ 	# commented out because we're going to run this hourly now
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/lib/nsmnow/lib-nsm-common-utils
++++ securityonion-nsmnow-admin-scripts-20120724/usr/lib/nsmnow/lib-nsm-common-utils
+@@ -889,6 +889,7 @@ prompt_user_yesno()
+ #   - pid file (string)		full path to PID file for app tracking
+ #   - log file (string)		full path to log file for app logging
+ #   - description (string)	description of app for status messaging
++#   - user (string)		(optional) run binary as user
+ #
+ # Returns:
+ #   Zero (0) is returned on success with a non-zero (1) returned on any error.
+@@ -901,6 +902,7 @@ process_start()
+ 	PID_FILE=${3:-}
+ 	LOG_FILE=${4:-}
+ 	APP_DESC=${5:-}
++	USER=${6:-}
+ 
+ 	echo_msg_begin 1 "starting: $APP_DESC"
+ 
+@@ -947,7 +949,11 @@ process_start()
+ 
+ 	# execute application
+ 	echo "Executing: $APP $APP_OPTIONS" >$LOG_FILE
+-	eval exec $APP $APP_OPTIONS >>$LOG_FILE 2>&1 &
++	if [ "$#" -eq "6" ]; then
++		eval exec su $USER -- "$APP $APP_OPTIONS" >>$LOG_FILE 2>&1 &
++	else
++		eval exec $APP $APP_OPTIONS >>$LOG_FILE 2>&1 &
++	fi
+ 
+ 	# grab the PID which should be sufficient majority of the time
+ 	PID=$!
+@@ -1042,6 +1048,7 @@ process_stop()
+ #   - pid file (string)		full path to PID file for app tracking
+ #   - log file (string)		full path to log file for app logging
+ #   - description (string)	description of app for status messaging
++#   - user (string)		(optional) run binary as user
+ #
+ # Returns:
+ #   Zero (0) is returned on success with a non-zero (1) returned on any error.
+@@ -1054,6 +1061,7 @@ process_restart()
+ 	PID_FILE=${3:-}
+ 	LOG_FILE=${4:-}
+ 	APP_DESC=${5:-}
++	USER=${6:-}
+ 
+         # check for PID file
+         if [ -f $PID_FILE ]
+@@ -1066,11 +1074,18 @@ process_restart()
+ 		# Wait for the process to terminate gracefully
+ 		while [ `ps aux |grep $PID |grep -v grep |wc -l` -eq 1 ] ; do sleep 1; done
+ 	fi
++
+ 	# Rotate the log file and keep a maximum of 10	
+ 	[ -f "$LOG_FILE" ] && mv "$LOG_FILE" "$LOG_FILE".`date +%Y%m%d%H%M%S`
+ 	[ `ls "$LOG_FILE".* |wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f
++
+ 	# Start the process
+-	process_start "$APP" "$APP_OPTIONS" "$PID_FILE" "$LOG_FILE" "$APP_DESC"
++	if [ "$#" -eq "6" ]; then
++		process_start "$APP" "$APP_OPTIONS" "$PID_FILE" "$LOG_FILE" "$APP_DESC" "$USER"
++	else
++		process_start "$APP" "$APP_OPTIONS" "$PID_FILE" "$LOG_FILE" "$APP_DESC"
++	fi
++
+ }
+ 
+ #
+@@ -1089,6 +1104,7 @@ process_restart()
+ #   - pid file (string)         full path to PID file for app tracking
+ #   - log file (string)         full path to log file for app logging
+ #   - description (string)      description of app for status messaging
++#   - user (string)		(optional) run binary as user
+ #
+ # Returns:
+ #   Zero (0) is returned on success with a non-zero (1) returned on any error.
+@@ -1101,6 +1117,7 @@ process_restart_if_stale()
+         PID_FILE=${3:-}
+         LOG_FILE=${4:-}
+         APP_DESC=${5:-}
++	USER=${6:-}
+ 
+ 	# check for PID file
+         if [ -f $PID_FILE ]
+@@ -1117,7 +1134,11 @@ process_restart_if_stale()
+ 			# Rotate the log file and keep a maximum of 10	
+ 			[ -f "$LOG_FILE" ] && mv "$LOG_FILE" "$LOG_FILE".`date +%Y%m%d%H%M%S`
+ 			[ `ls "$LOG_FILE".* |wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f
+-		        process_start "$APP" "$APP_OPTIONS" "$PID_FILE" "$LOG_FILE" "$APP_DESC"
++			if [ "$#" -eq "6" ]; then
++				process_start "$APP" "$APP_OPTIONS" "$PID_FILE" "$LOG_FILE" "$APP_DESC" "$USER"
++			else
++			        process_start "$APP" "$APP_OPTIONS" "$PID_FILE" "$LOG_FILE" "$APP_DESC"
++			fi
+                         return 1
+                 else
+                         #echo_msg_end 0

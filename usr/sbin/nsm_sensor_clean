@@ -1,0 +1,178 @@
+#!/bin/bash
+#
+# Copyright (C) 2011 Doug Burks and Security Onion
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.  You may not use, modify or
+# distribute this program under any other version of the GNU General
+# Public License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#
+
+# Version:
+# 20111229
+
+# Changelog:
+# 20111214 - Initial version
+# 20111229 - Add date to output
+
+#
+# INCLUDES
+#
+INC="/etc/nsm/administration.conf"
+. $INC
+
+. $NSM_LIB_DIR/lib-console-utils
+. $NSM_LIB_DIR/lib-nsm-common-utils
+. $NSM_LIB_DIR/lib-nsm-sensor-utils
+
+#
+# USAGE
+#
+print_usage()
+{
+	echo 
+	echo "The NSMnow Administration scripts come with ABSOLUTELY NO WARRANTY."
+	echo 
+	echo "Usage: $0 [options]"
+	echo
+	echo "Options:"
+	echo "    -d         Use dialog mode"
+	echo "    -y         Force yes"
+	echo "    -V         Show version information"
+	echo "    -?         Show usage information"
+	echo 
+	echo "Long Options:"
+	echo
+	echo "    --dialog              Same as -d"
+	echo "    --force-yes           Same as -y"
+	echo
+	echo "    --version             Same as -V"
+	echo "    --help                Same as -?"
+	echo 
+}
+
+# script specific variables
+PROMPT_SCRIPT="Clear Sensor"
+PROMPT_MODE=cli
+FORCE_YES=""
+
+# sensor specific variables
+SENSOR_NAME=""
+
+# extract necessary pre-check arguments from the commandline
+while [ "$#" -gt 0 ]
+do
+	case $1 in
+		"-d" | "--dialog")
+			PROMPT_MODE=dialog
+			;;
+		"-y" | "--force-yes")
+			FORCE_YES=yes
+			;;
+		"-?" | "--help")
+			SHOW_HELP_ONLY=yes
+			;;
+		"-V" | "--version")
+			SHOW_VERSION_ONLY=yes
+			;;
+		--server*)
+			# any server directive is clearly meant for the server
+			exit 0
+			;;
+        *)
+			echo_error_msg 0 "OOPS: Unknown option \"${1}\" found!"
+			print_usage
+			exit 1
+            ;;
+	esac
+	shift
+done
+
+# check for help or version requests
+if [ -n "$SHOW_HELP_ONLY" ]
+then
+	print_usage
+	exit 0
+elif [ -n "$SHOW_VERSION_ONLY" ]
+then
+	print_version
+	exit 0
+fi
+
+# ensure we are root user before continuing any further
+is_root
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 0 "OOPS: Must be root to run this script!"
+	exit 1;
+fi
+	
+#
+# COLLECT INPUT
+#
+
+# We clean all sensors at the same time anyway, so just grab the first sensor
+SENSOR_NAME=`grep -v "^#" /etc/nsm/sensortab |awk '{print $1}' |head -1`
+
+# check that the sensor DOES exists via it's config
+if [ ! -f "/etc/nsm/${SENSOR_NAME}/sensor.conf" ]
+then
+	echo_error_msg 0 "OOPS: The sensor \"${SENSOR_NAME}\" does not exist!"
+	exit 1
+else
+	# load existing variables for the sensor
+	. "/etc/nsm/${SENSOR_NAME}/sensor.conf"
+fi
+
+# check that the sensor exists
+if [ ! -d "/nsm/sensor_data/${SENSOR_NAME}" ]
+then
+	echo_error_msg 0 "OOPS: Collected data for sensor \"${SENSOR_NAME}\" does not exist!"
+	exit 1
+fi
+
+if [ "$FORCE_YES" == "" ]
+then
+	# prompt to clean the sensor
+	prompt_user_yesno "Clean Sensors" "Old data for sensors will be cleared.\n\nDo you want to continue?" "N"
+	[ "$?" -ne 0 ] && exit 1
+	if [ "$PROMPT_RET" != "Y" -a "$PROMPT_RET" != "y" ]
+	then
+		exit 1
+	fi
+fi
+
+#
+# CLEAN
+#
+
+date
+echo_msg 0 "Cleaning sensors"
+
+# You can override these defaults by setting these variables in /etc/nsm/securityonion.conf
+WARN_DISK_USAGE=80
+CRIT_DISK_USAGE=90 
+CONF="/etc/nsm/securityonion.conf"
+
+if [ -f $CONF ]; then
+	# Source $CONF, overriding defaults
+	. $CONF
+	# If $CONF doesn't have these variables, add them
+	grep WARN_DISK_USAGE $CONF >/dev/null || echo "WARN_DISK_USAGE=80" >> $CONF
+	grep CRIT_DISK_USAGE $CONF >/dev/null || echo "CRIT_DISK_USAGE=90" >> $CONF
+fi
+
+# clean the files as appropriate
+sensor_cleandisk $SENSOR_LOG_DIR $SENSOR_UTC $WARN_DISK_USAGE $CRIT_DISK_USAGE 
+
+exit 0

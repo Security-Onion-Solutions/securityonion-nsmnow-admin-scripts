@@ -1,0 +1,54 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion93) precise; urgency=low
+ .
+   * Issue 649:	nsm_all_del_quick: check for /etc/nsm/servertab and /etc/nsm/sensortab before trying to read
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_all_del_quick
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_all_del_quick
+@@ -4,16 +4,18 @@
+ service nsm stop
+ 
+ # Delete all sensors
+-for INTERFACE in `cat "/etc/nsm/sensortab" | grep -v "^#" |cut -f1`
+-do
+-	echo y | nsm_sensor_del --sensor-name="$INTERFACE"
+-done
++if [ -f /etc/nsm/sensortab ]; then
++	for INTERFACE in `cat "/etc/nsm/sensortab" | grep -v "^#" |cut -f1`; do
++		echo y | nsm_sensor_del --sensor-name="$INTERFACE"
++	done
++fi
+ 
+ # Delete all servers (should only be one)
+-for SERVER in `cat "/etc/nsm/servertab" | grep -v "^#" |cut -f1`
+-do
+-	echo y | nsm_server_del --server-name="$SERVER"
+-done
++if [ -f /etc/nsm/sensortab ]; then
++	for SERVER in `cat "/etc/nsm/servertab" | grep -v "^#" |cut -f1`; do
++		echo y | nsm_server_del --server-name="$SERVER"
++	done
++fi
+ 
+ # Remove old Bro logs
+ rm -rf /nsm/bro/logs/*

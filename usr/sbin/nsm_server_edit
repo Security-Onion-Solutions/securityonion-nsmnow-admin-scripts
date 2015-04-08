@@ -1,0 +1,436 @@
+#!/bin/bash
+#
+# Copyright (C) 2008-2009 SecurixLive   <dev@securixlive.com>
+# Modified by Doug Burks for Security Onion
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.  You may not use, modify or
+# distribute this program under any other version of the GNU General
+# Public License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+# Modified by Doug Burks for Security Onion
+#
+# Version:
+# 20120725
+#
+# Changelog:
+# 20120725 - Updated tcpflow to tcpflow-no-tags
+# 20120202 - Don't ask for server name
+
+#
+# INCLUDES
+#
+INC="/etc/nsm/administration.conf"
+. $INC
+
+. $NSM_LIB_DIR/lib-console-utils
+. $NSM_LIB_DIR/lib-nsm-common-utils
+. $NSM_LIB_DIR/lib-nsm-server-utils
+
+#
+# USAGE
+#
+print_usage()
+{
+	echo 
+	echo "The NSMnow Administration scripts are designed to easily configure and manage"
+	echo "your NSM installation. Bugs, comments and flames can be directed to the"
+	echo "SXL team at dev@securixlive.com"
+	echo
+	echo "The NSMnow Administration scripts come with ABSOLUTELY NO WARRANTY."
+	echo 
+	echo "Usage: $0 [options]"
+	echo
+	echo "Options:"
+	echo "    -d         Use dialog mode"
+	echo "    -y         Force yes"
+	echo "    -V         Show version information"
+	echo "    -?         Show usage information"
+	echo 
+	echo "Long Options: "
+	echo "    --server-name=<name>             Define name of server to edit"
+	echo "    --new-server-sensor-port=<port>  Update port sensors will connect to"
+	echo "    --new-server-client-port=<port>  Update port clients will connect to"
+#	echo "    --new-server-db-name=<name>      Update name of local db"
+#	echo "    --new-server-db-user=<user>      Update user of local db"
+#	echo "    --new-server-db-pass=<pass>      Update password of local db"
+	echo "    --new-server-client-user=<user>  Update initial authorised client username"
+	echo "    --new-server-client-pass=<pass>  Update initial authorised client password"
+	echo "    --new-server-auto=yes|no         Update if server can be auto assumed"
+	echo
+	echo "    --dialog                         Same as -d"
+	echo "    --force-yes                      Same as -y"
+	echo
+	echo "    --version                        Same as -V"
+	echo "    --help                           Same as -?"
+	echo 
+}
+
+# script specific variables
+PROMPT_SCRIPT="Edit Server"
+PROMPT_MODE="cli"
+FORCE_YES=""
+
+# server specific variables
+SERVER_NAME=""
+NEW_SERVER_NAME=""
+NEW_SERVER_AUTO=""
+NEW_SERVER_CLIENT_PORT=""
+NEW_SERVER_SENSOR_PORT=""
+
+NEW_SERVER_SGUIL_USER=""
+NEW_SERVER_SGUIL_PASS=""
+
+NEW_SERVER_DB_NAME=""
+NEW_SERVER_DB_USER="sguil"
+NEW_SERVER_DB_PASS="password"
+
+SERVER_USER="sguil"
+SERVER_GROUP="sguil"
+SERVER_LOG_DIR="/nsm/server_data"
+SERVER_LIB_DIR="/usr/lib/sguild"
+SERVER_CONF_DIR="/etc/nsm"
+
+# extract necessary pre-check arguments from the commandline
+while [ "$#" -gt 0 ]
+do
+	case $1 in
+		"-d" | "--dialog")
+			PROMPT_MODE=dialog
+			;;
+		"-y" | "--force-yes")
+			FORCE_YES=yes
+			;;
+		"-?" | "--help")
+			SHOW_HELP_ONLY=yes
+			;;
+		"-V" | "--version")
+			SHOW_VERSION_ONLY=yes
+			;;
+		--server-name*)
+			SERVER_NAME=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--new-server-name*)
+			NEW_SERVER_NAME=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--new-server-sensor-port*)
+			NEW_SERVER_SENSOR_PORT=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--new-server-client-port*)
+			NEW_SERVER_CLIENT_PORT=$(echo $1 | cut -d "=" -f 2)
+			;;
+#		--new-server-db-name*)
+#			NEW_SERVER_DB_NAME=$(echo $1 | cut -d "=" -f 2)
+#			;;
+#		--new-server-db-user*)
+#			NEW_SERVER_DB_USER=$(echo $1 | cut -d "=" -f 2)
+#			;;
+#		--new-server-db-pass*)
+#			NEW_SERVER_DB_PASS=$(echo $1 | cut -d "=" -f 2)
+#			;;
+		--server-client-user*)
+			NEW_SERVER_SGUIL_USER=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--server-client-pass*)
+			NEW_SERVER_SGUIL_PASS=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--new-server-auto)
+			[ "$(echo $1 | cut -d '=' -f 2)" == "yes" ] && NEW_SERVER_AUTO=Y
+			;;
+		--sensor*)
+			# any sensor directive is clearly meant for the sensor
+			exit 0
+			;;
+        *)
+			echo_error_msg 0 "OOPS: Unknown option \"${1}\" found!"
+			print_usage
+			exit 1
+            ;;
+	esac
+	shift
+done
+
+# check for help or version requests
+if [ -n "$SHOW_HELP_ONLY" ]
+then
+	print_usage
+	exit 0
+elif [ -n "$SHOW_VERSION_ONLY" ]
+then
+	print_version
+	exit 0
+fi
+
+# ensure we are root user before continuing any further
+is_root
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 0 "OOPS: Must be root to run this script!"
+	exit 1;
+fi
+	
+#
+# COLLECT INPUT
+#
+
+SERVER_NAME="securityonion"
+
+# double check a server name was given
+if [ -z "$SERVER_NAME" ]
+then
+	echo_error_msg 0 "OOPS: You have to specify a server name!"
+	exit 1
+fi
+
+# check that the sensor DOES exists via it's config
+if [ ! -f "/etc/nsm/$SERVER_NAME/server.conf" ]
+then
+	echo_error_msg 0 "OOPS: The server \"$SERVER_NAME\" does not exist!"
+	exit 1
+else
+	# load existing variables for the server
+	. /etc/nsm/$SERVER_NAME/server.conf
+fi
+
+# collect the new server name
+if [ -z "$NEW_SERVER_NAME" ]
+then
+	prompt_user_input "Server Name" "Edit the name of the server" "$SERVER_NAME"
+
+	[ "$?" -ne 0 ] && exit 1
+	NEW_SERVER_NAME=$PROMPT_RET
+fi
+
+# collect the new database name requirements
+[ -z "$NEW_SERVER_DB_NAME" ] && NEW_SERVER_DB_NAME="$(echo "${NEW_SERVER_NAME}_db" | tr "-" "_")"
+
+# collect the new sensor listening port
+if [ -z "$NEW_SERVER_SENSOR_PORT" ]
+then
+	prompt_user_input "Sensor Port" "Edit the listening port of this server that sensors will connect to" "$SERVER_SENSOR_PORT"
+	[ "$?" -ne 0 ] && exit 1
+	NEW_SERVER_SENSOR_PORT=$PROMPT_RET
+fi
+
+# collect the new client listening port
+if [ -z "$NEW_SERVER_CLIENT_PORT" ]
+then
+	prompt_user_input "Client Port" "Edit the listening port of this server that clients will connect to" "$SERVER_CLIENT_PORT"
+	[ "$?" -ne 0 ] && exit 1
+	NEW_SERVER_CLIENT_PORT=$PROMPT_RET
+fi
+
+# collect initial authorised client username
+if [ -z "$NEW_SERVER_SGUIL_USER" ]
+then
+	prompt_user_input "Initial Client Username" "Edit the username of the initial authorised client" "$SERVER_SGUIL_USER"
+	[ "$?" -ne 0 ] && exit 1
+	NEW_SERVER_SGUIL_USER=$PROMPT_RET
+fi
+
+# collect initial authorised client password
+if [ -z "$NEW_SERVER_SGUIL_PASS" ]
+then
+	prompt_user_input "Initial Client Password" "Edit the password of the initial authorised client" "$SERVER_SGUIL_PASS"
+	[ "$?" -ne 0 ] && exit 1
+	NEW_SERVER_SGUIL_PASS=$PROMPT_RET
+fi
+
+# collect auto requirements
+if [ -z "$NEW_SERVER_AUTO" ]
+then
+	prompt_user_yesno "Auto" "Do you want this server to be auto assumed with the NSMnow Administration scripts?" "$SERVER_AUTO"
+	[ "$?" -ne 0 ] && exit 1
+	NEW_SERVER_AUTO=$PROMPT_RET
+fi
+
+# prompt to create the server
+prompt_user_yesno "Apply Changes" "The following information has been collected:\n\n  name:        $NEW_SERVER_NAME\n  sensor port: ${NEW_SERVER_SENSOR_PORT}\n  client port: ${NEW_SERVER_CLIENT_PORT}\n  client name: ${NEW_SERVER_SGUIL_USER}\n  db name:     ${NEW_SERVER_DB_NAME}\n  db user:     ${NEW_SERVER_DB_USER}\n  auto:        $NEW_SERVER_AUTO\n\nDo you want to update?" "Y"
+[ "$?" -ne 0 ] && exit 1
+
+[ "$PROMPT_RET" != "Y" -a "$PROMPT_RET" != "y" ] && exit 1
+
+#
+# EDIT
+#
+
+# do the creation
+echo_msg 0 "Updating server: $SERVER_NAME"
+
+# change the directories (if server name changed)
+if [ "$NEW_SENSOR_NAME" != "$SENSOR_NAME" ]
+then
+	mv /nsm/server_data/$SERVER_NAME /nsm/server_data/$NEW_SERVER_NAME
+	mv /etc/nsm/$SERVER_NAME /etc/nsm/$NEW_SERVER_NAME
+
+    # update any mandatory access control requirements (eg. AppArmor)
+    is_ubuntu "7.10+"
+    if [ "$?" -eq 0 ]
+    then
+        apparmor_update "/etc/apparmor.d/usr.sbin.mysqld" "/nsm/server_data/${SERVER_NAME}/load r" "/nsm/server_data/${NEW_SENSOR_NAME}/load r"
+        if [ "$?" -ne 0 ]
+        then
+            echo_error_msg 1 "unable to update the apparmor profiles (see README.apparmor)"
+        fi
+    fi
+fi
+
+# build the configuration files
+THE_TIME=$(date)
+cat >/etc/nsm/$NEW_SERVER_NAME/server.conf << EOF_SERVER
+# server.conf: auto-generated by NSMnow Administration on $THE_TIME
+SERVER_NAME="${NEW_SERVER_NAME}"
+SERVER_SENSOR_PORT="${NEW_SERVER_SENSOR_PORT}"
+SERVER_CLIENT_PORT="${NEW_SERVER_CLIENT_PORT}"
+
+SERVER_DB_NAME="${SERVER_DB_NAME}"
+SERVER_DB_USER="${SERVER_DB_USER}"
+SERVER_DB_PASS="${SERVER_DB_PASS}"
+SERVER_SGUIL_USER="$NEW_SERVER_SGUIL_USER"
+SERVER_SGUIL_PASS="$NEW_SERVER_SGUIL_PASS"
+
+SERVER_USER="${SERVER_USER}"
+SERVER_GROUP="${SERVER_GROUP}"
+SERVER_LIB_DIR="${SERVER_LIB_DIR}"
+SERVER_LOG_DIR="${SERVER_LOG_DIR}/${SERVER_NAME}"
+SERVER_AUTO="${SERVER_AUTO}"
+EOF_SERVER
+
+THE_TIME=$(date)
+cat >/etc/nsm/$SERVER_NAME/sguild.conf << EOF_SGUILD
+# sguild.conf: auto-generated by NSMnow Administration on $THE_TIME
+# Path to the sguild libs.
+set SGUILD_LIB_PATH "${SERVER_LIB_DIR}" 
+
+# DEBUG 0=off 1=important stuff 2=everything. Option 2 is VERY chatty.
+set DEBUG 2
+
+# Run sguild in daemon mode. 1=on 0=off
+# This overrides above and will set DEBUG off.
+# set DAEMON 1 is the same as using -D
+set DAEMON 0
+
+# Syslog Facility to log to in DAEMON mode
+# Note the Errors will go to SYSLOGFACILITY.err
+# DEBUG == 1 messages go to SYSLOGFACILITY.notice
+# DEBUG == 2 messages go to SYSLOGFACILITY.info
+# So, even at DEBUG == 2 you can send the 'important'
+# debug level 1 messages one place and the noisy info stuff another
+# by twiddling your syslog.conf
+set SYSLOGFACILITY daemon
+
+# Use the below to configure alert aggregation. Aggregation will
+# always use the source IP and signature (message). By default
+# we use the sensor ID too. If you want to override this,
+# then set the below to 0.
+set SENSOR_AGGREGATION_ON 1
+
+# If the server is on a multi interface machine and you want it
+# to only listen on a specific IP addr, then uncomment and put
+# the correct values here. You can listen on seperate addrs for
+# clients and sensors.
+# set BIND_SENSOR_IP_ADDR 127.0.0.1
+# set BIND_CLIENT_IP_ADDR 127.0.0.1
+
+# What port for sguild to listen on.
+# Client Connects
+set SERVERPORT ${NEW_SERVER_CLIENT_PORT}
+
+# Sensor connects
+set SENSORPORT ${NEW_SERVER_SENSOR_PORT}
+
+# Path to look for rules. Sguild will append the hostname (/etc/snort/rules/<hostname>/*.rules)
+# Some day we'll move the rules into the DB.
+set RULESDIR "${SERVER_LOG_DIR}/${NEW_SERVER_NAME}/rules"
+
+# Where to temporarily store portscan and session data for loading into the DB
+set TMPDATADIR /tmp
+
+# DataBase Info
+set DBHOST localhost
+set DBPORT 3306
+set DBNAME "${SERVER_DB_NAME}"
+set DBUSER "${SERVER_DB_USER}"
+set DBPASS "${SERVER_DB_PASS}"
+
+# Configs for xscript function
+# Where you want to archive raw file locally when xscripts are requested.
+set LOCAL_LOG_DIR "${SERVER_LOG_DIR}/${NEW_SERVER_NAME}/archive"
+
+# Where to store DB LOADable files until loaderd can put them in the DB
+set TMP_LOAD_DIR "${SERVER_LOG_DIR}/${NEW_SERVER_NAME}/load"
+
+# We're using a newer version of tcpflow that includes
+# extra output that confuses Sguil.  tcpflow-no-tags
+# is a shim that sends the correct options to tcpflow
+# such that its output is what Sguil is expecting.
+set TCPFLOW "/usr/bin/tcpflow-no-tags"
+
+
+# p0f - (C) Michal Zalewski <lcamtuf\@gis.net>, William Stearns <wstearns\@pobox.com>
+# If you have p0f (a passive OS fingerprinting system) installed, you can have
+# xscriptd attempt to use it by enabling it here. Get p0f at http://www.stearns.org
+#
+# 1=ON, 0=OFF
+set P0F 1
+
+# Path of the p0f binary. Switches -q and -s <filename> are appended on exec,
+# add any others you may need here.
+set P0F_PATH "/usr/sbin/p0f"
+EOF_SGUILD
+		
+# build certificates (if server name changed)
+if [ "$SERVER_SGUIL_USER" != "$NEW_SERVER_SGUIL_USER" ]
+then
+	server_certificates_del "/etc/nsm/$NEW_SERVER_NAME/certs"
+	server_certificates_new "" "" "/etc/nsm/$NEW_SERVER_NAME/certs" "" "" "" "${NEW_SERVER_NAME}" "root@${NEW_SERVER_NAME}"
+	if [ "$?" -ne 0 ]
+	then
+		echo_error_msg 1 "OOPS: The server certificates could not be updated!"
+	fi
+fi
+
+# change the sguil user (if server name changed)
+if [ "$SERVER_SGUIL_USER" != "$NEW_SERVER_SGUIL_USER" ]
+then
+	server_sguil_user_del "/etc/nsm/$NEW_SERVER_NAME/sguild.users" "$SERVER_SGUIL_USER"
+	server_sguil_user_add "/etc/nsm/$NEW_SERVER_NAME/sguild.users" "$NEW_SERVER_SGUIL_USER" "$NEW_SERVER_SGUIL_PASS"
+	if [ "$?" -ne 0 ]
+	then
+		echo_error_msg 1 "OOPS: The user could not be updated!"
+	fi
+fi
+
+# udpate servertab
+servertab_entry_del $SERVER_NAME
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 1 "OOPS: Unable to remove old entry from the server table!"
+	exit 1
+fi
+
+servertab_entry_add $NEW_SERVER_NAME $NEW_SERVER_AUTO
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 1 "OOPS: Unable to add new entry to the server table!"
+	exit 1
+fi
+
+# add all files into tracking cache after removing the old
+cache_group_remove "server:$SERVER_NAME"
+find /etc/nsm/$NEW_SERVER_NAME /nsm/server_data/$NEW_SERVER_NAME -type f | while read FILE
+do
+	cache_file_add $FILE "server:$NEW_SERVER_NAME"
+done
+
+exit 0

@@ -1,0 +1,76 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion110) precise; urgency=low
+ .
+   * process_start needs to create home directory if it doesn't already exist
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_ps-restart
+@@ -171,11 +171,7 @@ do
+ 		[ "$?" -ne 0 ] && exit 1
+ 	fi
+ 
+-        # Create home dir if it doesn't already exist
+-        mkdir -p /home/$SERVER_USER
+-
+         # Set permissions
+-        chown -R $SERVER_USER:$SERVER_GROUP /home/$SERVER_USER
+         chown -R $SERVER_USER:$SERVER_GROUP $PROCESS_LOG_DIR
+         chown -R $SERVER_USER:$SERVER_GROUP $PROCESS_PID_DIR
+ 	chown -R $SERVER_USER:$SERVER_GROUP $SERVER_LOG_DIR
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_ps-start
+@@ -157,11 +157,7 @@ do
+ 		[ "$?" -ne 0 ] && exit 1
+ 	fi
+ 
+-	# Create home dir if it doesn't already exist
+-	mkdir -p /home/$SERVER_USER
+-
+ 	# Set permissions
+-	chown -R $SERVER_USER:$SERVER_GROUP /home/$SERVER_USER
+ 	chown -R $SERVER_USER:$SERVER_GROUP $PROCESS_LOG_DIR
+ 	chown -R $SERVER_USER:$SERVER_GROUP $PROCESS_PID_DIR
+ 	chown -R $SERVER_USER:$SERVER_GROUP $SERVER_LOG_DIR
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/lib/nsmnow/lib-nsm-common-utils
++++ securityonion-nsmnow-admin-scripts-20120724/usr/lib/nsmnow/lib-nsm-common-utils
+@@ -950,9 +950,20 @@ process_start()
+ 	# execute application
+ 	echo "Executing: $APP $APP_OPTIONS" >$LOG_FILE
+ 	if [ "$#" -eq "6" ]; then
++
++	        # Create home dir if it doesn't already exist
++	        mkdir -p /home/$USER
++
++        	# Set permissions
++       		chown -R $USER /home/$USER
++
++		# Exec as user in user's home directory
+ 		eval exec su - $USER -- "$APP $APP_OPTIONS" >>$LOG_FILE 2>&1 &
+ 	else
++
++		# Exec as root (process will natively drop permissions after initialization)
+ 		eval exec $APP $APP_OPTIONS >>$LOG_FILE 2>&1 &
++
+ 	fi
+ 
+ 	# grab the PID which should be sufficient majority of the time

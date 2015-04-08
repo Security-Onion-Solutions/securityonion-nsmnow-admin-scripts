@@ -1,0 +1,153 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion102) precise; urgency=low
+ .
+   * create new BRO_USER and BRO_GROUP variables
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-status
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-status
+@@ -311,6 +311,12 @@ BRO_ENABLED="yes"
+ # add parameters to $SO_CONF if they don't already exist
+ grep OSSEC_AGENT_ENABLED $SO_CONF >/dev/null	|| echo "OSSEC_AGENT_ENABLED=yes" 	>> $SO_CONF
+ grep BRO_ENABLED $SO_CONF >/dev/null 		|| echo "BRO_ENABLED=yes" 	>> $SO_CONF
++if ! grep BRO_USER $SO_CONF >/dev/null; then         
++        echo >> $SO_CONF
++        echo "# BRO_USER specifies the user account used to start Bro." >> $SO_CONF
++        echo "BRO_USER=sguil"      >> $SO_CONF
++        echo "BRO_GROUP=sguil"      >> $SO_CONF
++fi
+ 
+ # load in user config
+ . $SO_CONF
+@@ -329,14 +335,14 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "
+ 	fi
+ 
+         # set ownership of Bro directories to sguil user
+-        sudo chown -R $SENSOR_USER:$SENSOR_GROUP /nsm/bro
++        sudo chown -R $BRO_USER:$BRO_GROUP /nsm/bro
+ 
+         # set capabilities on Bro binaries
+         setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/bro
+         setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/capstats
+ 
+         # Update Bro config
+-        su $SENSOR_USER -c '/opt/bro/bin/broctl status' 2>&1 | grep -v "warning: new bro version detected"
++        su $BRO_USER -c '/opt/bro/bin/broctl status' 2>&1 | grep -v "warning: new bro version detected"
+ fi
+ 
+ for SENSOR in $SENSOR_NAME
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -320,6 +320,12 @@ if ! grep OSSEC_AGENT_LEVEL $SO_CONF >/d
+         echo "# OSSEC_AGENT_LEVEL specifies the level at which OSSEC alerts are sent to sguild." >> $SO_CONF
+         echo "OSSEC_AGENT_LEVEL=5"      >> $SO_CONF
+ fi
++if ! grep BRO_USER $SO_CONF >/dev/null; then   
++        echo >> $SO_CONF
++        echo "# BRO_USER specifies the user account used to start Bro." >> $SO_CONF
++        echo "BRO_USER=sguil"      >> $SO_CONF
++        echo "BRO_GROUP=sguil"      >> $SO_CONF
++fi
+ 
+ # load in user config
+ . $SO_CONF
+@@ -353,17 +359,17 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "
+ 	#sleep 1
+ 		
+ 	# set ownership of Bro directories to sguil user
+-	chown -R $SENSOR_USER:$SENSOR_GROUP /nsm/bro
++	chown -R $BRO_USER:$BRO_GROUP /nsm/bro
+ 
+ 	# set capabilities on Bro binaries
+ 	setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/bro
+ 	setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/capstats
+ 
+ 	# Update Bro config
+-	su $SENSOR_USER -c '/opt/bro/bin/broctl install' 2>&1 | grep -v "warning: new bro version detected"
++	su $BRO_USER -c '/opt/bro/bin/broctl install' 2>&1 | grep -v "warning: new bro version detected"
+ 
+ 	# Start Bro
+-	su $SENSOR_USER -c '/opt/bro/bin/broctl start' 2>&1 | grep -v "warning: new bro version detected"
++	su $BRO_USER -c '/opt/bro/bin/broctl start' 2>&1 | grep -v "warning: new bro version detected"
+ fi
+ 
+ for SENSOR in $SENSOR_NAME
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -324,6 +324,12 @@ if ! grep OSSEC_AGENT_LEVEL $SO_CONF >/d
+ 	echo "# OSSEC_AGENT_LEVEL specifies the level at which OSSEC alerts are sent to sguild." >> $SO_CONF
+ 	echo "OSSEC_AGENT_LEVEL=5" 	>> $SO_CONF
+ fi
++if ! grep BRO_USER $SO_CONF >/dev/null; then         
++        echo >> $SO_CONF
++        echo "# BRO_USER specifies the user account used to start Bro." >> $SO_CONF
++        echo "BRO_USER=sguil"      >> $SO_CONF
++        echo "BRO_GROUP=sguil"      >> $SO_CONF
++fi
+ 
+ # load in user config
+ . $SO_CONF
+@@ -355,17 +361,17 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "
+ 	/opt/bro/bin/broctl stop 2>&1 | grep -v "warning: new bro version detected"
+ 
+         # set ownership of Bro directories to sguil user
+-	chown -R $SENSOR_USER:$SENSOR_GROUP /nsm/bro
++	chown -R $BRO_USER:$BRO_GROUP /nsm/bro
+ 
+         # set capabilities on Bro binaries
+         setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/bro
+         setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/capstats
+ 
+         # Update Bro config
+-        su $SENSOR_USER -c '/opt/bro/bin/broctl install' 2>&1 | grep -v "warning: new bro version detected"
++        su $BRO_USER -c '/opt/bro/bin/broctl install' 2>&1 | grep -v "warning: new bro version detected"
+ 
+ 	# Start Bro
+-        su $SENSOR_USER -c '/opt/bro/bin/broctl start' 2>&1 | grep -v "warning: new bro version detected"
++        su $BRO_USER -c '/opt/bro/bin/broctl start' 2>&1 | grep -v "warning: new bro version detected"
+ fi
+ 
+ for SENSOR in $SENSOR_NAME
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-stop
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-stop
+@@ -311,6 +311,12 @@ BRO_ENABLED="yes"
+ # add parameters to $SO_CONF if they don't already exist
+ grep OSSEC_AGENT_ENABLED $SO_CONF >/dev/null	|| echo "OSSEC_AGENT_ENABLED=yes" 	>> $SO_CONF
+ grep BRO_ENABLED $SO_CONF >/dev/null 		|| echo "BRO_ENABLED=yes" 	>> $SO_CONF
++if ! grep BRO_USER $SO_CONF >/dev/null; then         
++        echo >> $SO_CONF
++        echo "# BRO_USER specifies the user account used to start Bro." >> $SO_CONF
++        echo "BRO_USER=sguil"      >> $SO_CONF
++        echo "BRO_GROUP=sguil"      >> $SO_CONF
++fi
+ 
+ # load in user config
+ . $SO_CONF
+@@ -332,7 +338,7 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "
+ 	/opt/bro/bin/broctl stop 2>&1 | grep -v "warning: new bro version detected"
+ 
+         # set ownership of Bro directories to sguil user
+-        chown -R $SENSOR_USER:$SENSOR_GROUP /nsm/bro
++        chown -R $BRO_USER:$BRO_GROUP /nsm/bro
+ 
+         # set capabilities on Bro binaries
+         setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/bro

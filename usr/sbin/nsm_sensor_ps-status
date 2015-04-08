@@ -1,0 +1,424 @@
+#!/bin/bash
+#
+# Copyright (C) 2008-2009 SecurixLive   <dev@securixlive.com>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.  You may not use, modify or
+# distribute this program under any other version of the GNU General
+# Public License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#
+
+# Modified by Doug Burks for Security Onion
+
+#
+# INCLUDES
+#
+INC="/etc/nsm/administration.conf"
+. $INC
+
+. $NSM_LIB_DIR/lib-console-utils
+. $NSM_LIB_DIR/lib-nsm-common-utils
+. $NSM_LIB_DIR/lib-nsm-sensor-utils
+
+#
+# USAGE
+#
+print_usage()
+{
+	echo 
+	echo "The NSMnow Administration scripts are designed to easily configure and manage"
+	echo "your NSM installation. Bugs, comments and flames can be directed to the"
+	echo "SXL team at dev@securixlive.com"
+	echo
+	echo "The NSMnow Administration scripts come with ABSOLUTELY NO WARRANTY."
+	echo 
+	echo "Usage: $0 [options]"
+	echo
+	echo "Options:"
+	echo "    -d         Use dialog mode"
+	echo "    -y         Force yes"
+	echo "    -V         Show version information"
+	echo "    -?         Show usage information"
+	echo 
+	echo "Long Options: "
+	echo "    --sensor-name=<name>             Define specific sensor <name> to process"
+	echo "    --only-barnyard2                 Only process barnyard2"
+	echo "    --only-snort-alert               Only process snort alert"
+	echo "    --only-pcap                      Only process packet logger"
+	echo "    --only-argus                     Only process argus"
+        echo "    --only-prads                     Only process prads"
+        echo "    --only-bro                       Only process bro"
+	echo
+	echo "    --only-pcap-agent                Only process pcap_agent"
+	echo "    --only-sancp-agent               Only process sancp_agent"
+	echo "    --only-snort-agent               Only process snort_agent"
+	echo "    --only-http-agent                Only process http_agent"
+        echo "    --only-pads-agent                Only process pads_agent"
+        echo "    --only-ossec-agent               Only process ossec_agent"
+	echo
+	echo "    --skip-barnyard2                 Skip processing of barnyard2"
+	echo "    --skip-snort-alert               Skip processing of snort alert"
+	echo "    --skip-pcap                      Skip processing of packet logger"
+	echo "    --skip-argus                     Skip processing of argus"
+        echo "    --skip-prads                     Skip processing of prads"
+        echo "    --skip-bro                       Skip processing of bro"
+	echo
+	echo "    --skip-pcap-agent                Skip processing of pcap_agent"
+	echo "    --skip-sancp-agent               Skip processing of sancp_agent"
+	echo "    --skip-snort-agent               Skip processing of snort_agent"
+	echo "    --skip-http-agent                Skip processing of http_agent"
+        echo "    --skip-pads-agent                Skip processing of pads_agent"
+        echo "    --skip-ossec-agent               Skip processing of ossec_agent"
+	echo
+	echo "    --dialog                         Same as -d"
+	echo "    --force-yes                      Same as -y"
+	echo
+	echo "    --version                        Same as -V"
+	echo "    --help                           Same as -?"
+	echo 
+}
+
+# script specific variables
+PROMPT_SCRIPT="Stop Sensor"
+PROMPT_MODE=cli
+FORCE_YES=""
+
+# sensor specific variables
+SENSOR_NAME=""
+SENSOR_INTERFACE=""
+SENSOR_SERVER_HOST=""
+SENSOR_SERVER_PORT=""
+SENSOR_BY_PORT=""
+SENSOR_NET_GROUP=""
+SENSOR_VLAN_TAGGING=""
+SENSOR_AUTO=""
+
+PROCESS_LOG_DIR="/var/log/nsm"
+PROCESS_PID_DIR="/var/run/nsm"
+
+# processing specific variables
+SKIP_INVERT=""
+SKIP_SNORT_ALERT=""
+SKIP_PCAP=""
+SKIP_ARGUS=""
+SKIP_PRADS=""
+SKIP_BRO=""
+SKIP_BARNYARD2=""
+SKIP_SNORT_AGENT=""
+SKIP_HTTP_AGENT=""
+SKIP_SANCP_AGENT=""
+SKIP_PCAP_AGENT=""
+SKIP_PADS_AGENT=""
+SKIP_OSSEC_AGENT=""
+
+# extract necessary pre-check arguments from the commandline
+while [ "$#" -gt 0 ]
+do
+	case $1 in
+		"-d" | "--dialog")
+			PROMPT_MODE=dialog
+			;;
+		"-y" | "--force-yes")
+			FORCE_YES=yes
+			;;
+		"-?" | "--help")
+			SHOW_HELP_ONLY=yes
+			;;
+		"-V" | "--version")
+			SHOW_VERSION_ONLY=yes
+			;;
+		--sensor-name*)
+			SENSOR_NAME="$SENSOR_NAME $(echo $1 | cut -d "=" -f 2)"
+			SKIP_BRO=yes
+			SKIP_OSSEC_AGENT=yes
+			;;
+		--only-barnyard2)
+			SKIP_INVERT=yes
+			SKIP_BARNYARD2=yes
+			;;
+		--only-snort-alert)
+			SKIP_INVERT=yes
+			SKIP_SNORT_ALERT=yes
+			;;
+		--only-pcap)
+			SKIP_INVERT=yes
+			SKIP_PCAP=yes
+			;;
+		--only-argus)
+			SKIP_INVERT=yes
+			SKIP_ARGUS=yes
+			;;
+		--only-prads)
+			SKIP_INVERT=yes
+            		SKIP_PRADS=yes
+            		;;
+		--only-bro)
+			SKIP_INVERT=yes
+            		SKIP_BRO=yes
+            		;;
+		--only-pcap-agent)
+			SKIP_INVERT=yes
+			SKIP_PCAP_AGENT=yes
+			;;
+		--only-sancp-agent)
+			SKIP_INVERT=yes
+			SKIP_SANCP_AGENT=yes
+			;;
+		--only-snort-agent)
+			SKIP_INVERT=yes
+			SKIP_SNORT_AGENT=yes
+			;;
+		--only-http-agent)
+			SKIP_INVERT=yes
+			SKIP_HTTP_AGENT=yes
+			;;
+		--only-pads-agent)
+			SKIP_INVERT=yes
+            		SKIP_PADS_AGENT=yes
+            		;;
+		--only-ossec-agent)
+			SKIP_INVERT=yes
+            		SKIP_OSSEC_AGENT=yes
+            		;;
+		--skip-barnyard2)
+			SKIP_BARNYARD2=yes
+			;;
+		--skip-snort-alert)
+			SKIP_SNORT_ALERT=yes
+			;;
+		--skip-pcap)
+			SKIP_PCAP=yes
+			;;
+		--skip-argus)
+			SKIP_ARGUS=yes
+			;;
+		--skip-prads)
+            		SKIP_PRADS=yes
+            		;;
+		--skip-bro)
+            		SKIP_BRO=yes
+            		;;
+		--skip-pcap-agent)
+			SKIP_PCAP_AGENT=yes
+			;;
+		--skip-sancp-agent)
+			SKIP_SANCP_AGENT=yes
+			;;
+		--skip-snort-agent)
+			SKIP_SNORT_AGENT=yes
+			;;
+		--skip-http-agent)
+			SKIP_HTTP_AGENT=yes
+			;;
+		--skip-pads-agent)
+            		SKIP_PADS_AGENT=yes
+            		;;
+		--skip-ossec-agent)
+            		SKIP_OSSEC_AGENT=yes
+            		;;
+		--server*)
+			# any server directive is clearly meant for the server
+			exit 0
+			;;
+        *)
+			echo_error_msg 0 "OOPS: Unknown option \"${1}\" found!"
+			print_usage
+			exit 1
+            ;;
+	esac
+	shift
+done
+
+# check for help or version requests
+if [ -n "$SHOW_HELP_ONLY" ]
+then
+	print_usage
+	exit 0
+elif [ -n "$SHOW_VERSION_ONLY" ]
+then
+	print_version
+	exit 0
+fi
+
+# ensure we are root user before continuing any further
+is_root
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 0 "OOPS: Must be root to run this script!"
+	exit 1;
+fi
+
+# sanity check what sensors we are using
+if [ -z "$SENSOR_NAME" ]
+then
+	SENSOR_NAME=$(sensortab_names_get_on_auto "1")
+fi
+	
+# invert skip as appropriate
+if [ -n "$SKIP_INVERT" ]
+then
+	[ -z "$SKIP_PCAP_AGENT" ]	&& SKIP_PCAP_AGENT=yes		|| SKIP_PCAP_AGENT=""
+	[ -z "$SKIP_SANCP_AGENT" ]	&& SKIP_SANCP_AGENT=yes	|| SKIP_SANCP_AGENT=""
+	[ -z "$SKIP_SNORT_AGENT" ]	&& SKIP_SNORT_AGENT=yes	|| SKIP_SNORT_AGENT=""
+	[ -z "$SKIP_HTTP_AGENT" ]	&& SKIP_HTTP_AGENT=yes		|| SKIP_HTTP_AGENT=""
+	[ -z "$SKIP_PADS_AGENT" ]	&& SKIP_PADS_AGENT=yes		|| SKIP_PADS_AGENT=""
+	[ -z "$SKIP_OSSEC_AGENT" ]	&& SKIP_OSSEC_AGENT=yes	|| SKIP_OSSEC_AGENT=""
+	[ -z "$SKIP_SNORT_ALERT" ]	&& SKIP_SNORT_ALERT=yes	|| SKIP_SNORT_ALERT=""
+	[ -z "$SKIP_BARNYARD2" ]	&& SKIP_BARNYARD2=yes		|| SKIP_BARNYARD2=""
+	[ -z "$SKIP_PCAP" ]		&& SKIP_PCAP=yes		|| SKIP_PCAP=""
+	[ -z "$SKIP_ARGUS" ]		&& SKIP_ARGUS=yes		|| SKIP_ARGUS=""
+	[ -z "$SKIP_PRADS" ]		&& SKIP_PRADS=yes		|| SKIP_PRADS=""
+	[ -z "$SKIP_BRO" ]		&& SKIP_BRO=yes		|| SKIP_BRO=""
+fi
+
+#
+# STATUS
+#
+
+# Bro and OSSEC agent need to exist outside of the for-loop
+
+# check for variables in /etc/nsm/securityonion.conf
+SO_CONF="/etc/nsm/securityonion.conf"
+			
+# default values (can override in $SO_CONF)
+OSSEC_AGENT_ENABLED="yes"
+BRO_ENABLED="yes"
+
+# add parameters to $SO_CONF if they don't already exist
+grep OSSEC_AGENT_ENABLED $SO_CONF >/dev/null	|| echo "OSSEC_AGENT_ENABLED=yes" 	>> $SO_CONF
+grep BRO_ENABLED $SO_CONF >/dev/null 		|| echo "BRO_ENABLED=yes" 	>> $SO_CONF
+if ! grep BRO_USER $SO_CONF >/dev/null; then         
+        echo >> $SO_CONF
+        echo "# BRO_USER specifies the user account used to start Bro." >> $SO_CONF
+        echo "BRO_USER=sguil"      >> $SO_CONF
+        echo "BRO_GROUP=sguil"      >> $SO_CONF
+fi
+
+# load in user config
+. $SO_CONF
+
+if [ "$OSSEC_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_OSSEC_AGENT" ]; then
+        echo_msg 0 "Status: HIDS"
+        process_status "ossec_agent.tcl" "$PROCESS_PID_DIR/ossec_agent.pid" "ossec_agent (sguil)"
+fi
+
+if [ "$BRO_ENABLED" == "yes" ] && [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
+        echo_msg 0 "Status: Bro"
+
+        # set ownership of Bro directories
+        chown -R $BRO_USER:$BRO_GROUP /nsm/bro >/dev/null 2>&1
+
+        # set capabilities on Bro binaries
+        setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/bro
+        setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/capstats
+
+        # Update Bro config
+        su $BRO_USER -c '/opt/bro/bin/broctl status' 2>&1 | grep -v "warning: new bro version detected"
+fi
+
+for SENSOR in $SENSOR_NAME
+do
+
+	echo_msg 0 "Status: ${SENSOR}"
+
+	# check for sensor configuration file
+	SENSOR_CONF="/etc/nsm/$SENSOR/sensor.conf"
+	if [ ! -f "$SENSOR_CONF" ]
+	then
+		echo_error_msg 1 "sensor does not exist!"
+		exit 1
+	fi
+				
+	# default values (can override in $SENSOR_CONF)
+	PCAP_ENABLED="yes"
+	PCAP_AGENT_ENABLED="yes"
+	SNORT_AGENT_ENABLED="yes"
+	IDS_ENGINE_ENABLED="yes"
+	BARNYARD2_ENABLED="yes"
+	PRADS_ENABLED="yes"
+	SANCP_AGENT_ENABLED="yes"
+	PADS_AGENT_ENABLED="yes"
+	ARGUS_ENABLED="yes"
+	HTTP_AGENT_ENABLED="yes"
+	PCAP_SIZE="150MiB"
+	PCAP_RING_SIZE="64MiB"
+
+	# add parameters to $SENSOR_CONF if they don't already exist
+	grep PCAP_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PCAP_ENABLED=\"yes\""		>> $SENSOR_CONF
+	grep PCAP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "PCAP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
+	grep SNORT_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "SNORT_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
+	grep IDS_ENGINE_ENABLED $SENSOR_CONF >/dev/null	|| echo "IDS_ENGINE_ENABLED=\"yes\""	>> $SENSOR_CONF
+	grep BARNYARD2_ENABLED $SENSOR_CONF >/dev/null		|| echo "BARNYARD2_ENABLED=\"yes\"" 	>> $SENSOR_CONF
+	grep PRADS_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PRADS_ENABLED=\"yes\"" 	>> $SENSOR_CONF
+	grep SANCP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "SANCP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
+	grep PADS_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "PADS_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
+	grep ARGUS_ENABLED $SENSOR_CONF >/dev/null 		|| echo "ARGUS_ENABLED=\"yes\"" 	>> $SENSOR_CONF
+	grep HTTP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "HTTP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
+	grep PCAP_SIZE $SENSOR_CONF >/dev/null			|| echo "PCAP_SIZE=\"150MiB\""		>> $SENSOR_CONF
+	grep PCAP_RING_SIZE $SENSOR_CONF >/dev/null		|| echo "PCAP_RING_SIZE=\"64MiB\""	>> $SENSOR_CONF
+
+        # load in sensor specific details (we need $IDS_LB_PROCS)
+        . $SENSOR_CONF
+				
+	# status packet logger
+	[ "$PCAP_ENABLED" == "yes" ] && [ -z "$SKIP_PCAP" ] && process_status "netsniff-ng" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "netsniff-ng (full packet data)"
+
+	# status pcap_agent
+	[ "$PCAP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PCAP_AGENT" ] && process_status "pcap_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "pcap_agent (sguil)"
+
+	# snort_agent
+        if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+	then
+		[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && process_status "snort_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "snort_agent (sguil)"
+	else
+                for i in `seq 1 $IDS_LB_PROCS`; do
+			[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && process_status "snort_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid" "snort_agent-$i (sguil)"
+		done
+	fi
+
+	# status the IDS engine
+        if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+	then
+		[ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && process_status "suricata" "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "suricata (alert data)"
+	else
+                for i in `seq 1 $IDS_LB_PROCS`; do
+			[ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && process_status "snort" "$PROCESS_PID_DIR/$SENSOR/snortu-$i.pid" "snort-$i (alert data)"
+		done
+	fi
+
+	# status barnyard2
+        if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+	then
+		[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && process_status "barnyard2" "$PROCESS_PID_DIR/$SENSOR/barnyard2.pid" "barnyard2 (spooler, unified2 format)"
+	else
+                for i in `seq 1 $IDS_LB_PROCS`; do
+			[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && process_status "barnyard2" "$PROCESS_PID_DIR/$SENSOR/barnyard2-$i.pid" "barnyard2-$i (spooler, unified2 format)"
+		done
+	fi
+
+        # status prads
+        [ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && process_status "prads" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "prads (sessions/assets)"
+
+	# status sancp_agent
+	[ "$SANCP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SANCP_AGENT" ] && process_status "sancp_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "sancp_agent (sguil)"
+
+	# status pads_agent
+        [ "$PADS_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PADS_AGENT" ] && process_status "pads_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "pads_agent (sguil)"
+
+	# status argus
+	[ "$ARGUS_ENABLED" == "yes" ] && [ -z "$SKIP_ARGUS" ] && process_status "argus" "$PROCESS_PID_DIR/$SENSOR/argus.pid" "argus"
+
+	# status http_agent
+	[ "$HTTP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_HTTP_AGENT" ] && process_status "http_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/http_agent.pid" "http_agent (sguil)"
+done
+

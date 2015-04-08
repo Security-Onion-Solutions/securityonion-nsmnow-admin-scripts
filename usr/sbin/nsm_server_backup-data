@@ -1,0 +1,231 @@
+#!/bin/bash
+#
+# Copyright (C) 2008-2009 SecurixLive   <dev@securixlive.com>
+# Modified by Doug Burks for Security Onion
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.  You may not use, modify or
+# distribute this program under any other version of the GNU General
+# Public License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#
+
+# Version:
+# 20120202
+# 
+# Changelog:
+# 20120202 - Don't ask for server name
+
+#
+# INCLUDES
+#
+INC="/etc/nsm/administration.conf"
+. $INC
+
+. $NSM_LIB_DIR/lib-console-utils
+. $NSM_LIB_DIR/lib-nsm-common-utils
+. $NSM_LIB_DIR/lib-nsm-server-utils
+
+#
+# USAGE
+#
+print_usage()
+{
+	echo 
+	echo "The NSMnow Administration scripts are designed to easily configure and manage"
+	echo "your NSM installation. Bugs, comments and flames can be directed to the"
+	echo "SXL team at dev@securixlive.com"
+	echo
+	echo "The NSMnow Administration scripts come with ABSOLUTELY NO WARRANTY."
+	echo 
+	echo "Usage: $0 [options]"
+	echo
+	echo "Options:"
+	echo "    -d         Use dialog mode"
+	echo "    -y         Force yes"
+	echo "    -V         Show version information"
+	echo "    -?         Show usage information"
+	echo 
+	echo "Long Options:"
+	echo "    --server-name=<name>  Define name of server to backup"
+	echo "    --backup-file=<path>  Specify the backup file path as <path>"
+	echo
+	echo "    --dialog              Same as -d"
+	echo "    --force-yes           Same as -y"
+	echo
+	echo "    --version             Same as -V"
+	echo "    --help                Same as -?"
+	echo 
+}
+
+# script specific variables
+PROMPT_SCRIPT="Backup Server Configuration"
+PROMPT_MODE=cli
+FORCE_YES=""
+
+# sensor specific variables
+SERVER_NAME=""
+BACKUP_FILE=""
+
+
+# extract necessary pre-check arguments from the commandline
+while [ "$#" -gt 0 ]
+do
+	case $1 in
+		"-d" | "--dialog")
+			PROMPT_MODE=dialog
+			;;
+		"-y" | "--force-yes")
+			FORCE_YES=yes
+			;;
+		"-?" | "--help")
+			SHOW_HELP_ONLY=yes
+			;;
+		"-V" | "--version")
+			SHOW_VERSION_ONLY=yes
+			;;
+		--server-name*)
+			SERVER_NAME=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--backup-file*)
+			BACKUP_FILE=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--sensor*)
+			# any sensor directive is clearly meant for the sensor
+			exit 0
+			;;
+        *)
+			echo_error_msg 0 "OOPS: Unknown option \"${1}\" found!"
+			print_usage
+			exit 1
+            ;;
+	esac
+	shift
+done
+
+# check there are indeed arguments
+if [ -n "$SHOW_HELP_ONLY" ]
+then
+	print_usage
+	exit 0
+elif [ -n "$SHOW_VERSION_ONLY" ]
+then
+	print_version
+	exit 0
+fi
+
+# ensure we are root user before continuing any further
+is_root
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 0 "OOPS: Must be root to run this script!"
+	exit 1;
+fi
+	
+#
+# COLLECT INPUT
+#
+
+SERVER_NAME="securityonion"
+
+# double check a server name was given
+if [ -z "$SERVER_NAME" ]
+then
+	echo_error_msg 0 "OOPS: You have to specify a sensor name!"
+	exit 1
+fi
+
+# check that the server configuration
+if [ ! -d "/nsm/server_data/$SERVER_NAME" ]
+then
+	echo_error_msg 0 "OOPS: Collected data for server \"$SERVER_NAME\" does not exist!"
+	exit 1
+fi
+
+# collect the backup file location
+if [ -z "$BACKUP_FILE" ]
+then
+	TODAY=$(date -u '+%Y-%m-%d')      #-u option sets TZ to GMT
+	
+	prompt_user_input "Backup File" "Enter the destination filepath for the backup. The backup is a gzip tarball.\n" "/tmp/$SERVER_NAME-$TODAY.tar.gz"
+	[ "$?" -ne 0 ] && exit 1
+	BACKUP_FILE=$PROMPT_RET
+fi
+
+# prompt to backup the configuration
+prompt_user_yesno "Backup Server Data" "All collected data for server \"$SERVER_NAME\" will be backed up to:\n$BACKUP_FILE\n\nDo you want to continue?" "N"
+[ "$?" -ne 0 ] && exit 1
+if [ "$PROMPT_RET" != "Y" -a "$PROMPT_RET" != "y" ]
+then
+	exit 1
+fi
+
+#
+# BACKUP CONFIGURATION
+#
+
+echo_msg 0 "Backing up data for server: $SERVER_NAME"
+
+# ensure backup directory exists
+BACKUP_DIR=$(dirname $BACKUP_FILE)
+if [ ! -d "$BACKUP_DIR" ]
+then
+	prompt_user_yesno "Create Backup Directory" "The directory $BACKUP_DIR does not exist\n\nDo you want to create?" "Y"
+	[ "$?" -ne 0 ] && exit 1
+	if [ "$PROMPT_RET" != "Y" -a "$PROMPT_RET" != "y" ]
+	then
+		echo_error_msg 1 "OOPS: Destintation directory does not exist!"
+		exit 1
+	fi
+
+	# make the backup directory
+	mkdir -p $BACKUP_DIR
+	if [ "$?" -ne 0 ]
+	then
+		echo_error_msg 1 "OOPS: Unable to create backup directory: $BACKUP_DIR"
+		exit 1
+	fi
+fi
+
+# backup the database which needs the server configuration loaded
+if [ -f "/etc/nsm/$SERVER_NAME/server.conf" ]
+then
+	. /etc/nsm/$SERVER_NAME/server.conf
+else
+	echo_error_msg 1 "OOPS: Unable to load server configuration"
+	exit 1
+fi
+
+TMP_MYSQL_DATA_FILE="/tmp/${SERVER_DB_NAME}-${RANDOM}.gz"
+mysqldump --user="$SERVER_DB_USER" --password="$SERVER_DB_PASS" $SERVER_DB_NAME | gzip -9 >${TMP_MYSQL_DATA_FILE}
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 1 "OOPS: Unable to dump mysql data"
+	rm -f $TMP_MYSQL_DATA_FILE
+	exit 1
+fi
+
+# create the tarball
+tar -czf $BACKUP_FILE /nsm/server_data/$SERVER_NAME $TMP_MYSQL_DATA_FILE
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 1 "OOPS: Unable to create $BACKUP_FILE"
+	rm -f $TMP_MYSQL_DATA_FILE
+	exit 1
+fi
+
+# clean up temp files
+rm -f $TMP_MYSQL_DATA_FILE
+
+echo_msg 1 "collected data backed up successfully to $BACKUP_FILE"
+
+exit 0

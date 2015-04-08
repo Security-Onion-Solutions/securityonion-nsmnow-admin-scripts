@@ -1,0 +1,8 @@
+# /etc/cron.d/nsm-watchdog
+#
+# crontab entry to restart processes if they fail
+
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+*/5 *   * * * root  ( date ; /usr/sbin/nsm_server_ps-restart --if-stale ; /usr/sbin/nsm_sensor_ps-restart --if-stale) >> /var/log/nsm/watchdog.log

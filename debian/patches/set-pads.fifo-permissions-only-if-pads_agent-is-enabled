@@ -1,0 +1,55 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion107) precise; urgency=low
+ .
+   * set pads.fifo permissions only if pads_agent is enabled
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -585,8 +585,10 @@ do
+         [ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && [ "$PADS_AGENT_ENABLED" == "no" ]  && [ "$SANCP_AGENT_ENABLED" == "no" ]  && echo_error_msg 1 "Warning: PRADS is enabled but will not start because both SANCP AGENT and PADS AGENT are disabled!"
+ 
+ 	# start pads_agent
+-	chown $SENSOR_USER:$SENSOR_GROUP $SENSOR_LOG_DIR/pads.fifo
+-        [ "$PADS_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PADS_AGENT" ] && process_start "/usr/bin/pads_agent.tcl" "-c $PADS_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pads_agent.log" "pads_agent (sguil)" "$SENSOR_USER"
++        if [ "$PADS_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PADS_AGENT" ]; then
++		chown $SENSOR_USER:$SENSOR_GROUP $SENSOR_LOG_DIR/pads.fifo
++		process_start "/usr/bin/pads_agent.tcl" "-c $PADS_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pads_agent.log" "pads_agent (sguil)" "$SENSOR_USER"
++	fi
+ 
+ 	# start sancp_agent
+ 	[ "$SANCP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SANCP_AGENT" ] && process_start "/usr/bin/sancp_agent.tcl" "-c $SANCP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp_agent.log" "sancp_agent (sguil)" "$SENSOR_USER"
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -580,8 +580,10 @@ do
+         [ "$PRADS_ENABLED" == "yes" ] && [ -z "$SKIP_PRADS" ] && [ "$PADS_AGENT_ENABLED" == "no" ]  && [ "$SANCP_AGENT_ENABLED" == "no" ]  && echo_error_msg 1 "Warning: PRADS is enabled but will not start because both SANCP AGENT and PADS AGENT are disabled!"
+ 
+ 	# restart pads_agent
+-        chown $SENSOR_USER:$SENSOR_GROUP $SENSOR_LOG_DIR/pads.fifo
+-	[ "$PADS_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PADS_AGENT" ] && $ACTION "/usr/bin/pads_agent.tcl" "-c $PADS_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pads_agent.log" "pads_agent (sguil)" "$SENSOR_USER"
++	if [ "$PADS_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PADS_AGENT" ]; then
++        	chown $SENSOR_USER:$SENSOR_GROUP $SENSOR_LOG_DIR/pads.fifo
++		$ACTION "/usr/bin/pads_agent.tcl" "-c $PADS_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pads_agent.log" "pads_agent (sguil)" "$SENSOR_USER"
++	fi
+ 
+ 	# restart sancp_agent
+ 	[ "$SANCP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SANCP_AGENT" ] && $ACTION "/usr/bin/sancp_agent.tcl" "-c $SANCP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/sancp_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp_agent.log" "sancp_agent (sguil)" "$SENSOR_USER"

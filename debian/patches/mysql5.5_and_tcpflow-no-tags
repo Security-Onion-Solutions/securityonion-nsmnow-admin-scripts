@@ -1,0 +1,123 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion1) precise; urgency=low
+ .
+   * Initial release
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_edit
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_edit
+@@ -18,10 +18,13 @@
+ # along with this program; if not, write to the Free Software
+ # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ 
++# Modified by Doug Burks for Security Onion
++#
+ # Version:
+-# 20120202
+-# 
++# 20120725
++#
+ # Changelog:
++# 20120725 - Updated tcpflow to tcpflow-no-tags
+ # 20120202 - Don't ask for server name
+ 
+ #
+@@ -367,9 +370,12 @@ set LOCAL_LOG_DIR "${SERVER_LOG_DIR}/${N
+ # Where to store DB LOADable files until loaderd can put them in the DB
+ set TMP_LOAD_DIR "${SERVER_LOG_DIR}/${NEW_SERVER_NAME}/load"
+ 
+-# You MUST have tcpflow installed to get xscripts
+-# http://www.circlemud.org/~jelson/software/tcpflow/
+-set TCPFLOW "/usr/bin/tcpflow"
++# We're using a newer version of tcpflow that includes
++# extra output that confuses Sguil.  tcpflow-no-tags
++# is a shim that sends the correct options to tcpflow
++# such that its output is what Sguil is expecting.
++set TCPFLOW "/usr/bin/tcpflow-no-tags"
++
+ 
+ # p0f - (C) Michal Zalewski <lcamtuf\@gis.net>, William Stearns <wstearns\@pobox.com>
+ # If you have p0f (a passive OS fingerprinting system) installed, you can have
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_add
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_add
+@@ -18,6 +18,14 @@
+ # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ #
+ 
++# Modified by Doug Burks for Security Onion
++#
++# Version:
++# 20120725
++#
++# Changelog:
++# 20120725 - Updated tcpflow to tcpflow-no-tags
++
+ #
+ # INCLUDES
+ #
+@@ -376,9 +384,11 @@ set LOCAL_LOG_DIR "${SERVER_LOG_DIR}/${S
+ # Where to store DB LOADable files until loaderd can put them in the DB
+ set TMP_LOAD_DIR "${SERVER_LOG_DIR}/${SERVER_NAME}/load"
+ 
+-# You MUST have tcpflow installed to get xscripts
+-# http://www.circlemud.org/~jelson/software/tcpflow/
+-set TCPFLOW "/usr/bin/tcpflow"
++# We're using a newer version of tcpflow that includes
++# extra output that confuses Sguil.  tcpflow-no-tags
++# is a shim that sends the correct options to tcpflow
++# such that its output is what Sguil is expecting.
++set TCPFLOW "/usr/bin/tcpflow-no-tags"
+ 
+ # p0f - (C) Michal Zalewski <lcamtuf\@gis.net>, William Stearns <wstearns\@pobox.com>
+ # If you have p0f (a passive OS fingerprinting system) installed, you can have
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/lib/nsmnow/lib-nsm-server-utils
++++ securityonion-nsmnow-admin-scripts-20120724/usr/lib/nsmnow/lib-nsm-server-utils
+@@ -24,9 +24,10 @@
+ # Modified by Doug Burks for Security Onion
+ #
+ # Version:
+-# 20110922
++# 20120725
+ #
+ # Changelog:
++# 20120725 - Updated TIMESTAMP for MySQL 5.5.
+ # 20110922 - Updated server_sguil_database_clear function to configure SQueRT
+ 
+ 
+@@ -457,7 +458,7 @@ CREATE TABLE sensor
+   interface	VARCHAR(255),
+   description	TEXT,
+   bpf_filter	TEXT,
+-  updated	TIMESTAMP(14) NOT NULL,
++  updated	TIMESTAMP NOT NULL,
+   active	ENUM('Y','N') DEFAULT 'Y',
+   ip		VARCHAR(15) DEFAULT NULL,
+   public_key	VARCHAR(255) DEFAULT NULL,
+@@ -673,7 +674,7 @@ CREATE TABLE sensor
+   interface	VARCHAR(255),
+   description	TEXT,
+   bpf_filter	TEXT,
+-  updated	TIMESTAMP(14) NOT NULL,
++  updated	TIMESTAMP NOT NULL,
+   active	ENUM('Y','N') DEFAULT 'Y',
+   ip		VARCHAR(15) DEFAULT NULL,
+   public_key	VARCHAR(255) DEFAULT NULL,

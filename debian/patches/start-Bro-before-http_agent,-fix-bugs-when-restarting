@@ -1,0 +1,339 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion19) precise; urgency=low
+ .
+   * start Bro before http_agent, fix bugs when restarting
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-stop
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-stop
+@@ -308,6 +308,18 @@ fi
+ # STOP
+ #
+ 
++# Bro and OSSEC agent need to exist outside of the for-loop
++
++if [ -z "$SKIP_OSSEC_AGENT" ]; then
++        echo_msg 0 "Stopping: HIDS"
++        process_stop "/etc/nsm/ossec/ossec_agent.tcl" "$PROCESS_PID_DIR/ossec_agent.pid" "ossec_agent (sguil)"
++fi
++
++if [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
++        echo_msg 0 "Stopping: Bro"
++        /opt/bro/bin/broctl stop
++fi
++
+ for SENSOR in $SENSOR_NAME
+ do
+ 
+@@ -375,15 +387,3 @@ do
+ 	[ -z "$SKIP_HTTP_AGENT" ] && process_stop "http_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/http_agent.pid" "http_agent (sguil)"
+ done
+ 
+-# Bro and OSSEC agent need to exist outside of the for-loop
+-
+-if [ -z "$SKIP_OSSEC_AGENT" ]; then
+-        echo_msg 0 "Stopping: HIDS"
+-        process_stop "/etc/nsm/ossec/ossec_agent.tcl" "$PROCESS_PID_DIR/ossec_agent.pid" "ossec_agent (sguil)"
+-fi
+-
+-if [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
+-        echo_msg 0 "Stopping: Bro"
+-        /opt/bro/bin/broctl stop
+-fi
+-
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -312,6 +312,18 @@ fi
+ # START
+ #
+ 
++# Bro and OSSEC agent need to exist outside of the for-loop
++
++if [ -z "$SKIP_OSSEC_AGENT" ]; then
++	echo_msg 0 "Starting: HIDS"
++	process_start "/etc/nsm/ossec/ossec_agent.tcl" "-o -f /var/ossec/logs/alerts/alerts.log -i 127.0.0.1 -p 5 -c /etc/nsm/ossec/ossec_agent.conf" "$PROCESS_PID_DIR/ossec_agent.pid" "$PROCESS_LOG_DIR/ossec_agent.log" "ossec_agent (sguil)"
++fi
++
++if [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
++	echo_msg 0 "Starting: Bro"
++	/opt/bro/bin/broctl start
++fi
++
+ for SENSOR in $SENSOR_NAME
+ do
+ 
+@@ -345,18 +357,26 @@ do
+ 	else
+ 		# Start $IDS_LB_PROCS instances of snort_agent
+                 for i in `seq 1 $IDS_LB_PROCS`; do
++			SNORT_AGENT_CONFIG=/etc/nsm/$SENSOR/snort_agent-$i.conf
++			# Create the log directory if it doesn't already exist
+ 			mkdir -p $SENSOR_LOG_DIR/snort-$i/
+-			if [ ! -f /etc/nsm/$SENSOR/snort_agent-$i.conf ]; then
+-				cp /etc/nsm/$SENSOR/snort_agent.conf /etc/nsm/$SENSOR/snort_agent-$i.conf	
+-				sed -i "s|^set HOSTNAME.*$|set HOSTNAME $SENSOR-$i|g" /etc/nsm/$SENSOR/snort_agent-$i.conf
+-				OLD_PORT=`grep BY_PORT /etc/nsm/$SENSOR/snort_agent-$i.conf |awk '{print $3}'`
++			# Create the snort_agent config if it doesn't already exist
++			if [ ! -f $SNORT_AGENT_CONFIG ]; then
++				# Copy from the standard snort_agent.conf
++				cp /etc/nsm/$SENSOR/snort_agent.conf $SNORT_AGENT_CONFIG
++				# Append the instance number to the HOSTNAME variable
++				sed -i "s|^set HOSTNAME.*$|set HOSTNAME $SENSOR-$i|g" $SNORT_AGENT_CONFIG
++				# Take the port number that was in snort_agent.conf and add $i to it
++				# The port numbers assigned in snort_agent.conf should be spaced by 100 per interface:
++				# eth0 - 8000, eth1 - 8100, eth2 - 8200, etc.
++				OLD_PORT=`grep BY_PORT $SNORT_AGENT_CONFIG |awk '{print $3}'`
+ 				let NEW_PORT=OLD_PORT+$i
+-				sed -i "s|^set BY_PORT.*$|set BY_PORT $NEW_PORT|g" /etc/nsm/$SENSOR/snort_agent-$i.conf
+-				sed -i "s|^set SNORT_PERF_FILE.*$|set SNORT_PERF_FILE /nsm/sensor_data/$SENSOR/snort-$i.stats|g" /etc/nsm/$SENSOR/snort_agent-$i.conf
+-				sed -i "s|^set PORTSCAN_DIR.*$|set PORTSCAN_DIR /nsm/sensor_data/$SENSOR/portscans-$i|g" /etc/nsm/$SENSOR/snort_agent-$i.conf
+-				sed -i "s|^set WATCH_DIR.*$|set WATCH_DIR /nsm/sensor_data/$SENSOR|g" /etc/nsm/$SENSOR/snort_agent-$i.conf
++				sed -i "s|^set BY_PORT.*$|set BY_PORT $NEW_PORT|g" $SNORT_AGENT_CONFIG
++				sed -i "s|^set SNORT_PERF_FILE.*$|set SNORT_PERF_FILE /nsm/sensor_data/$SENSOR/snort-$i.stats|g" $SNORT_AGENT_CONFIG
++				sed -i "s|^set PORTSCAN_DIR.*$|set PORTSCAN_DIR /nsm/sensor_data/$SENSOR/portscans-$i|g" $SNORT_AGENT_CONFIG
++				sed -i "s|^set WATCH_DIR.*$|set WATCH_DIR /nsm/sensor_data/$SENSOR|g" $SNORT_AGENT_CONFIG
+ 			fi
+-				[ -z "$SKIP_SNORT_AGENT" ] && process_start "snort_agent.tcl" "-c /etc/nsm/$SENSOR/snort_agent-$i.conf" "$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent-$i.log" "snort_agent-$i (sguil)"
++				[ -z "$SKIP_SNORT_AGENT" ] && process_start "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent-$i.log" "snort_agent-$i (sguil)"
+ 		done
+ 	fi
+ 
+@@ -384,15 +404,16 @@ do
+ 	else	
+ 		# Start $IDS_LB_PROCS instances of Snort using pfring load-balancing
+ 		for i in `seq 1 $IDS_LB_PROCS`; do
++			SNORT_CONFIG=/etc/nsm/$SENSOR/snort-$i.conf
+ 			mkdir -p $SENSOR_LOG_DIR/snort-$i/
+-			if [ ! -f /etc/nsm/$SENSOR/snort-$i.conf ]; then
+-				cp /etc/nsm/$SENSOR/snort.conf /etc/nsm/$SENSOR/snort-$i.conf	
+-				sed -i "s|snort.stats|snort-$i.stats|g" /etc/nsm/$SENSOR/snort-$i.conf
++			if [ ! -f $SNORT_CONFIG ]; then
++				cp /etc/nsm/$SENSOR/snort.conf $SNORT_CONFIG
++				sed -i "s|snort.stats|snort-$i.stats|g" $SNORT_CONFIG
+ 			fi
+ 			PID=$PROCESS_PID_DIR/$SENSOR/snortu-$i.pid
+ 			LOG=$PROCESS_LOG_DIR/$SENSOR/snortu-$i.log
+ 			UNI_DIR=$SENSOR_LOG_DIR/snort-$i
+-   			[ -z "$SKIP_SNORT_ALERT" ] && process_start "snort" "-c /etc/nsm/$SENSOR/snort-$i.conf -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $UNI_DIR $SNORT_OPTIONS" "$PID" "$LOG" "snort-$i (alert data)"
++   			[ -z "$SKIP_SNORT_ALERT" ] && process_start "snort" "-c $SNORT_CONFIG -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $UNI_DIR $SNORT_OPTIONS" "$PID" "$LOG" "snort-$i (alert data)"
+ 		done
+ 	fi
+ 
+@@ -406,17 +427,18 @@ do
+ 	else
+ 		# we need one instance of barnyard2 per Snort instance
+ 		for i in `seq 1 $IDS_LB_PROCS`; do
+-			mkdir -p $SENSOR_LOG_DIR/snort-$i/
+-			if [ ! -f /etc/nsm/$SENSOR/barnyard2-$i.conf ]; then
+-				cp /etc/nsm/$SENSOR/barnyard2.conf /etc/nsm/$SENSOR/barnyard2-$i.conf	
+-				PORT=`grep BY_PORT /etc/nsm/$SENSOR/snort_agent-$i.conf |awk '{print $3}'`
+-				sed -i "s|output sguil:.*$|output sguil: sensor_name=$SENSOR-$i agent_port=$PORT|g" /etc/nsm/$SENSOR/barnyard2-$i.conf
+-			fi
+ 			UNI_DIR=$SENSOR_LOG_DIR/snort-$i	
+ 			WALDO=$BARNYARD2_WALDO-$i
+ 			PID=$PROCESS_PID_DIR/$SENSOR/barnyard2-$i.pid
+ 			LOG=$PROCESS_LOG_DIR/$SENSOR/barnyard2-$i.log
+-			[ -z "$SKIP_BARNYARD2" ] && process_start "barnyard2" "-c /etc/nsm/$SENSOR/barnyard2-$i.conf -d $UNI_DIR -f snort.unified2 -w $WALDO -i $i $BARNYARD2_OPTIONS" "$PID" "$LOG" "barnyard2-$i (spooler, unified2 format)"
++			BARNYARD2_CONFIG=/etc/nsm/$SENSOR/barnyard2-$i.conf
++			mkdir -p $SENSOR_LOG_DIR/snort-$i/
++			if [ ! -f $BARNYARD2_CONFIG ]; then
++				cp /etc/nsm/$SENSOR/barnyard2.conf $BARNYARD2_CONFIG
++				PORT=`grep BY_PORT /etc/nsm/$SENSOR/snort_agent-$i.conf |awk '{print $3}'`
++				sed -i "s|output sguil:.*$|output sguil: sensor_name=$SENSOR-$i agent_port=$PORT|g" $BARNYARD2_CONFIG
++			fi
++			[ -z "$SKIP_BARNYARD2" ] && process_start "barnyard2" "-c $BARNYARD2_CONFIG -d $UNI_DIR -f snort.unified2 -w $WALDO -i $i $BARNYARD2_OPTIONS" "$PID" "$LOG" "barnyard2-$i (spooler, unified2 format)"
+ 		done
+ 	fi
+ 
+@@ -459,9 +481,9 @@ do
+ 	# http_eth0.log, http_eth1.log, etc.
+ 	NUM_INTERFACES=`grep -v "^#" /etc/nsm/sensortab | wc -l`
+ 	if [ "$NUM_INTERFACES" -eq 1 ]; then
+-		BRO_HTTP_LOG=/nsm/bro/logs/current/http.log
++                BRO_HTTP_LOG=/nsm/bro/spool/bro/http.log
+ 	else
+-		BRO_HTTP_LOG=/nsm/bro/logs/current/http_$SENSOR_INTERFACE_SHORT.log
++		BRO_HTTP_LOG=/nsm/bro/spool/bro/http_$SENSOR_INTERFACE_SHORT.log
+ 	fi
+ 	[ -z "$SKIP_HTTP_AGENT" ] && process_start "http_agent.tcl" "-c /etc/nsm/$SENSOR/http_agent.conf -e /etc/nsm/$SENSOR/http_agent.exclude -f $BRO_HTTP_LOG" "$PROCESS_PID_DIR/$SENSOR/http_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/http_agent.log" "http_agent (sguil)"
+ 
+@@ -470,15 +492,3 @@ do
+ 	sensor_stat_cronjob
+ done
+ 
+-# Bro and OSSEC agent need to exist outside of the for-loop
+-
+-if [ -z "$SKIP_OSSEC_AGENT" ]; then
+-	echo_msg 0 "Starting: HIDS"
+-	process_start "/etc/nsm/ossec/ossec_agent.tcl" "-o -f /var/ossec/logs/alerts/alerts.log -i 127.0.0.1 -p 5 -c /etc/nsm/ossec/ossec_agent.conf" "$PROCESS_PID_DIR/ossec_agent.pid" "$PROCESS_LOG_DIR/ossec_agent.log" "ossec_agent (sguil)"
+-fi
+-
+-if [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
+-	echo_msg 0 "Starting: Bro"
+-	/opt/bro/bin/broctl start
+-fi
+-
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-status
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-status
+@@ -308,6 +308,18 @@ fi
+ # STATUS
+ #
+ 
++# Bro and OSSEC agent need to exist outside of the for-loop
++
++if [ -z "$SKIP_OSSEC_AGENT" ]; then
++        echo_msg 0 "Status: HIDS"
++        process_status "/etc/nsm/ossec/ossec_agent.tcl" "$PROCESS_PID_DIR/ossec_agent.pid" "ossec_agent (sguil)"
++fi
++
++if [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
++        echo_msg 0 "Status: Bro"
++        /opt/bro/bin/broctl status
++fi
++
+ for SENSOR in $SENSOR_NAME
+ do
+ 
+@@ -376,15 +388,3 @@ do
+ 	[ -z "$SKIP_HTTP_AGENT" ] && process_status "http_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/http_agent.pid" "http_agent (sguil)"
+ done
+ 
+-# Bro and OSSEC agent need to exist outside of the for-loop
+-
+-if [ -z "$SKIP_OSSEC_AGENT" ]; then
+-        echo_msg 0 "Status: HIDS"
+-        process_status "/etc/nsm/ossec/ossec_agent.tcl" "$PROCESS_PID_DIR/ossec_agent.pid" "ossec_agent (sguil)"
+-fi
+-
+-if [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
+-        echo_msg 0 "Status: Bro"
+-        /opt/bro/bin/broctl status
+-fi
+-
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -316,6 +316,19 @@ fi
+ # RESTART
+ #
+ 
++# Bro and OSSEC agent need to exist outside of the for-loop
++
++if [ -z "$SKIP_OSSEC_AGENT" ]; then
++        [ "$ACTION" == "process_restart" ] && echo_msg 0 "Restarting: HIDS"
++        $ACTION "/etc/nsm/ossec/ossec_agent.tcl" "-o -f /var/ossec/logs/alerts/alerts.log -i 127.0.0.1 -p 5 -c /etc/nsm/ossec/ossec_agent.conf" "$PROCESS_PID_DIR/ossec_agent.pid" "$PROCESS_LOG_DIR/ossec_agent.log" "ossec_agent (sguil)"
++fi
++
++if [ -z "$SKIP_BRO" ] && [ "$ACTION" == "process_restart" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
++        echo_msg 0 "Restarting: Bro"
++        /opt/bro/bin/broctl stop
++        /opt/bro/bin/broctl start
++fi
++
+ for SENSOR in $SENSOR_NAME
+ do
+ 
+@@ -348,7 +361,21 @@ do
+ 		[ -z "$SKIP_SNORT_AGENT" ] && $ACTION "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent.log" "snort_agent (sguil)"
+ 	else
+                 for i in `seq 1 $IDS_LB_PROCS`; do
+-			[ -z "$SKIP_SNORT_AGENT" ] && $ACTION "snort_agent.tcl" "-c /etc/nsm/$SENSOR/snort_agent-$i.conf" "$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent-$i.log" "snort_agent-$i (sguil)"
++			SNORT_AGENT_CONFIG=/etc/nsm/$SENSOR/snort_agent-$i.conf
++			SNORT_AGENT_PID=$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid
++			SNORT_AGENT_LOG=$PROCESS_LOG_DIR/$SENSOR/snort_agent-$i.log
++			mkdir -p $SENSOR_LOG_DIR/snort-$i/
++			if [ ! -f $SNORT_AGENT_CONFIG ]; then
++				cp /etc/nsm/$SENSOR/snort_agent.conf $SNORT_AGENT_CONFIG
++				sed -i "s|^set HOSTNAME.*$|set HOSTNAME $SENSOR-$i|g" $SNORT_AGENT_CONFIG
++				OLD_PORT=`grep BY_PORT /etc/nsm/$SENSOR/snort_agent-$i.conf |awk '{print $3}'`
++				let NEW_PORT=OLD_PORT+$i
++				sed -i "s|^set BY_PORT.*$|set BY_PORT $NEW_PORT|g" $SNORT_AGENT_CONFIG
++				sed -i "s|^set SNORT_PERF_FILE.*$|set SNORT_PERF_FILE /nsm/sensor_data/$SENSOR/snort-$i.stats|g" $SNORT_AGENT_CONFIG
++				sed -i "s|^set PORTSCAN_DIR.*$|set PORTSCAN_DIR /nsm/sensor_data/$SENSOR/portscans-$i|g" $SNORT_AGENT_CONFIG
++				sed -i "s|^set WATCH_DIR.*$|set WATCH_DIR /nsm/sensor_data/$SENSOR|g" $SNORT_AGENT_CONFIG
++			fi
++			[ -z "$SKIP_SNORT_AGENT" ] && $ACTION "snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$SNORT_AGENT_PID" "$SNORT_AGENT_LOG" "snort_agent-$i (sguil)"
+ 		done
+ 	fi
+ 
+@@ -377,9 +404,15 @@ do
+ 	else
+                 # Restart $IDS_LB_PROCS instances of Snort using pfring load-balancing
+ 		for i in `seq 1 $IDS_LB_PROCS`; do
++			SNORT_CONFIG=/etc/nsm/$SENSOR/snort-$i.conf
+                         PID=$PROCESS_PID_DIR/$SENSOR/snortu-$i.pid
+                         LOG=$PROCESS_LOG_DIR/$SENSOR/snortu-$i.log
+                         UNI_DIR=$SENSOR_LOG_DIR/snort-$i
++			mkdir -p $SENSOR_LOG_DIR/snort-$i/
++			if [ ! -f $SNORT_CONFIG ]; then
++				cp /etc/nsm/$SENSOR/snort.conf $SNORT_CONFIG
++				sed -i "s|snort.stats|snort-$i.stats|g" $SNORT_CONFIG
++			fi
+ 	   		[ -z "$SKIP_SNORT_ALERT" ] && $ACTION "snort" "-c $SNORT_CONFIG -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $UNI_DIR $SNORT_OPTIONS" "$PID" "$LOG" "snort-$i (alert data)"
+ 		done
+ 	fi
+@@ -394,10 +427,17 @@ do
+ 	else
+ 		# we have one instance of barnyard2 per Snort instance
+                 for i in `seq 1 $IDS_LB_PROCS`; do
++			BARNYARD2_CONFIG=/etc/nsm/$SENSOR/barnyard2-$i.conf
+                         UNI_DIR=$SENSOR_LOG_DIR/snort-$i
+                         WALDO=$BARNYARD2_WALDO-$i
+                         PID=$PROCESS_PID_DIR/$SENSOR/barnyard2-$i.pid
+                         LOG=$PROCESS_LOG_DIR/$SENSOR/barnyard2-$i.log
++			mkdir -p $SENSOR_LOG_DIR/snort-$i/
++			if [ ! -f $BARNYARD2_CONFIG ]; then
++				cp /etc/nsm/$SENSOR/barnyard2.conf $BARNYARD2_CONFIG
++				PORT=`grep BY_PORT /etc/nsm/$SENSOR/snort_agent-$i.conf |awk '{print $3}'`
++				sed -i "s|output sguil:.*$|output sguil: sensor_name=$SENSOR-$i agent_port=$PORT|g" $BARNYARD2_CONFIG
++			fi
+ 			[ -z "$SKIP_BARNYARD2" ] && $ACTION "barnyard2" "-c $BARNYARD2_CONFIG -d $UNI_DIR -f snort.unified2 -w $WALDO -i $i $BARNYARD2_OPTIONS" "$PID" "$LOG" "barnyard2-$i (spooler, unified2 format)"
+ 		done
+ 	fi
+@@ -449,9 +489,9 @@ do
+         # http_eth0.log, http_eth1.log, etc.
+         NUM_INTERFACES=`grep -v "^#" /etc/nsm/sensortab | wc -l`
+         if [ "$NUM_INTERFACES" -eq 1 ]; then
+-                BRO_HTTP_LOG=/nsm/bro/logs/current/http.log
++                BRO_HTTP_LOG=/nsm/bro/spool/bro/http.log
+         else
+-                BRO_HTTP_LOG=/nsm/bro/logs/current/http_$SENSOR_INTERFACE_SHORT.log
++                BRO_HTTP_LOG=/nsm/bro/spool/bro/http_$SENSOR_INTERFACE_SHORT.log
+         fi
+         [ -z "$SKIP_HTTP_AGENT" ] && $ACTION "http_agent.tcl" "-c /etc/nsm/$SENSOR/http_agent.conf -e /etc/nsm/$SENSOR/http_agent.exclude -f $BRO_HTTP_LOG" "$PROCESS_PID_DIR/$SENSOR/http_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/http_agent.log" "http_agent (sguil)"
+ 
+@@ -461,16 +501,4 @@ do
+ 	sensor_stat_cronjob
+ done
+ 
+-# Bro and OSSEC agent need to exist outside of the for-loop
+-
+-if [ -z "$SKIP_OSSEC_AGENT" ]; then
+-        [ "$ACTION" == "process_restart" ] && echo_msg 0 "Restarting: HIDS"
+-        $ACTION "/etc/nsm/ossec/ossec_agent.tcl" "-o -f /var/ossec/logs/alerts/alerts.log -i 127.0.0.1 -p 5 -c /etc/nsm/ossec/ossec_agent.conf" "$PROCESS_PID_DIR/ossec_agent.pid" "$PROCESS_LOG_DIR/ossec_agent.log" "ossec_agent (sguil)"
+-fi
+-
+-if [ -z "$SKIP_BRO" ] && [ "$ACTION" == "process_restart" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
+-        echo_msg 0 "Restarting: Bro"
+-        /opt/bro/bin/broctl stop
+-        /opt/bro/bin/broctl start
+-fi
+ 

@@ -1,0 +1,208 @@
+#!/bin/bash
+#
+# Copyright (C) 2008-2009 SecurixLive   <dev@securixlive.com>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.  You may not use, modify or
+# distribute this program under any other version of the GNU General
+# Public License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#
+
+# Version:
+# 20120113
+#
+# Changelog:
+# 20120113 - Fix Issue 185:
+# http://code.google.com/p/security-onion/issues/detail?id=185
+
+#
+# INCLUDES
+#
+INC="/etc/nsm/administration.conf"
+. $INC
+
+. $NSM_LIB_DIR/lib-console-utils
+. $NSM_LIB_DIR/lib-nsm-common-utils
+. $NSM_LIB_DIR/lib-nsm-sensor-utils
+
+#
+# USAGE
+#
+print_usage()
+{
+	echo 
+	echo "The NSMnow Administration scripts are designed to easily configure and manage"
+	echo "your NSM installation. Bugs, comments and flames can be directed to the"
+	echo "SXL team at dev@securixlive.com"
+	echo
+	echo "The NSMnow Administration scripts come with ABSOLUTELY NO WARRANTY."
+	echo 
+	echo "Usage: $0 [options]"
+	echo
+	echo "Options:"
+	echo "    -d         Use dialog mode"
+	echo "    -y         Force yes"
+	echo "    -V         Show version information"
+	echo "    -?         Show usage information"
+	echo 
+	echo "Long Options:"
+	echo "    --sensor-name=<name>"
+	echo
+	echo "    --dialog              Same as -d"
+	echo "    --force-yes           Same as -y"
+	echo
+	echo "    --version             Same as -V"
+	echo "    --help                Same as -?"
+	echo 
+}
+
+# script specific variables
+PROMPT_SCRIPT="Clear Sensor"
+PROMPT_MODE=cli
+FORCE_YES=""
+
+# sensor specific variables
+SENSOR_NAME=""
+
+# extract necessary pre-check arguments from the commandline
+while [ "$#" -gt 0 ]
+do
+	case $1 in
+		"-d" | "--dialog")
+			PROMPT_MODE=dialog
+			;;
+		"-y" | "--force-yes")
+			FORCE_YES=yes
+			;;
+		"-?" | "--help")
+			SHOW_HELP_ONLY=yes
+			;;
+		"-V" | "--version")
+			SHOW_VERSION_ONLY=yes
+			;;
+		--sensor-name*)
+			SENSOR_NAME=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--server*)
+			# any server directive is clearly meant for the server
+			exit 0
+			;;
+        *)
+			echo_error_msg 0 "OOPS: Unknown option \"${1}\" found!"
+			print_usage
+			exit 1
+            ;;
+	esac
+	shift
+done
+
+# check for help or version requests
+if [ -n "$SHOW_HELP_ONLY" ]
+then
+	print_usage
+	exit 0
+elif [ -n "$SHOW_VERSION_ONLY" ]
+then
+	print_version
+	exit 0
+fi
+
+# ensure we are root user before continuing any further
+is_root
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 0 "OOPS: Must be root to run this script!"
+	exit 1;
+fi
+	
+#
+# COLLECT INPUT
+#
+
+if [ -z "$SENSOR_NAME" ]
+then
+	if [ -z "$(sensortab_names_get)" ]
+	then
+		echo_error_msg 0 "OOPS: The sensortab is empty, missing or corrupt!"
+		exit 1
+	fi
+
+	prompt_user_radiolist "Select Sensor" "Select the sensor you wish to clear all data from:" "${SENSOR_NAME}" "$(sensortab_names_get)"
+	[ "$?" -ne 0 ] && exit 1
+	SENSOR_NAME=$PROMPT_RET
+fi
+
+# double check a sensor name was given
+if [ -z "$SENSOR_NAME" ]
+then
+	echo_error_msg 0 "OOPS: You have to specify a sensor name!"
+	exit 1
+fi
+
+# check that the sensor DOES exists via it's config
+if [ ! -f "/etc/nsm/${SENSOR_NAME}/sensor.conf" ]
+then
+	echo_error_msg 0 "OOPS: The server \"${SENSOR_NAME}\" does not exist!"
+	exit 1
+else
+	# load existing variables for the sensor
+	. "/etc/nsm/${SENSOR_NAME}/sensor.conf"
+fi
+
+# check that the sensor exists
+if [ ! -d "/nsm/sensor_data/${SENSOR_NAME}" ]
+then
+	echo_error_msg 0 "OOPS: Collected data for sensor \"${SENSOR_NAME}\" does not exist!"
+	exit 1
+fi
+
+# prompt to clear the sensor
+prompt_user_yesno "Clear Sensor" "All collected data for sensor \"${SENSOR_NAME}\" will be cleared.\n\nDo you want to continue?" "N"
+[ "$?" -ne 0 ] && exit 1
+if [ "$PROMPT_RET" != "Y" -a "$PROMPT_RET" != "y" ]
+then
+	exit 1
+fi
+
+#
+# CLEAR
+#
+
+echo_msg 0 "Clearing sensor: ${SENSOR_NAME}"
+
+# clear the files as appropriate
+if [ -d "/etc/nsm/${SENSOR_NAME}" ]
+then
+	echo_msg_begin 1 "removing bookmarks"
+	rm -f "${BARNYARD2_WALDO}"
+	echo_msg_end "$?"
+fi
+
+if [ -d "/nsm/sensor_data/${SENSOR_NAME}" ]
+then
+	echo_msg_begin 1 "removing collected data files"
+	find "/nsm/sensor_data/${SENSOR_NAME}" -type f | while read FILE
+	do
+		rm -f "${FILE}"
+	done
+	echo_msg_end "$?"
+fi
+
+if [ -d "/nsm/sensor_data/${SENSOR_NAME}/dailylogs" ]
+then
+	echo_msg_begin 1 "removing collected log directories"
+	rm -rf "/nsm/sensor_data/${SENSOR_NAME}/dailylogs/*"
+	echo_msg_end "$?"
+fi
+
+exit 0

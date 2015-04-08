@@ -1,0 +1,35 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion22) precise; urgency=low
+ .
+   * barnyard2.conf needs to output to local syslog for ELSA
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_add
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_add
+@@ -566,6 +566,7 @@ config interface: $SENSOR_INTERFACE
+ input unified2
+ output sguil: sensor_name=$SENSOR_NAME agent_port=$SENSOR_BARNYARD2_PORT
+ output database: alert, mysql, user=root dbname=snorby host=127.0.0.1
++output alert_syslog: LOG_LOCAL6 LOG_ALERT
+ EOF_BARNYARD2
+ 
+ # with all files created, enforce certain permissions

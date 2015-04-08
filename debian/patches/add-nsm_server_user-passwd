@@ -1,0 +1,221 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion53) precise; urgency=low
+ .
+   * add nsm_server_user-passwd
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- /dev/null
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_user-passwd
+@@ -0,0 +1,193 @@
++#!/bin/bash
++#
++# Copyright (C) 2008-2009 SecurixLive   <dev@securixlive.com>
++# Modified by Doug Burks for Security Onion
++#
++# This program is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License Version 2 as
++# published by the Free Software Foundation.  You may not use, modify or
++# distribute this program under any other version of the GNU General
++# Public License.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the Free Software
++# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
++#
++
++# Version:
++# 20130722
++# 
++# Changelog:
++# 20120202 - Don't ask for server name
++# 20130722 - copied from nsm_server_add_user to create changepasswd funtionality
++#
++# INCLUDES
++#
++INC="/etc/nsm/administration.conf"
++. $INC
++
++. $NSM_LIB_DIR/lib-console-utils
++. $NSM_LIB_DIR/lib-nsm-common-utils
++. $NSM_LIB_DIR/lib-nsm-server-utils
++
++#
++# USAGE
++#
++print_usage()
++{
++	echo 
++	echo "The NSMnow Administration scripts are designed to easily configure and manage"
++	echo "your NSM installation. Bugs, comments and flames can be directed to the"
++	echo "SXL team at dev@securixlive.com"
++	echo
++	echo "The NSMnow Administration scripts come with ABSOLUTELY NO WARRANTY."
++	echo 
++	echo "Usage: ${0} [options]"
++	echo
++	echo "Options:"
++	echo "    -d         Use dialog mode"
++	echo "    -y         Force yes"
++	echo "    -V         Show version information"
++	echo "    -?         Show usage information"
++	echo 
++	echo "Long Options: "
++	echo "    --server-name=<name>             Define name of server"
++	echo "    --user-name=<name>               Define name of new user to grant privilege to"
++	echo "    --user-pass=<password>           Define password of the new user"
++	echo
++	echo "    --dialog                         Same as -d"
++	echo "    --force-yes                      Same as -y"
++	echo
++	echo "    --version                        Same as -V"
++	echo "    --help                           Same as -?"
++	echo 
++}
++
++# script specific variables
++PROMPT_SCRIPT="Change User Password"
++PROMPT_MODE="cli"
++FORCE_YES=""
++
++# server specific variables
++SERVER_NAME=""
++USER_NAME=""
++USER_PASS=""
++
++# extract necessary pre-check arguments from the commandline
++while [ "${#}" -gt 0 ]
++do
++	case ${1} in
++		"-d" | "--dialog")
++			PROMPT_MODE=dialog
++			;;
++		"-y" | "--force-yes")
++			FORCE_YES=yes
++			;;
++		"-?" | "--help")
++			SHOW_HELP_ONLY=yes
++			;;
++		"-V" | "--version")
++			SHOW_VERSION_ONLY=yes
++			;;
++		--server-name*)
++			SERVER_NAME=$(echo $1 | cut -d "=" -f 2)
++			;;
++		--user-name*)
++			USER_NAME=$(echo $1 | cut -d "=" -f 2)
++			;;
++		--user-pass*)
++			USER_PASS=$(echo $1 | cut -d "=" -f 2)
++			;;
++		--sensor*)
++			# any sensor directive is clearly meant for the sensor
++			exit 0
++			;;
++        *)
++			echo_error_msg 0 "OOPS: Unknown option \"${1}\" found!"
++			print_usage
++			exit 1
++            ;;
++	esac
++	shift
++done
++
++# check for help or version requests
++if [ -n "${SHOW_HELP_ONLY}" ]
++then
++	print_usage
++	exit 0
++elif [ -n "${SHOW_VERSION_ONLY}" ]
++then
++	print_version
++	exit 0
++fi
++
++# ensure we are root user before continuing any further
++is_root
++if [ "${?}" -ne 0 ]
++then
++	echo_error_msg 0 "OOPS: Must be root to run this script!"
++	exit 1;
++fi
++	
++#
++# COLLECT INPUT
++#
++
++SERVER_NAME="securityonion"
++
++# check that the server DOES exist via its config
++if [ ! -f "/etc/nsm/${SERVER_NAME}/server.conf" ]
++then
++	echo_error_msg 0 "OOPS: The server \"${SERVER_NAME}\" does not exist!"
++	exit 1
++else
++	# load existing variables for the server
++	. /etc/nsm/${SERVER_NAME}/server.conf
++fi
++
++# collect user name
++if [ -z "${USER_NAME}" ]
++then
++	prompt_user_input "User Name" "Enter the username which you want to change the password of." ""
++
++	[ "${?}" -ne 0 ] && exit 1
++	USER_NAME=${PROMPT_RET}
++fi
++
++# collect user pass
++if [ -z "${USER_PASS}" ]
++then
++	prompt_user_password "User Pass" "Enter the new password for ${USER_NAME}."
++
++	[ "${?}" -ne 0 ] && exit 1
++	USER_PASS=${PROMPT_RET}
++fi
++
++# prompt to create the new user
++prompt_user_yesno "Change User Password" "The following information has been collected:\n\n  server:      ${SERVER_NAME}\n  user:        ${USER_NAME}\n\nDo you want to change the password of ${USER_NAME}?" "Y"
++[ "${?}" -ne 0 ] && exit 1
++
++[ "${PROMPT_RET}" != "Y" -a "${PROMPT_RET}" != "y" ] && exit 1
++
++#
++# ADD
++#
++
++# do the creation
++echo_msg 0 "Changing password for: ${USER_NAME} => ${SERVER_NAME}"
++
++# add client user details
++/usr/bin/sguild-changepasswd "${USER_NAME}" "${USER_PASS}"
++if [ "${?}" -ne 0 ]
++then
++	echo_error_msg 1 "password could not be changed!"
++fi
++
++exit 0
++

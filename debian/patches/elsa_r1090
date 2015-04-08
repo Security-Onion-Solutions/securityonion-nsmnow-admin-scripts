@@ -1,0 +1,92 @@
+Description: Support ELSA r1090
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion62) precise; urgency=low
+ .
+   * delete snorby pid file at boot
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/etc/init/securityonion.conf
++++ securityonion-nsmnow-admin-scripts-20120724/etc/init/securityonion.conf
+@@ -15,43 +15,42 @@ script
+         # If this is a SLAVE start SSH tunnel and start ELSA if required
+         SSH_DIR="/root/.ssh"
+         SSH_CONF="$SSH_DIR/securityonion_ssh.conf"
+-        if [ -f $SSH_CONF ]
+-        then
++        if [ -f $SSH_CONF ]; then
+                 # Establish persistent SSH tunnel to MASTER.
+                 KEY="$SSH_DIR/securityonion"
++
+                 # Upstart uses sh instead of bash so we can't use "source"
+                 SSH_USERNAME=`grep SSH_USERNAME $SSH_CONF | cut -d\= -f2`
+                 SERVERNAME=`grep SERVERNAME $SSH_CONF | cut -d\= -f2`
+                 ELSA=`grep ELSA /etc/nsm/securityonion.conf | cut -d\= -f2`
+                 : ${ELSA:="NO"}
+                 if [ $ELSA = "YES" ]; then
+-                        # We are using ELSA so we need reverse ssh tunnel
+-                        MYSQL_PORT=0
+-                        SPHINX_PORT=0
+-                        RPORT=49999
+-                        AVAIL=0
+-                        until [ $AVAIL -eq 1 ]; do
+-                                RPORT=$((RPORT + 1))
+-                                SSH_CMD="nc -z localhost $RPORT; echo \$?"
+-                                AVAIL=$(ssh -i $KEY $SSH_USERNAME@$SERVERNAME $SSH_CMD)
+-                                if [ $AVAIL -eq 1 ]; then
+-                                        MYSQL_PORT=$RPORT
+-                                        RPORT=$((RPORT + 1))
+-                                        SSH_CMD="nc -z localhost $RPORT; echo \$?"
+-                                        AVAIL=$(ssh -i $KEY $SSH_USERNAME@$SERVERNAME $SSH_CMD)
+-                                        if [ $AVAIL -eq 1 ]; then
+-                                                SPHINX_PORT=$RPORT
+-                                        else
+-                                                MYSQL_PORT=0
+-                                        fi
+-                                fi
+-                        done
+-			REVERSE_TUNNEL="-R $MYSQL_PORT:localhost:50000 -R $SPHINX_PORT:localhost:9306"
++                    # We are using ELSA so we need reverse ssh tunnel
++                    # from localhost:3154 to master-node:50000+n where n
++                    # is an integer.
++                    ELSA_PORT=`grep ELSA_PORT $SSH_CONF | cut -d\= -f2`
++                    : ${ELSA_PORT:="UNDEF"}
++                    if [ $ELSA_PORT = "UNDEF" ] ; then
++                        # The ELSA port is not set and we need to query
++                        # the $SERVERNAME for a free port and an API key.
++                        SSH_CMD="/usr/bin/securityonion_elsa_register.rb --register --peer-name `hostname` --force"
++                        ELSA_REGISTER_RESPONSE=`ssh -i $KEY $SSH_USERNAME@$SERVERNAME $SSH_CMD`
++                        ELSA_PORT=`echo $ELSA_REGISTER_RESPONSE | cut -d',' -f1`
++                        ELSA_APIKEY=`echo $ELSA_REGISTER_RESPONSE | cut -d',' -f2`
++
++                        # Copy the ELSA port back into the SSH config file for future use.
++                        echo "ELSA_PORT=$ELSA_PORT" >> $SSH_CONF
++
++                        # Update the local ELSA API key
++                        /usr/bin/securityonion_elsa_register.rb --update-apikey $ELSA_APIKEY
++                    else
++			            REVERSE_TUNNEL="-R $ELSA_PORT:localhost:3154"
++                    fi                 
+                 elif [ $ELSA = "NO" ]; then
+ 	                # We are not using ELSA so there's no need for a reverse ssl tunnel
+-			REVERSE_TUNNEL=""
+-                        # Also no need for mysql
+-                        [ -f /etc/init/mysql.conf ] && service mysql stop
++			        REVERSE_TUNNEL=""
++                    # Also no need for mysql
++                    [ -f /etc/init/mysql.conf ] && service mysql stop
+                 fi
+                 # If the server isn't up, we want autossh to keep retrying so we set AUTOSSH_GATETIME to 0
+                 export AUTOSSH_GATETIME=0

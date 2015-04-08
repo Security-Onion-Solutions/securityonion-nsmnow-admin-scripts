@@ -1,0 +1,122 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion101) precise; urgency=low
+ .
+   * run 'broctl stop' as root in case bro was previously running as root
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-status
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-status
+@@ -329,14 +329,14 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "
+ 	fi
+ 
+         # set ownership of Bro directories to sguil user
+-        sudo chown -R sguil:sguil /nsm/bro
++        sudo chown -R $SENSOR_USER:$SENSOR_GROUP /nsm/bro
+ 
+         # set capabilities on Bro binaries
+         setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/bro
+         setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/capstats
+ 
+         # Update Bro config
+-        su sguil -c '/opt/bro/bin/broctl status' 2>&1 | grep -v "warning: new bro version detected"
++        su $SENSOR_USER -c '/opt/bro/bin/broctl status' 2>&1 | grep -v "warning: new bro version detected"
+ fi
+ 
+ for SENSOR in $SENSOR_NAME
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -353,17 +353,17 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "
+ 	#sleep 1
+ 		
+ 	# set ownership of Bro directories to sguil user
+-	chown -R sguil:sguil /nsm/bro
++	chown -R $SENSOR_USER:$SENSOR_GROUP /nsm/bro
+ 
+ 	# set capabilities on Bro binaries
+ 	setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/bro
+ 	setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/capstats
+ 
+ 	# Update Bro config
+-	su sguil -c '/opt/bro/bin/broctl install' 2>&1 | grep -v "warning: new bro version detected"
++	su $SENSOR_USER -c '/opt/bro/bin/broctl install' 2>&1 | grep -v "warning: new bro version detected"
+ 
+ 	# Start Bro
+-	su sguil -c '/opt/bro/bin/broctl start' 2>&1 | grep -v "warning: new bro version detected"
++	su $SENSOR_USER -c '/opt/bro/bin/broctl start' 2>&1 | grep -v "warning: new bro version detected"
+ fi
+ 
+ for SENSOR in $SENSOR_NAME
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -351,25 +351,21 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "
+                 sed -i "s|^host=.*$|host=$IP|g" /opt/bro/etc/node.cfg
+         fi
+ 	
+-        # Update /etc/nsm/sensortab.bro
+-        #echo -e "#fields\tinterface\tsensorname" > /etc/nsm/sensortab.bro
+-        #grep -v "^#" /etc/nsm/sensortab | while read SENSORNAME FIELD2 FIELD3 INTERFACE; do echo -e "$INTERFACE\t$SENSORNAME" >> /etc/nsm/sensortab.bro; done
++        # Stop Bro as root in case it was previously running as root
++	/opt/bro/bin/broctl stop 2>&1 | grep -v "warning: new bro version detected"
+ 
+         # set ownership of Bro directories to sguil user
+-	chown -R sguil:sguil /nsm/bro
++	chown -R $SENSOR_USER:$SENSOR_GROUP /nsm/bro
+ 
+         # set capabilities on Bro binaries
+         setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/bro
+         setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/capstats
+ 
+-        # Stop Bro
+-        su sguil -c '/opt/bro/bin/broctl stop' 2>&1 | grep -v "warning: new bro version detected"
+-
+         # Update Bro config
+-        su sguil -c '/opt/bro/bin/broctl install' 2>&1 | grep -v "warning: new bro version detected"
++        su $SENSOR_USER -c '/opt/bro/bin/broctl install' 2>&1 | grep -v "warning: new bro version detected"
+ 
+ 	# Start Bro
+-        su sguil -c '/opt/bro/bin/broctl start' 2>&1 | grep -v "warning: new bro version detected"
++        su $SENSOR_USER -c '/opt/bro/bin/broctl start' 2>&1 | grep -v "warning: new bro version detected"
+ fi
+ 
+ for SENSOR in $SENSOR_NAME
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-stop
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-stop
+@@ -328,15 +328,16 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "
+                 sed -i "s|^host=.*$|host=$IP|g" /opt/bro/etc/node.cfg
+         fi
+ 
++        # Stop Bro as root in case it was previously running as root
++	/opt/bro/bin/broctl stop 2>&1 | grep -v "warning: new bro version detected"
++
+         # set ownership of Bro directories to sguil user
+-        chown -R sguil:sguil /nsm/bro
++        chown -R $SENSOR_USER:$SENSOR_GROUP /nsm/bro
+ 
+         # set capabilities on Bro binaries
+         setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/bro
+         setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/capstats
+ 
+-        # Update Bro config
+-        su sguil -c '/opt/bro/bin/broctl stop' 2>&1 | grep -v "warning: new bro version detected"
+ fi
+ 
+ for SENSOR in $SENSOR_NAME

@@ -1,0 +1,78 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion43) precise; urgency=low
+ .
+   * /etc/cron.d/nsm-watchdog should restart sguild if crashed
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/etc/cron.d/nsm-watchdog
++++ securityonion-nsmnow-admin-scripts-20120724/etc/cron.d/nsm-watchdog
+@@ -5,4 +5,4 @@
+ SHELL=/bin/sh
+ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+ 
+-*/5 *	* * * root  date >> /var/log/nsm/watchdog.log ; /usr/sbin/nsm_sensor_ps-restart --if-stale >> /var/log/nsm/watchdog.log
++*/5 *   * * * root  ( date ; /usr/sbin/nsm_server_ps-restart --if-stale ; /usr/sbin/nsm_sensor_ps-restart --if-stale) >> /var/log/nsm/watchdog.log
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_ps-restart
+@@ -51,6 +51,7 @@ print_usage()
+ 	echo "Long Options: "
+ 	echo "    --server-name=<name>             Define specific server <name> to process"
+ 	echo
++        echo "    --if-stale                       Only restart processes that have crashed"
+ 	echo "    --dialog                         Same as -d"
+ 	echo "    --force-yes                      Same as -y"
+ 	echo
+@@ -63,6 +64,7 @@ print_usage()
+ PROMPT_SCRIPT="Restart Server"
+ PROMPT_MODE=cli
+ FORCE_YES=""
++ACTION="process_restart"
+ 
+ # server specific variables
+ SERVER_NAME=""
+@@ -96,6 +98,9 @@ do
+ 		"-V" | "--version")
+ 			SHOW_VERSION_ONLY=yes
+ 			;;
++                --if-stale)
++                        ACTION="process_restart_if_stale"
++                        ;;
+ 		--server-name*)
+ 			SERVER_NAME="$SERVER_NAME $(echo $1 | cut -d "=" -f 2)"
+ 			;;
+@@ -144,7 +149,7 @@ fi
+ for SERVER in $SERVER_NAME
+ do
+ 
+-   	echo_msg 0 "Restarting: ${SERVER}"
++	[ "$ACTION" == "process_restart" ] && echo_msg 0 "Restarting: ${SERVER}"
+ 
+ 	# check for server configuration file (ie. its existence)
+ 	SERVER_CONF_DIR="/etc/nsm/$SERVER"
+@@ -167,6 +172,6 @@ do
+ 	fi
+ 
+ 	# restart sguil server
+-	process_restart "sguild" "-c $SERVER_CONF_DIR/sguild.conf -a $SERVER_CONF_DIR/autocat.conf -g $SERVER_CONF_DIR/sguild.queries -A $SERVER_CONF_DIR/sguild.access -C $SERVER_CONF_DIR/certs" "$PROCESS_PID_DIR/$SERVER/sguild.pid" "$PROCESS_LOG_DIR/$SERVER/sguild.log" "sguil server"
++	$ACTION "sguild" "-c $SERVER_CONF_DIR/sguild.conf -a $SERVER_CONF_DIR/autocat.conf -g $SERVER_CONF_DIR/sguild.queries -A $SERVER_CONF_DIR/sguild.access -C $SERVER_CONF_DIR/certs" "$PROCESS_PID_DIR/$SERVER/sguild.pid" "$PROCESS_LOG_DIR/$SERVER/sguild.log" "sguil server"
+ done
+ 

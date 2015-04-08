@@ -1,0 +1,61 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion111) precise; urgency=low
+ .
+   * Issue 684:	NSM: nsm_server_ps-start needs to create /var/log/sguild/ if it doesn't already exist
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_ps-restart
+@@ -171,11 +171,14 @@ do
+ 		[ "$?" -ne 0 ] && exit 1
+ 	fi
+ 
++	# Create /var/log/sguild/ if it doesn't already exist
++        mkdir -p /var/log/sguild/
++
+         # Set permissions
++        chown -R $SERVER_USER:$SERVER_GROUP /var/log/sguild/
+         chown -R $SERVER_USER:$SERVER_GROUP $PROCESS_LOG_DIR
+         chown -R $SERVER_USER:$SERVER_GROUP $PROCESS_PID_DIR
+ 	chown -R $SERVER_USER:$SERVER_GROUP $SERVER_LOG_DIR
+-        chown -R $SERVER_USER:$SERVER_GROUP /var/log/sguild/
+ 
+ 	# restart sguil server
+ 	$ACTION "/usr/bin/sguild" "-c $SERVER_CONF_DIR/sguild.conf -a $SERVER_CONF_DIR/autocat.conf -g $SERVER_CONF_DIR/sguild.queries -A $SERVER_CONF_DIR/sguild.access -C $SERVER_CONF_DIR/certs" "$PROCESS_PID_DIR/$SERVER/sguild.pid" "$PROCESS_LOG_DIR/$SERVER/sguild.log" "sguil server" "$SERVER_USER"
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_ps-start
+@@ -157,11 +157,14 @@ do
+ 		[ "$?" -ne 0 ] && exit 1
+ 	fi
+ 
++	# Create /var/log/sguild/ if it doesn't already exist
++	mkdir -p /var/log/sguild/
++
+ 	# Set permissions
++	chown -R $SERVER_USER:$SERVER_GROUP /var/log/sguild/
+ 	chown -R $SERVER_USER:$SERVER_GROUP $PROCESS_LOG_DIR
+ 	chown -R $SERVER_USER:$SERVER_GROUP $PROCESS_PID_DIR
+ 	chown -R $SERVER_USER:$SERVER_GROUP $SERVER_LOG_DIR
+-	chown -R $SERVER_USER:$SERVER_GROUP /var/log/sguild/
+ 
+ 	# Start sguild as $SERVER_USER
+ 	process_start "/usr/bin/sguild" "-c $SERVER_CONF_DIR/sguild.conf -a $SERVER_CONF_DIR/autocat.conf -g $SERVER_CONF_DIR/sguild.queries -A $SERVER_CONF_DIR/sguild.access -C $SERVER_CONF_DIR/certs" "$PROCESS_PID_DIR/$SERVER/sguild.pid" "$PROCESS_LOG_DIR/$SERVER/sguild.log" "sguil server" "$SERVER_USER"

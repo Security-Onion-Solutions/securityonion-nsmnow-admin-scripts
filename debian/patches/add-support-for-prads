@@ -1,0 +1,535 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion15) precise; urgency=low
+ .
+   * add support for prads
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-stop
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-stop
+@@ -67,11 +67,11 @@ print_usage()
+ 	echo "Long Options: "
+ 	echo "    --sensor-name=<name>             Define specific sensor <name> to process"
+ 	echo "    --only-barnyard2                 Only process barnyard2"
+-	echo "    --only-sancp                     Only process sancp"
++#	echo "    --only-sancp                     Only process sancp"
+ 	echo "    --only-snort-alert               Only process snort alert"
+ 	echo "    --only-daemonlogger              Only process daemonlogger"
+ 	echo "    --only-argus                     Only process argus"
+-        echo "    --only-pads                      Only process pads"
++        echo "    --only-prads                     Only process prads"
+         echo "    --only-bro                       Only process bro"
+ 		echo
+ 	echo "    --only-pcap-agent                Only process pcap_agent"
+@@ -82,11 +82,11 @@ print_usage()
+         echo "    --only-ossec-agent               Only process ossec_agent"
+ 		echo
+ 	echo "    --skip-barnyard2                 Skip processing of barnyard2"
+-	echo "    --skip-sancp                     Skip processing of sancp"
++#	echo "    --skip-sancp                     Skip processing of sancp"
+ 	echo "    --skip-snort-alert               Skip processing of snort alert"
+ 	echo "    --skip-daemonlogger              Skip processing of daemonlogger"
+ 	echo "    --skip-argus                     Skip processing of argus"
+-        echo "    --skip-pads                      Skip processing of pads"
++        echo "    --skip-prads                     Skip processing of prads"
+         echo "    --skip-bro                       Skip processing of bro"
+ 		echo
+ 	echo "    --skip-pcap-agent                Skip processing of pcap_agent"
+@@ -124,11 +124,11 @@ PROCESS_PID_DIR="/var/run/nsm"
+ 
+ # processing specific variables
+ SKIP_INVERT=""
+-SKIP_SANCP=""
++#SKIP_SANCP=""
+ SKIP_SNORT_ALERT=""
+ SKIP_DAEMONLOGGER=""
+ SKIP_ARGUS=""
+-SKIP_PADS=""
++SKIP_PRADS=""
+ SKIP_BRO=""
+ SKIP_BARNYARD2=""
+ SKIP_SNORT_AGENT=""
+@@ -161,10 +161,10 @@ do
+ 			SKIP_INVERT=yes
+ 			SKIP_BARNYARD2=yes
+ 			;;
+-		--only-sancp)
+-			SKIP_INVERT=yes
+-			SKIP_SANCP=yes
+-			;;
++#		--only-sancp)
++#			SKIP_INVERT=yes
++#			SKIP_SANCP=yes
++#			;;
+ 		--only-snort-alert)
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_ALERT=yes
+@@ -177,9 +177,9 @@ do
+ 			SKIP_INVERT=yes
+ 			SKIP_ARGUS=yes
+ 			;;
+-		--only-pads)
++		--only-prads)
+ 			SKIP_INVERT=yes
+-            		SKIP_PADS=yes
++            		SKIP_PRADS=yes
+             		;;
+ 		--only-bro)
+ 			SKIP_INVERT=yes
+@@ -212,9 +212,9 @@ do
+ 		--skip-barnyard2)
+ 			SKIP_BARNYARD2=yes
+ 			;;
+-		--skip-sancp)
+-			SKIP_SANCP=yes
+-			;;
++#		--skip-sancp)
++#			SKIP_SANCP=yes
++#			;;
+ 		--skip-snort-alert)
+ 			SKIP_SNORT_ALERT=yes
+ 			;;
+@@ -224,8 +224,8 @@ do
+ 		--skip-argus)
+ 			SKIP_ARGUS=yes
+ 			;;
+-		--skip-pads)
+-            		SKIP_PADS=yes
++		--skip-prads)
++            		SKIP_PRADS=yes
+             		;;
+ 		--skip-bro)
+             		SKIP_BRO=yes
+@@ -296,11 +296,11 @@ then
+ 	[ -z "$SKIP_PADS_AGENT" ] && SKIP_PADS_AGENT=yes || SKIP_PADS_AGENT=""
+ 	[ -z "$SKIP_OSSEC_AGENT" ] && SKIP_OSSEC_AGENT=yes || SKIP_OSSEC_AGENT=""
+ 	[ -z "$SKIP_SNORT_ALERT" ] && SKIP_SNORT_ALERT=yes || SKIP_SNORT_ALERT=""
+-	[ -z "$SKIP_SANCP" ] && SKIP_SANCP=yes || SKIP_SANCP=""
++#	[ -z "$SKIP_SANCP" ] && SKIP_SANCP=yes || SKIP_SANCP=""
+ 	[ -z "$SKIP_BARNYARD2" ] && SKIP_BARNYARD2=yes || SKIP_BARNYARD2=""
+ 	[ -z "$SKIP_DAEMONLOGGER" ] && SKIP_DAEMONLOGGER=yes || SKIP_DAEMONLOGGER=""
+ 	[ -z "$SKIP_ARGUS" ] && SKIP_ARGUS=yes || SKIP_ARGUS=""
+-	[ -z "$SKIP_PADS" ] && SKIP_PADS=yes || SKIP_PADS=""
++	[ -z "$SKIP_PRADS" ] && SKIP_PRADS=yes || SKIP_PRADS=""
+ 	[ -z "$SKIP_BRO" ] && SKIP_BRO=yes || SKIP_BRO=""
+ fi
+ 
+@@ -360,10 +360,10 @@ do
+ 	fi
+ 
+ 	# stop sancp
+-	[ -z "$SKIP_SANCP" ] && process_stop "sancp" "$PROCESS_PID_DIR/$SENSOR/sancp.pid" "sancp (session data)"
++	#[ -z "$SKIP_SANCP" ] && process_stop "sancp" "$PROCESS_PID_DIR/$SENSOR/sancp.pid" "sancp (session data)"
+ 
+-        # stop pads
+-        [ -z "$SKIP_PADS" ] && process_stop "pads" "$PROCESS_PID_DIR/$SENSOR/pads.pid" "pads (asset info)"
++        # stop prads
++        [ -z "$SKIP_PRADS" ] && process_stop "prads" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "prads (sessions/assets)"
+ 
+ 	# stop daemonlogger
+ 	[ -z "$SKIP_DAEMONLOGGER" ] && process_stop "daemonlogger" "$PROCESS_PID_DIR/$SENSOR/daemonlogger.pid" "daemonlogger (full packet data)"
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -71,11 +71,11 @@ print_usage()
+ 	echo "Long Options: "
+ 	echo "    --sensor-name=<name>             Define specific sensor <name> to process"
+ 	echo "    --only-barnyard2                 Only process barnyard2"
+-	echo "    --only-sancp                     Only process sancp"
++#	echo "    --only-sancp                     Only process sancp"
+ 	echo "    --only-snort-alert               Only process snort alert"
+ 	echo "    --only-daemonlogger              Only process daemonlogger"
+ 	echo "    --only-argus                     Only process argus"
+-        echo "    --only-pads                      Only process pads"
++        echo "    --only-prads                     Only process prads"
+         echo "    --only-bro                       Only process bro"
+ 		echo
+ 	echo "    --only-pcap-agent                Only process pcap_agent"
+@@ -86,11 +86,11 @@ print_usage()
+         echo "    --only-ossec-agent               Only process ossec_agent"
+ 		echo
+ 	echo "    --skip-barnyard2                 Skip processing of barnyard2"
+-	echo "    --skip-sancp                     Skip processing of sancp"
++#	echo "    --skip-sancp                     Skip processing of sancp"
+ 	echo "    --skip-snort-alert               Skip processing of snort alert"
+ 	echo "    --skip-daemonlogger              Skip processing of daemonlogger"
+ 	echo "    --skip-argus                     Skip processing of argus"
+-        echo "    --skip-pads                      Skip processing of pads"
++        echo "    --skip-prads                     Skip processing of prads"
+         echo "    --skip-bro                       Skip processing of bro"
+ 		echo
+ 	echo "    --skip-pcap-agent                Skip processing of pcap_agent"
+@@ -128,11 +128,11 @@ PROCESS_PID_DIR="/var/run/nsm"
+ 
+ # processing specific variables
+ SKIP_INVERT=""
+-SKIP_SANCP=""
++#SKIP_SANCP=""
+ SKIP_SNORT_ALERT=""
+ SKIP_DAEMONLOGGER=""
+ SKIP_ARGUS=""
+-SKIP_PADS=""
++SKIP_PRADS=""
+ SKIP_BRO=""
+ SKIP_BARNYARD2=""
+ SKIP_SNORT_AGENT=""
+@@ -165,10 +165,10 @@ do
+ 			SKIP_INVERT=yes
+ 			SKIP_BARNYARD2=yes
+ 			;;
+-		--only-sancp)
+-			SKIP_INVERT=yes
+-			SKIP_SANCP=yes
+-			;;
++#		--only-sancp)
++#			SKIP_INVERT=yes
++#			SKIP_SANCP=yes
++#			;;
+ 		--only-snort-alert)
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_ALERT=yes
+@@ -181,9 +181,9 @@ do
+ 			SKIP_INVERT=yes
+ 			SKIP_ARGUS=yes
+ 			;;
+-		--only-pads)
++		--only-prads)
+ 			SKIP_INVERT=yes
+-            		SKIP_PADS=yes
++            		SKIP_PRADS=yes
+             		;;
+ 		--only-bro)
+ 			SKIP_INVERT=yes
+@@ -216,9 +216,9 @@ do
+ 		--skip-barnyard2)
+ 			SKIP_BARNYARD2=yes
+ 			;;
+-		--skip-sancp)
+-			SKIP_SANCP=yes
+-			;;
++#		--skip-sancp)
++#			SKIP_SANCP=yes
++#			;;
+ 		--skip-snort-alert)
+ 			SKIP_SNORT_ALERT=yes
+ 			;;
+@@ -228,8 +228,8 @@ do
+ 		--skip-argus)
+ 			SKIP_ARGUS=yes
+ 			;;
+-		--skip-pads)
+-            		SKIP_PADS=yes
++		--skip-prads)
++            		SKIP_PRADS=yes
+             		;;
+ 		--skip-bro)
+             		SKIP_BRO=yes
+@@ -300,11 +300,11 @@ then
+ 	[ -z "$SKIP_PADS_AGENT" ] && SKIP_PADS_AGENT=yes || SKIP_PADS_AGENT=""
+ 	[ -z "$SKIP_OSSEC_AGENT" ] && SKIP_OSSEC_AGENT=yes || SKIP_OSSEC_AGENT=""
+ 	[ -z "$SKIP_SNORT_ALERT" ] && SKIP_SNORT_ALERT=yes || SKIP_SNORT_ALERT=""
+-	[ -z "$SKIP_SANCP" ] && SKIP_SANCP=yes || SKIP_SANCP=""
++#	[ -z "$SKIP_SANCP" ] && SKIP_SANCP=yes || SKIP_SANCP=""
+ 	[ -z "$SKIP_BARNYARD2" ] && SKIP_BARNYARD2=yes || SKIP_BARNYARD2=""
+ 	[ -z "$SKIP_DAEMONLOGGER" ] && SKIP_DAEMONLOGGER=yes || SKIP_DAEMONLOGGER=""
+ 	[ -z "$SKIP_ARGUS" ] && SKIP_ARGUS=yes || SKIP_ARGUS=""
+-	[ -z "$SKIP_PADS" ] && SKIP_PADS=yes || SKIP_PADS=""
++	[ -z "$SKIP_PRADS" ] && SKIP_PRADS=yes || SKIP_PRADS=""
+ 	[ -z "$SKIP_BRO" ] && SKIP_BRO=yes || SKIP_BRO=""
+ fi
+ 
+@@ -421,10 +421,19 @@ do
+ 	fi
+ 
+ 	# start sancp
+-	[ -z "$SKIP_SANCP" ] && process_start "sancp" "-d $SENSOR_LOG_DIR/sancp -i $SENSOR_INTERFACE_SHORT -c $SANCP_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP $SANCP_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/sancp.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp.log" "sancp (session data)"
++	#[ -z "$SKIP_SANCP" ] && process_start "sancp" "-d $SENSOR_LOG_DIR/sancp -i $SENSOR_INTERFACE_SHORT -c $SANCP_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP $SANCP_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/sancp.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp.log" "sancp (session data)"
++
++        # start prads
++	NOIP6="ip or (vlan and ip)"
++	if [ -s /etc/nsm/$SENSOR/bpf-prads.conf ]; then 
++		BPFfromfile=`cat /etc/nsm/$SENSOR/bpf-prads.conf`
++		BPF="($NOIP6) and ($BPFfromfile)"
++	else
++		BPF="$NOIP6"
++	fi
++        [ -z "$SKIP_PRADS" ] && process_start "prads" "-i $SENSOR_INTERFACE_SHORT -c /etc/nsm/$SENSOR/prads.conf -u $SENSOR_USER -g $SENSOR_GROUP -L /nsm/sensor_data/$SENSOR/sancp/ -f /nsm/sensor_data/$SENSOR/pads.fifo $PADS_OPTIONS -b \"$BPF\"" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "$PROCESS_LOG_DIR/$SENSOR/prads.log" "prads (sessions/assets)"
+ 
+-        # start pads
+-        [ -z "$SKIP_PADS" ] && process_start "pads" "-i $SENSOR_INTERFACE_SHORT -c $PADS_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP $PADS_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/pads.pid" "$PROCESS_LOG_DIR/$SENSOR/pads.log" "pads (asset info)"
++	# start pads_agent
+         [ -z "$SKIP_PADS_AGENT" ] && process_start "pads_agent.tcl" "-c $PADS_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pads_agent.log" "pads_agent (sguil)"
+ 
+ 	# start daemonlogger
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-status
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-status
+@@ -67,11 +67,11 @@ print_usage()
+ 	echo "Long Options: "
+ 	echo "    --sensor-name=<name>             Define specific sensor <name> to process"
+ 	echo "    --only-barnyard2                 Only process barnyard2"
+-	echo "    --only-sancp                     Only process sancp"
++#	echo "    --only-sancp                     Only process sancp"
+ 	echo "    --only-snort-alert               Only process snort alert"
+ 	echo "    --only-daemonlogger              Only process daemonlogger"
+ 	echo "    --only-argus                     Only process argus"
+-        echo "    --only-pads                      Only process pads"
++        echo "    --only-prads                     Only process prads"
+         echo "    --only-bro                       Only process bro"
+ 		echo
+ 	echo "    --only-pcap-agent                Only process pcap_agent"
+@@ -82,11 +82,11 @@ print_usage()
+         echo "    --only-ossec-agent               Only process ossec_agent"
+ 		echo
+ 	echo "    --skip-barnyard2                 Skip processing of barnyard2"
+-	echo "    --skip-sancp                     Skip processing of sancp"
++#	echo "    --skip-sancp                     Skip processing of sancp"
+ 	echo "    --skip-snort-alert               Skip processing of snort alert"
+ 	echo "    --skip-daemonlogger              Skip processing of daemonlogger"
+ 	echo "    --skip-argus                     Skip processing of argus"
+-        echo "    --skip-pads                      Skip processing of pads"
++        echo "    --skip-prads                     Skip processing of prads"
+         echo "    --skip-bro                       Skip processing of bro"
+ 		echo
+ 	echo "    --skip-pcap-agent                Skip processing of pcap_agent"
+@@ -124,11 +124,11 @@ PROCESS_PID_DIR="/var/run/nsm"
+ 
+ # processing specific variables
+ SKIP_INVERT=""
+-SKIP_SANCP=""
++#SKIP_SANCP=""
+ SKIP_SNORT_ALERT=""
+ SKIP_DAEMONLOGGER=""
+ SKIP_ARGUS=""
+-SKIP_PADS=""
++SKIP_PRADS=""
+ SKIP_BRO=""
+ SKIP_BARNYARD2=""
+ SKIP_SNORT_AGENT=""
+@@ -161,10 +161,10 @@ do
+ 			SKIP_INVERT=yes
+ 			SKIP_BARNYARD2=yes
+ 			;;
+-		--only-sancp)
+-			SKIP_INVERT=yes
+-			SKIP_SANCP=yes
+-			;;
++#		--only-sancp)
++#			SKIP_INVERT=yes
++#			SKIP_SANCP=yes
++#			;;
+ 		--only-snort-alert)
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_ALERT=yes
+@@ -177,9 +177,9 @@ do
+ 			SKIP_INVERT=yes
+ 			SKIP_ARGUS=yes
+ 			;;
+-		--only-pads)
++		--only-prads)
+ 			SKIP_INVERT=yes
+-            		SKIP_PADS=yes
++            		SKIP_PRADS=yes
+             		;;
+ 		--only-bro)
+ 			SKIP_INVERT=yes
+@@ -212,9 +212,9 @@ do
+ 		--skip-barnyard2)
+ 			SKIP_BARNYARD2=yes
+ 			;;
+-		--skip-sancp)
+-			SKIP_SANCP=yes
+-			;;
++#		--skip-sancp)
++#			SKIP_SANCP=yes
++#			;;
+ 		--skip-snort-alert)
+ 			SKIP_SNORT_ALERT=yes
+ 			;;
+@@ -224,8 +224,8 @@ do
+ 		--skip-argus)
+ 			SKIP_ARGUS=yes
+ 			;;
+-		--skip-pads)
+-            		SKIP_PADS=yes
++		--skip-prads)
++            		SKIP_PRADS=yes
+             		;;
+ 		--skip-bro)
+             		SKIP_BRO=yes
+@@ -296,11 +296,11 @@ then
+ 	[ -z "$SKIP_PADS_AGENT" ] && SKIP_PADS_AGENT=yes || SKIP_PADS_AGENT=""
+ 	[ -z "$SKIP_OSSEC_AGENT" ] && SKIP_OSSEC_AGENT=yes || SKIP_OSSEC_AGENT=""
+ 	[ -z "$SKIP_SNORT_ALERT" ] && SKIP_SNORT_ALERT=yes || SKIP_SNORT_ALERT=""
+-	[ -z "$SKIP_SANCP" ] && SKIP_SANCP=yes || SKIP_SANCP=""
++#	[ -z "$SKIP_SANCP" ] && SKIP_SANCP=yes || SKIP_SANCP=""
+ 	[ -z "$SKIP_BARNYARD2" ] && SKIP_BARNYARD2=yes || SKIP_BARNYARD2=""
+ 	[ -z "$SKIP_DAEMONLOGGER" ] && SKIP_DAEMONLOGGER=yes || SKIP_DAEMONLOGGER=""
+ 	[ -z "$SKIP_ARGUS" ] && SKIP_ARGUS=yes || SKIP_ARGUS=""
+-	[ -z "$SKIP_PADS" ] && SKIP_PADS=yes || SKIP_PADS=""
++	[ -z "$SKIP_PRADS" ] && SKIP_PRADS=yes || SKIP_PRADS=""
+ 	[ -z "$SKIP_BRO" ] && SKIP_BRO=yes || SKIP_BRO=""
+ fi
+ 
+@@ -361,10 +361,10 @@ do
+ 
+ 
+ 	# status sancp
+-	[ -z "$SKIP_SANCP" ] && process_status "sancp" "$PROCESS_PID_DIR/$SENSOR/sancp.pid" "sancp (session data)"
++	#[ -z "$SKIP_SANCP" ] && process_status "sancp" "$PROCESS_PID_DIR/$SENSOR/sancp.pid" "sancp (session data)"
+ 
+-        # status pads
+-        [ -z "$SKIP_PADS" ] && process_status "pads" "$PROCESS_PID_DIR/$SENSOR/pads.pid" "pads (asset info)"
++        # status prads
++        [ -z "$SKIP_PRADS" ] && process_status "prads" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "prads (sessions/assets)"
+ 
+ 	# status daemonlogger
+ 	[ -z "$SKIP_DAEMONLOGGER" ] && process_status "daemonlogger" "$PROCESS_PID_DIR/$SENSOR/daemonlogger.pid" "daemonlogger (full packet data)"
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -68,11 +68,11 @@ print_usage()
+ 	echo "Long Options: "
+ 	echo "    --sensor-name=<name>             Define specific sensor <name> to process"
+ 	echo "    --only-barnyard2                 Only process barnyard2"
+-	echo "    --only-sancp                     Only process sancp"
++#	echo "    --only-sancp                     Only process sancp"
+ 	echo "    --only-snort-alert               Only process snort alert"
+ 	echo "    --only-daemonlogger              Only process daemonlogger"
+ 	echo "    --only-argus                     Only process argus"
+-        echo "    --only-pads                      Only process pads"
++        echo "    --only-prads                     Only process prads"
+         echo "    --only-bro                       Only process bro"
+ 		echo
+ 	echo "    --only-pcap-agent                Only process pcap_agent"
+@@ -83,11 +83,11 @@ print_usage()
+         echo "    --only-ossec-agent               Only process ossec_agent"
+ 		echo
+ 	echo "    --skip-barnyard2                 Skip processing of barnyard2"
+-	echo "    --skip-sancp                     Skip processing of sancp"
++#	echo "    --skip-sancp                     Skip processing of sancp"
+ 	echo "    --skip-snort-alert               Skip processing of snort alert"
+ 	echo "    --skip-daemonlogger              Skip processing of daemonlogger"
+ 	echo "    --skip-argus                     Skip processing of argus"
+-        echo "    --skip-pads                      Skip processing of pads"
++        echo "    --skip-prads                     Skip processing of prads"
+         echo "    --skip-bro                       Skip processing of bro"
+ 		echo
+ 	echo "    --skip-pcap-agent                Skip processing of pcap_agent"
+@@ -128,11 +128,11 @@ PROCESS_PID_DIR="/var/run/nsm"
+ 
+ # processing specific variables
+ SKIP_INVERT=""
+-SKIP_SANCP=""
++#SKIP_SANCP=""
+ SKIP_SNORT_ALERT=""
+ SKIP_DAEMONLOGGER=""
+ SKIP_ARGUS=""
+-SKIP_PADS=""
++SKIP_PRADS=""
+ SKIP_BRO=""
+ SKIP_BARNYARD2=""
+ SKIP_SNORT_AGENT=""
+@@ -169,10 +169,10 @@ do
+ 			SKIP_INVERT=yes
+ 			SKIP_BARNYARD2=yes
+ 			;;
+-		--only-sancp)
+-			SKIP_INVERT=yes
+-			SKIP_SANCP=yes
+-			;;
++#		--only-sancp)
++#			SKIP_INVERT=yes
++#			SKIP_SANCP=yes
++#			;;
+ 		--only-snort-alert)
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_ALERT=yes
+@@ -185,9 +185,9 @@ do
+ 			SKIP_INVERT=yes
+ 			SKIP_ARGUS=yes
+ 			;;
+-		--only-pads)
++		--only-prads)
+ 			SKIP_INVERT=yes
+-            		SKIP_PADS=yes
++            		SKIP_PRADS=yes
+             		;;
+ 		--only-bro)
+ 			SKIP_INVERT=yes
+@@ -220,9 +220,9 @@ do
+ 		--skip-barnyard2)
+ 			SKIP_BARNYARD2=yes
+ 			;;
+-		--skip-sancp)
+-			SKIP_SANCP=yes
+-			;;
++#		--skip-sancp)
++#			SKIP_SANCP=yes
++#			;;
+ 		--skip-snort-alert)
+ 			SKIP_SNORT_ALERT=yes
+ 			;;
+@@ -232,8 +232,8 @@ do
+ 		--skip-argus)
+ 			SKIP_ARGUS=yes
+ 			;;
+-		--skip-pads)
+-            		SKIP_PADS=yes
++		--skip-prads)
++            		SKIP_PRADS=yes
+             		;;
+ 		--skip-bro)
+             		SKIP_BRO=yes
+@@ -304,11 +304,11 @@ then
+ 	[ -z "$SKIP_PADS_AGENT" ] && SKIP_PADS_AGENT=yes || SKIP_PADS_AGENT=""
+ 	[ -z "$SKIP_OSSEC_AGENT" ] && SKIP_OSSEC_AGENT=yes || SKIP_OSSEC_AGENT=""
+ 	[ -z "$SKIP_SNORT_ALERT" ] && SKIP_SNORT_ALERT=yes || SKIP_SNORT_ALERT=""
+-	[ -z "$SKIP_SANCP" ] && SKIP_SANCP=yes || SKIP_SANCP=""
++#	[ -z "$SKIP_SANCP" ] && SKIP_SANCP=yes || SKIP_SANCP=""
+ 	[ -z "$SKIP_BARNYARD2" ] && SKIP_BARNYARD2=yes || SKIP_BARNYARD2=""
+ 	[ -z "$SKIP_DAEMONLOGGER" ] && SKIP_DAEMONLOGGER=yes || SKIP_DAEMONLOGGER=""
+ 	[ -z "$SKIP_ARGUS" ] && SKIP_ARGUS=yes || SKIP_ARGUS=""
+-	[ -z "$SKIP_PADS" ] && SKIP_PADS=yes || SKIP_PADS=""
++	[ -z "$SKIP_PRADS" ] && SKIP_PRADS=yes || SKIP_PRADS=""
+ 	[ -z "$SKIP_BRO" ] && SKIP_BRO=yes || SKIP_BRO=""
+ fi
+ 
+@@ -403,10 +403,19 @@ do
+ 	fi
+ 
+ 	# restart sancp
+-	[ -z "$SKIP_SANCP" ] && $ACTION "sancp" "-d $SENSOR_LOG_DIR/sancp -i $SENSOR_INTERFACE_SHORT -c $SANCP_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP $SANCP_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/sancp.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp.log" "sancp (session data)"
++	#[ -z "$SKIP_SANCP" ] && $ACTION "sancp" "-d $SENSOR_LOG_DIR/sancp -i $SENSOR_INTERFACE_SHORT -c $SANCP_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP $SANCP_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/sancp.pid" "$PROCESS_LOG_DIR/$SENSOR/sancp.log" "sancp (session data)"
++
++	# restart prads
++	NOIP6="ip or (vlan and ip)"
++	if [ -s /etc/nsm/$SENSOR/bpf-prads.conf ]; then 
++		BPFfromfile=`cat /etc/nsm/$SENSOR/bpf-prads.conf`
++		BPF="($NOIP6) and ($BPFfromfile)"
++	else
++		BPF="$NOIP6"
++	fi
++	[ -z "$SKIP_PRADS" ] && $ACTION "prads" "-i $SENSOR_INTERFACE_SHORT -c /etc/nsm/$SENSOR/prads.conf -u $SENSOR_USER -g $SENSOR_GROUP -L /nsm/sensor_data/$SENSOR/sancp/ -f /nsm/sensor_data/$SENSOR/pads.fifo $PADS_OPTIONS -b \"$BPF\"" "$PROCESS_PID_DIR/$SENSOR/prads.pid" "$PROCESS_LOG_DIR/$SENSOR/prads.log" "prads (sessions/assets)"
+ 
+-	# restart pads
+-	[ -z "$SKIP_PADS" ] && $ACTION "pads" "-i $SENSOR_INTERFACE_SHORT -c $PADS_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP $PADS_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/pads.pid" "$PROCESS_LOG_DIR/$SENSOR/pads.log" "pads (asset info)"
++	# restart pads_agent
+ 	[ -z "$SKIP_PADS_AGENT" ] && $ACTION "pads_agent.tcl" "-c $PADS_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pads_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pads_agent.log" "pads_agent (sguil)"
+ 
+ 	# restart daemonlogger

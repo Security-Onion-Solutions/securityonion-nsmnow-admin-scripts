@@ -1,0 +1,99 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion37) precise; urgency=low
+ .
+   * set suricata PF_RING cluster-id using same logic as snort
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -417,21 +417,20 @@ do
+ 	fi
+ 
+ 	# Start IDS Engine with unified2 output
++	# Need to set a unique PF_RING CLUSTER_ID for each interface
++	CLUSTER_ID=`grep -n $SENSOR /etc/nsm/sensortab |cut -d\: -f1`; let CLUSTER_ID+=50
++	# Update snort.conf with new $CLUSTER_ID
++	sed -i "s|^config daq_var: clusterid=.*$|config daq_var: clusterid=$CLUSTER_ID|g" /etc/nsm/$SENSOR/snort.conf
++	# Update suricata.yaml with new $CLUSTER_ID
++	sed -i "s|cluster-id:.*$|cluster-id: $CLUSTER_ID|g" /etc/nsm/$SENSOR/suricata.yaml
+ 	if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+ 	then
+-		# We've identified an issue in afpacket that could result in kernel panics, so we're using pfring now
+-		# Start Suricata using afpacket with $IDS_LB_PROCS processes
+-   		#[ -z "$SKIP_SNORT_ALERT" ] && process_start "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --af-packet=$SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $SENSOR_LOG_DIR " "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
+-		# Start Suricata using pfring cluster_flow
+-   		#[ -z "$SKIP_SNORT_ALERT" ] && process_start "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --pfring-int $SENSOR_INTERFACE_SHORT --pfring-cluster-type cluster_flow -F /etc/nsm/$SENSOR/bpf-ids.conf -l $SENSOR_LOG_DIR " "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
+ 		# copy IDS_LB_PROCS from sensor.conf
+ 		IDS_LB_PROCS=`grep IDS_LB_PROCS /etc/nsm/$SENSOR/sensor.conf | cut -d\= -f2`
+ 		sed -i "s|    threads: .*|    threads: $IDS_LB_PROCS|g" /etc/nsm/$SENSOR/suricata.yaml
++		# start Suricata
+    		[ -z "$SKIP_SNORT_ALERT" ] && process_start "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --pfring=$SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $SENSOR_LOG_DIR " "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
+ 	else	
+-		# Need to set a unique PF_RING CLUSTER_ID for each interface
+-		CLUSTER_ID=`grep -n $SENSOR /etc/nsm/sensortab |cut -d\: -f1`; let CLUSTER_ID+=50
+-		sed -i "s|^config daq_var: clusterid=.*$|config daq_var: clusterid=$CLUSTER_ID|g" /etc/nsm/$SENSOR/snort.conf
+ 		# Start $IDS_LB_PROCS instances of Snort using pfring load-balancing
+ 		for i in `seq 1 $IDS_LB_PROCS`; do
+ 			PID=$PROCESS_PID_DIR/$SENSOR/snortu-$i.pid
+@@ -440,7 +439,7 @@ do
+ 			UNI_DIR=$SENSOR_LOG_DIR/snort-$i
+ 			mkdir -p $UNI_DIR
+ 			chown sguil:sguil $UNI_DIR
+-   			[ -z "$SKIP_SNORT_ALERT" ] && process_start "snort" "-c $SNORT_CONFIG -u sguil -g sguil -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $UNI_DIR --perfmon-file $PERFMON $SNORT_OPTIONS" "$PID" "$LOG" "snort-$i (alert data)"
++   			[ -z "$SKIP_SNORT_ALERT" ] && process_start "snort" "-c $SNORT_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $UNI_DIR --perfmon-file $PERFMON $SNORT_OPTIONS" "$PID" "$LOG" "snort-$i (alert data)"
+ 		done
+ 	fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -420,15 +420,18 @@ do
+ 	fi
+ 
+ 	# restart the IDS engine
++        # Need to set a unique PF_RING CLUSTER_ID for each interface
++        CLUSTER_ID=`grep -n $SENSOR /etc/nsm/sensortab |cut -d\: -f1`; let CLUSTER_ID+=50
++        # Update snort.conf with new $CLUSTER_ID
++        sed -i "s|^config daq_var: clusterid=.*$|config daq_var: clusterid=$CLUSTER_ID|g" /etc/nsm/$SENSOR/snort.conf
++        # Update suricata.yaml with new $CLUSTER_ID
++        sed -i "s|cluster-id:.*$|cluster-id: $CLUSTER_ID|g" /etc/nsm/$SENSOR/suricata.yaml
+         if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
+ 	then
+-		# We've identified an issue with afpacket that could result in kernel panics, so we're using pfring now
+-		# Restart Suricata using afpacket with $IDS_LB_PROCS processes
+-   		#[ -z "$SKIP_SNORT_ALERT" ] && $ACTION "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --af-packet=$SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $SENSOR_LOG_DIR" "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
+-   		#[ -z "$SKIP_SNORT_ALERT" ] && $ACTION "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --pfring-int $SENSOR_INTERFACE_SHORT --pfring-cluster-type cluster_flow -F /etc/nsm/$SENSOR/bpf-ids.conf -l $SENSOR_LOG_DIR" "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
+ 		# copy IDS_LB_PROCS from sensor.conf
+ 		IDS_LB_PROCS=`grep IDS_LB_PROCS /etc/nsm/$SENSOR/sensor.conf | cut -d\= -f2`
+                 sed -i "s|    threads: .*|    threads: $IDS_LB_PROCS|g" /etc/nsm/$SENSOR/suricata.yaml
++		# start Suricata
+                 [ -z "$SKIP_SNORT_ALERT" ] && $ACTION "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --pfring=$SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $SENSOR_LOG_DIR " "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
+ 	else
+ 		# Need to set a unique PF_RING CLUSTER_ID for each interface
+@@ -442,7 +445,7 @@ do
+                         UNI_DIR=$SENSOR_LOG_DIR/snort-$i
+ 			mkdir -p $UNI_DIR
+ 			chown sguil:sguil $UNI_DIR
+-                        [ -z "$SKIP_SNORT_ALERT" ] && $ACTION "snort" "-c $SNORT_CONFIG -u sguil -g sguil -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $UNI_DIR --perfmon-file $PERFMON $SNORT_OPTIONS" "$PID" "$LOG" "snort-$i (alert data)"
++                        [ -z "$SKIP_SNORT_ALERT" ] && $ACTION "snort" "-c $SNORT_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $UNI_DIR --perfmon-file $PERFMON $SNORT_OPTIONS" "$PID" "$LOG" "snort-$i (alert data)"
+ 		done
+ 	fi
+ 

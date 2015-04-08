@@ -1,0 +1,204 @@
+#!/bin/bash
+#
+# Copyright (C) 2008-2009 SecurixLive   <dev@securixlive.com>
+# Modified by Doug Burks for Security Onion
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.  You may not use, modify or
+# distribute this program under any other version of the GNU General
+# Public License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#
+
+# Version:
+# 20120202
+#
+# Changelog:
+# 20120125 - Changed "eq" to "-eq" to prevent error message
+# 20120202 - Don't ask for server name
+
+#
+# INCLUDES
+#
+INC="/etc/nsm/administration.conf"
+. $INC
+
+. $NSM_LIB_DIR/lib-console-utils
+. $NSM_LIB_DIR/lib-nsm-common-utils
+. $NSM_LIB_DIR/lib-nsm-server-utils
+
+#
+# USAGE
+#
+print_usage()
+{
+	echo 
+	echo "The NSMnow Administration scripts are designed to easily configure and manage"
+	echo "your NSM installation. Bugs, comments and flames can be directed to the"
+	echo "SXL team at dev@securixlive.com"
+	echo
+	echo "The NSMnow Administration scripts come with ABSOLUTELY NO WARRANTY."
+	echo 
+	echo "Usage: $0 [options]"
+	echo
+	echo "Options:"
+	echo "    -d         Use dialog mode"
+	echo "    -y         Force yes"
+	echo "    -V         Show version information"
+	echo "    -?         Show usage information"
+	echo 
+	echo "Long Options:"
+	echo "    --server-name=<name>"
+	echo
+	echo "    --dialog              Same as -d"
+	echo "    --force-yes           Same as -y"
+	echo
+	echo "    --version             Same as -V"
+	echo "    --help                Same as -?"
+	echo 
+}
+
+# script specific variables
+PROMPT_SCRIPT="Delete Server"
+PROMPT_MODE=cli
+FORCE_YES=""
+
+# server specific variables
+SERVER_NAME=""
+
+# extract necessary pre-check arguments from the commandline
+while [ "$#" -gt 0 ]
+do
+	case $1 in
+		"-d" | "--dialog")
+			PROMPT_MODE=dialog
+			;;
+		"-y" | "--force-yes")
+			FORCE_YES=yes
+			;;
+		"-?" | "--help")
+			SHOW_HELP_ONLY=yes
+			;;
+		"-V" | "--version")
+			SHOW_VERSION_ONLY=yes
+			;;
+		--server-name*)
+			SERVER_NAME=$(echo $1 | cut -d "=" -f 2)
+			;;
+		--sensor*)
+			# any sensor directive is clearly meant for the sensor
+			exit 0
+			;;
+        *)
+			echo_error_msg 0 "OOPS: Unknown option \"${1}\" found!"
+			print_usage
+			exit 1
+            ;;
+	esac
+	shift
+done
+
+# check for help or version requests
+if [ -n "$SHOW_HELP_ONLY" ]
+then
+	print_usage
+	exit 0
+elif [ -n "$SHOW_VERSION_ONLY" ]
+then
+	print_version
+	exit 0
+fi
+
+# ensure we are root user before continuing any further
+is_root
+if [ "$?" -ne 0 ]
+then
+	echo_error_msg 0 "OOPS: Must be root to run this script!"
+	exit 1;
+fi
+	
+#
+# COLLECT INPUT
+#
+
+SERVER_NAME="securityonion"
+
+# double check a server name was given
+if [ -z "$SERVER_NAME" ]
+then
+	echo_error_msg 0 "OOPS: You have to specify a server name!"
+	exit 1
+fi
+
+# check that the sensor DOES exists via it's config
+if [ ! -f "/etc/nsm/$SERVER_NAME/server.conf" ]
+then
+	echo_error_msg 0 "OOPS: The server \"$SERVER_NAME\" does not exist!"
+	exit 1
+else
+	# load existing variables for the server
+	. /etc/nsm/$SERVER_NAME/server.conf
+fi
+
+# check that the server exists
+if [ ! -d "/etc/nsm/$SERVER_NAME" -a ! -d "/nsm/server_data/$SERVER_NAME" ]
+then
+	echo_warning_msg 0 "OOPS: Configuration and collected data for server \"$SERVER_NAME\" does not exist!"
+fi
+
+# prompt to delete the server
+prompt_user_yesno "Delete Server" "All configurations and collected data for server \"$SERVER_NAME\" will be deleted.\n\nDo you want to continue?" "N"
+[ "$?" -ne 0 ] && exit 1
+if [ "$PROMPT_RET" != "Y" -a "$PROMPT_RET" != "y" ]
+then
+	exit 1
+fi
+
+#
+# DELETE
+#
+
+echo_msg 0 "Deleting server: $SERVER_NAME"
+
+# delete the files as appropriate
+if [ -d "/etc/nsm/$SERVER_NAME" ]
+then
+	echo_msg_begin 1 "removing configuration files"
+	rm -rf "/etc/nsm/$SERVER_NAME"
+	echo_msg_end "$?"
+fi
+
+if [ -d "/nsm/server_data/$SERVER_NAME" ]
+then
+	echo_msg_begin 1 "removing collected data files"
+	rm -rf "/nsm/server_data/$SERVER_NAME"
+	echo_msg_end "$?"
+fi
+
+# remove any added mandatory access control requirements (eg. Ubuntu => AppArmor)
+is_ubuntu "7.10+"
+if [ "$?" -eq 0 ]
+then
+    apparmor_remove "/etc/apparmor.d/usr.sbin.mysqld" "/nsm/server_data/${SERVER_NAME}/load r"
+fi
+
+# remove the database entry
+echo_msg_begin 1 "removing database"
+server_sguil_database_drop "$SERVER_DB_NAME" "$SERVER_DB_USER"
+echo_msg_end "$?"
+
+# udpate servertab
+echo_msg_begin 1 "updating the server table"
+servertab_entry_del $SERVER_NAME
+echo_msg_end "$?"
+
+exit 0

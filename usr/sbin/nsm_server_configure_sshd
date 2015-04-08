@@ -1,0 +1,53 @@
+#!/bin/bash
+
+############
+# Variables
+############
+SSHD_CONFIG="/etc/ssh/sshd_config"
+
+############
+# Functions
+############
+# Write custom settings to sshd_config
+update_sshd ()
+{
+	echo " * Adding ClientAlive settings to $SSHD_CONFIG"
+	cat << EOF >> $SSHD_CONFIG 
+
+# Security Onion Autossh
+ClientAliveInterval 30
+ClientAliveCountMax 3
+EOF
+}
+
+# If we make changes to sshd_config later, we'll need to restart sshd
+restart_sshd ()
+{
+	# Check to see if sshd is running
+	if pgrep -lf /usr/sbin/sshd >/dev/null 2>&1; then
+		# If sshd is running, then restart it
+		echo " * Restarting ssh daemon"
+	        service ssh restart
+	fi
+}
+
+############
+# Code
+############
+
+# Verify sshd_config exists
+[ -f $SSHD_CONFIG ] || exit
+
+# If sshd_config doesn't contain our ClientAlive settings, append them and restart sshd
+if ! grep "Security Onion Autossh" $SSHD_CONFIG >/dev/null 2>&1; then
+	update_sshd
+	restart_sshd
+fi
+
+# if sshd_config has the old ClientAliveInterval setting, update it and restart sshd
+if grep "ClientAliveInterval 60" $SSHD_CONFIG >/dev/null 2>&1; then
+	echo " * Updating ClientAlive settings in $SSHD_CONFIG"
+	sed -i 's|ClientAliveInterval 60|ClientAliveInterval 30|g' $SSHD_CONFIG
+	restart_sshd
+fi
+

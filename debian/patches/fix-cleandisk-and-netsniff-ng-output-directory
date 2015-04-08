@@ -1,0 +1,97 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion45) precise; urgency=low
+ .
+   * add trailing slash to netsniff-ng output directory
+   * cleandisk should purge both Suricata AND Snort unified2 files
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -367,7 +367,7 @@ do
+         else
+                 BPF_OPTION=""
+         fi
+-	[ -z "$SKIP_PCAP" ] && process_start "netsniff-ng" "-i $SENSOR_INTERFACE_SHORT -o $SENSOR_LOG_DIR/dailylogs/$TODAY --user `id -u $SENSOR_USER` --group `id -g $SENSOR_GROUP` -s --prefix snort.log. --interval 150MiB $PCAP_OPTIONS $BPF_OPTION" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "$PROCESS_LOG_DIR/$SENSOR/netsniff-ng.log" "netsniff-ng (full packet data)"
++	[ -z "$SKIP_PCAP" ] && process_start "netsniff-ng" "-i $SENSOR_INTERFACE_SHORT -o $SENSOR_LOG_DIR/dailylogs/$TODAY/ --user `id -u $SENSOR_USER` --group `id -g $SENSOR_GROUP` -s --prefix snort.log. --interval 150MiB $PCAP_OPTIONS $BPF_OPTION" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "$PROCESS_LOG_DIR/$SENSOR/netsniff-ng.log" "netsniff-ng (full packet data)"
+ 
+ 	# start pcap_agent
+ 	[ -z "$SKIP_PCAP_AGENT" ] && process_start "pcap_agent.tcl" "-c $PCAP_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/pcap_agent.log" "pcap_agent (sguil)"
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -373,7 +373,7 @@ do
+ 	        else
+ 	                BPF_OPTION=""
+ 	        fi
+-		$ACTION_PCAP "netsniff-ng" "-i $SENSOR_INTERFACE_SHORT -o $SENSOR_LOG_DIR/dailylogs/$TODAY --user `id -u $SENSOR_USER` --group `id -g $SENSOR_GROUP` -s --prefix snort.log. --interval 150MiB $PCAP_OPTIONS $BPF_OPTION" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "$PROCESS_LOG_DIR/$SENSOR/netsniff-ng.log" "netsniff-ng (full packet data)"
++		$ACTION_PCAP "netsniff-ng" "-i $SENSOR_INTERFACE_SHORT -o $SENSOR_LOG_DIR/dailylogs/$TODAY/ --user `id -u $SENSOR_USER` --group `id -g $SENSOR_GROUP` -s --prefix snort.log. --interval 150MiB $PCAP_OPTIONS $BPF_OPTION" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "$PROCESS_LOG_DIR/$SENSOR/netsniff-ng.log" "netsniff-ng (full packet data)"
+ 	fi
+ 
+ 	# restart pcap_agent
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/lib/nsmnow/lib-nsm-sensor-utils
++++ securityonion-nsmnow-admin-scripts-20120724/usr/lib/nsmnow/lib-nsm-sensor-utils
+@@ -356,19 +356,9 @@ sensor_cleandisk()
+ 				rm -f "$SENSOR"/argus/"$OLDEST_ARGUS"
+ 				REMOVED="yes"
+ 			fi
+-			# find the oldest httpry files and exclude today
+-			#OLDEST_HTTPRY=$(ls $SENSOR/httpry | sort | grep -v $TODAY | head -n 1)
+-			#if [ -z "$OLDEST_HTTPRY" -o "$OLDEST_HTTPRY" == ".." -o "$OLDEST_HTTPRY" == "." ]
+-			#then
+-			#	echo_msg 1 "${RED}no old httpry files available to clean up in $SENSOR/httpry/"
+-			#else
+-			#	echo_msg 1 "removing httpry file: $SENSOR/httpry/$OLDEST_HTTPRY"
+-			#	rm -f "$SENSOR"/httpry/"$OLDEST_HTTPRY"
+-			#	REMOVED="yes"
+-			#fi
+-			# find the oldest unified2 files and exclude today
++			# find the oldest SURICATA unified2 files in $SENSOR/ and exclude today
+ 			# NOTE: --time-style="long-iso" must be used so that the script works properly in a cron job where the locale is not set
+-			OLDEST_UNIFIED2=$(ls -l --time-style="long-iso" $SENSOR/snort.unified2* | awk '{print $6 " " $8}' |sort | grep -v $TODAY | head -n 1)
++			OLDEST_UNIFIED2=$(ls -l --time-style="long-iso" $SENSOR/snort.unified2* 2>/dev/null | awk '{print $6 " " $8}' |sort | grep -v $TODAY | head -n 1)
+ 			if [ -z "$OLDEST_UNIFIED2" -o "$OLDEST_UNIFIED2" == ".." -o "$OLDEST_UNIFIED2" == "." ]
+ 			then
+ 				echo_msg 1 "${RED}no old unified2 files available to clean up in $SENSOR/"
+@@ -383,6 +373,24 @@ sensor_cleandisk()
+ 				done
+ 				REMOVED="yes"
+ 			fi
++                        # find the oldest SNORT unified2 files in $SENSOR/snort-? and exclude today
++                        # NOTE: --time-style="long-iso" must be used so that the script works properly in a cron job where the locale is not set
++                        OLDEST_UNIFIED2=$(ls -l --time-style="long-iso" $SENSOR/snort-?/snort.unified2* 2>/dev/null | awk '{print $6 " " $8}' |sort | grep -v $TODAY | head -n 1)
++                        if [ -z "$OLDEST_UNIFIED2" -o "$OLDEST_UNIFIED2" == ".." -o "$OLDEST_UNIFIED2" == "." ]
++                        then
++                                echo_msg 1 "${RED}no old unified2 files available to clean up in $SENSOR/"
++                        else
++                                OLDEST_UNIFIED2_DATE=`echo $OLDEST_UNIFIED2 | awk '{print $1}'`
++                                OLDEST_UNIFIED2_FILE=`echo $OLDEST_UNIFIED2 | awk '{print $2}'`
++                                echo_msg 1 "removing unified2 files for $OLDEST_UNIFIED2_DATE"
++                                ls -l --time-style="long-iso" $SENSOR/snort-?/snort.unified2* | grep $OLDEST_UNIFIED2_DATE | awk '{print $8}' |while read FILE
++                                do
++                                        echo_msg 1 "removing unified2 file: $FILE"
++                                        rm -f "$FILE"
++                                done
++                                REMOVED="yes"
++                        fi
++
+ 		done
+ 		if [ "$REMOVED" == "yes" ]
+ 		then

@@ -1,0 +1,47 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion39) precise; urgency=low
+ .
+   * replace sguil:sguil with $SENSOR_USER:$SENSOR_GROUP
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -438,7 +438,7 @@ do
+ 			PERFMON=$SENSOR_LOG_DIR/snort-$i.stats
+ 			UNI_DIR=$SENSOR_LOG_DIR/snort-$i
+ 			mkdir -p $UNI_DIR
+-			chown sguil:sguil $UNI_DIR
++			chown $SENSOR_USER:$SENSOR_GROUP $UNI_DIR
+    			[ -z "$SKIP_SNORT_ALERT" ] && process_start "snort" "-c $SNORT_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $UNI_DIR --perfmon-file $PERFMON $SNORT_OPTIONS" "$PID" "$LOG" "snort-$i (alert data)"
+ 		done
+ 	fi
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -444,7 +444,7 @@ do
+                         PERFMON=$SENSOR_LOG_DIR/snort-$i.stats
+                         UNI_DIR=$SENSOR_LOG_DIR/snort-$i
+ 			mkdir -p $UNI_DIR
+-			chown sguil:sguil $UNI_DIR
++			chown $SENSOR_USER:$SENSOR_GROUP $UNI_DIR
+                         [ -z "$SKIP_SNORT_ALERT" ] && $ACTION "snort" "-c $SNORT_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -i $SENSOR_INTERFACE_SHORT -F /etc/nsm/$SENSOR/bpf-ids.conf -l $UNI_DIR --perfmon-file $PERFMON $SNORT_OPTIONS" "$PID" "$LOG" "snort-$i (alert data)"
+ 		done
+ 	fi

@@ -1,0 +1,8 @@
+# /etc/cron.d/sensor-clean
+#
+# crontab entry to keep disk from filling up
+
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+* *	* * * root /usr/sbin/nsm_sensor_clean -y >> /var/log/nsm/sensor-clean.log 2>&1

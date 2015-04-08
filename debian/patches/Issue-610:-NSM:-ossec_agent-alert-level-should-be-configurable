@@ -1,0 +1,73 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion99) precise; urgency=low
+ .
+   * Issue 610: NSM: ossec_agent alert level should be configurable
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -315,6 +315,11 @@ BRO_ENABLED="yes"
+ # add parameters to $SO_CONF if they don't already exist
+ grep OSSEC_AGENT_ENABLED $SO_CONF >/dev/null	|| echo "OSSEC_AGENT_ENABLED=yes" 	>> $SO_CONF
+ grep BRO_ENABLED $SO_CONF >/dev/null 		|| echo "BRO_ENABLED=yes" 	>> $SO_CONF
++if ! grep OSSEC_AGENT_LEVEL $SO_CONF >/dev/null; then   
++        echo >> $SO_CONF
++        echo "# OSSEC_AGENT_LEVEL specifies the level at which OSSEC alerts are sent to sguild." >> $SO_CONF
++        echo "OSSEC_AGENT_LEVEL=5"      >> $SO_CONF
++fi
+ 
+ # load in user config
+ . $SO_CONF
+@@ -330,7 +335,7 @@ if [ "$OSSEC_AGENT_ENABLED" == "yes" ] &
+ 		grep "^search " /etc/resolv.conf >/dev/null 2>&1 && DOMAIN=$(grep "^search " /etc/resolv.conf | tail -1 | awk '{print $2}')
+ 		sed -i "s|set DEFAULT_DNS_DOMAIN test.com|set DEFAULT_DNS_DOMAIN $DOMAIN|g" /etc/nsm/ossec/ossec_agent.conf
+ 	fi
+-	process_start "/etc/nsm/ossec/ossec_agent.tcl" "-o -f /var/ossec/logs/alerts/alerts.log -i 127.0.0.1 -p 5 -c /etc/nsm/ossec/ossec_agent.conf" "$PROCESS_PID_DIR/ossec_agent.pid" "$PROCESS_LOG_DIR/ossec_agent.log" "ossec_agent (sguil)"
++	process_start "/etc/nsm/ossec/ossec_agent.tcl" "-o -f /var/ossec/logs/alerts/alerts.log -i 127.0.0.1 -p $OSSEC_AGENT_LEVEL -c /etc/nsm/ossec/ossec_agent.conf" "$PROCESS_PID_DIR/ossec_agent.pid" "$PROCESS_LOG_DIR/ossec_agent.log" "ossec_agent (sguil)"
+ fi
+ 
+ if [ "$BRO_ENABLED" == "yes" ] && [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -318,7 +318,12 @@ BRO_ENABLED="yes"
+ 
+ # add parameters to $SO_CONF if they don't already exist
+ grep OSSEC_AGENT_ENABLED $SO_CONF >/dev/null	|| echo "OSSEC_AGENT_ENABLED=yes" 	>> $SO_CONF
+-grep BRO_ENABLED $SO_CONF >/dev/null 		|| echo "BRO_ENABLED=yes" 	>> $SO_CONF
++grep BRO_ENABLED $SO_CONF >/dev/null 		|| echo "BRO_ENABLED=yes" 		>> $SO_CONF
++if ! grep OSSEC_AGENT_LEVEL $SO_CONF >/dev/null; then
++	echo >> $SO_CONF
++	echo "# OSSEC_AGENT_LEVEL specifies the level at which OSSEC alerts are sent to sguild." >> $SO_CONF
++	echo "OSSEC_AGENT_LEVEL=5" 	>> $SO_CONF
++fi
+ 
+ # load in user config
+ . $SO_CONF
+@@ -334,7 +339,7 @@ if [ "$OSSEC_AGENT_ENABLED" == "yes" ] &
+ 		grep "^search " /etc/resolv.conf >/dev/null 2>&1 && DOMAIN=$(grep "^search " /etc/resolv.conf | tail -1 | awk '{print $2}')
+ 		sed -i "s|set DEFAULT_DNS_DOMAIN test.com|set DEFAULT_DNS_DOMAIN $DOMAIN|g" /etc/nsm/ossec/ossec_agent.conf
+ 	fi
+-        $ACTION "/etc/nsm/ossec/ossec_agent.tcl" "-o -f /var/ossec/logs/alerts/alerts.log -i 127.0.0.1 -p 5 -c /etc/nsm/ossec/ossec_agent.conf" "$PROCESS_PID_DIR/ossec_agent.pid" "$PROCESS_LOG_DIR/ossec_agent.log" "ossec_agent (sguil)"
++        $ACTION "/etc/nsm/ossec/ossec_agent.tcl" "-o -f /var/ossec/logs/alerts/alerts.log -i 127.0.0.1 -p $OSSEC_AGENT_LEVEL -c /etc/nsm/ossec/ossec_agent.conf" "$PROCESS_PID_DIR/ossec_agent.pid" "$PROCESS_LOG_DIR/ossec_agent.log" "ossec_agent (sguil)"
+ fi
+ 
+ if [ "$BRO_ENABLED" == "yes" ] && [ -z "$SKIP_BRO" ] && [ "$ACTION" == "process_restart" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then

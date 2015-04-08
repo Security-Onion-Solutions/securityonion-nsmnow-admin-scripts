@@ -1,0 +1,906 @@
+#!/bin/bash
+#
+# Copyright (C) 2008-2009 SecurixLive   <dev@securixlive.com>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.  You may not use, modify or
+# distribute this program under any other version of the GNU General
+# Public License.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+#
+#
+# Description:
+#   Sensor library functions used for the NSM administration scripts.
+#
+# Modified by Doug Burks for Security Onion
+#
+# Version:
+# 20120725
+#
+# Changelog:
+# 20120725 - Updated TIMESTAMP for MySQL 5.5.
+# 20110922 - Updated server_sguil_database_clear function to configure SQueRT
+
+
+#
+# SERVER TABLE (aka. SERVERTAB) FUNTIONS
+#
+
+#
+# servertab_entry_add ()
+#
+# Add an entry in the servertab file ensuring it conforms to a standardised
+# syntax.
+#
+# Arguments:
+#   - name (string)       name of the server
+#   - auto (string)       auto assumed, (Y)es or (N)o
+#
+# Returns:
+#   Zero (0) is returned on success with a non-zero (1) returned on any error.
+#
+servertab_entry_add()
+{
+	# grab input variables with sane defaulting
+	ADD_NAME=${1:-}
+	ADD_AUTO=${2:-}
+
+	# sanity checks
+	[ -z "$ADD_NAME" -o -z "$ADD_AUTO" ] && return 1
+
+	# convert autoboot syntax to integer equivalents
+	[ "$ADD_AUTO" == "Y" ] && ADD_AUTO=1 || ADD_AUTO=0
+
+	# check for duplicate entries if servertab exists
+	if [ -f "/etc/nsm/servertab" ]
+	then
+		# grab the servertab
+		SERVERTAB=$(cat "/etc/nsm/servertab" | grep -v "^#" | awk '{print $1}')
+	
+		# loop through non commented entries to check for duplicate entry
+		for SERVER in $SERVERTAB
+		do
+			[ "${ADD_NAME}" == "${SERVER}" ] && return 1
+		done
+	else
+		# create headers for the server table
+		echo -e "# The server table is used as a quick look up for the NSMnow administration\n# scripts. Each line represents a unique server on this host (due to the current limitations of sguil, this is restricted to 1). The values defined\n# are:\n#   - name: the name of the server\n#   - auto: the server is capable of auto assumption\n#\n# name\tauto" >/etc/nsm/servertab || return 1
+	fi
+
+	echo -e "${ADD_NAME}\t${ADD_AUTO}" >>/etc/nsm/servertab || return 1
+}
+
+#
+# servertab_entry_del ()
+#
+# Delete an entry in the servertab file.
+#
+# Arguments:
+#   - name (string)       name of the server
+#
+# Returns:
+#   Zero (0) is returned on success with a non-zero (1) returned on any error.
+#
+servertab_entry_del()
+{
+	# grab input variables with sane defaulting
+	DEL_NAME=${1:-}
+
+	# sanity checks
+	[ -z "$DEL_NAME" ] && return 1
+	[ -f "/etc/nsm/servertab" ] || return 1
+	
+	sed -i "/^$DEL_NAME[ \t]/D" /etc/nsm/servertab
+
+	return $?
+}
+
+#
+# servertab_names_get ()
+#
+# Return all the server names stored within the servertab file.
+#
+# Arguments:
+#   Nil.
+#
+# Returns:
+#   The server names are echoed one at a time, each followed by a new line
+#   character. A zero (0) exit code is returned when there are names echoed
+#   whilst a non-zero (1) exit code is returned on any failure.
+#
+servertab_names_get()
+{
+	SERVERTAB_NAMES=""
+
+	[ -f "/etc/nsm/servertab" ] || return 1
+	
+	# grab the servertab
+	SERVERTAB=$(cat "/etc/nsm/servertab" | grep -v "^#" | awk '{print $1}')
+
+	# loop through not commented entries and extract
+	for SERVER in $SERVERTAB
+	do
+		# confirm server exists before adding
+		[ -d "/etc/nsm/$SERVER" ] && SERVERTAB_NAMES="${SERVERTAB_NAMES} ${SERVER}"
+	done
+
+	echo $SERVERTAB_NAMES
+}
+
+#
+# servertab_names_get_on_auto()
+#
+# Return all the server names stored within the servertab file that match
+# the given auto value.
+#
+# Arguments:
+#   - auto (integer)	value of auto to match on
+#
+# Returns:
+#   The server names matching the given auto value are echoed one at a time,
+#   each followed by a new line character. A zero (0) exit code is returned
+#   when there are names echoed whilst a non-zero (1) exit code is returned on
+#   any failure.
+#
+servertab_names_get_on_auto()
+{
+	SERVERTAB_NAMES=""
+
+	# grab input variables with sane defaulting
+	AUTO_STATE=${1:-1}
+
+	[ -f "/etc/nsm/servertab" ] || return 1
+	
+	# grab the servertab
+	echo "\$2==\"$AUTO_STATE\" {print \$1}" >/tmp/awk.conf
+	SERVERTAB=$(cat "/etc/nsm/servertab" | grep -v "^#" | awk -f /tmp/awk.conf)
+
+	# loop through not commented entries and extract
+	for SERVER in $SERVERTAB
+	do
+		# confirm server exists before adding
+		[ -d "/etc/nsm/$SERVER" ] && SERVERTAB_NAMES="${SERVERTAB_NAMES} ${SERVER}"
+	done
+
+	echo $SERVERTAB_NAMES
+}
+
+#
+# CERTIFICATE FUNCTIONS
+#
+
+#
+# server_ceritificates_new()
+#
+# Generates the server certificates required of the Sguil server.
+#
+# Arguments:
+#   - CA (string)               path to an existing certificate authority
+#                                 file
+#   - CA passphrase (string)    associate passphrase for the provided CA
+#   - CA directory (string)     destination directory for all generated
+#                                 certificates
+#   - CA country (string)       Country for the certificates (default: AU)
+#   - CA state (string)         State for the certificates (default: CA)
+#   - CA locality (string)      Locality for the certificates (default: City)
+#   - CA common name (string)   Common name for the certificates
+#                                 (default: localhost)
+#   - CA email (string)         Email address for the certificates
+#                                 (default: root@localhost)
+#
+# Returns:
+#   A zero (0) exit code is returned when the certificates are successfully 
+#   generated whilst a non-zero (1) exit code is returned on any failure.
+#
+server_certificates_new()
+{
+	# grab input variables with sane defaulting
+	CERT_CA=${1:-}
+	CERT_CA_PASSPHRASE=${2:-}
+	CERT_DIR=${3:-}
+	SUBJ_C=${4:-AU}
+	SUBJ_ST=${5:-CA}
+	SUBJ_L=${6:-City}
+	SUBJ_CN=${7:-localhost}
+	SUBJ_EA=${8:-root@localhost}
+
+	# sanity checks
+	# if CA is provided a passphrase is required
+	[ -n "$CERT_CA" -a -z "$CERT_CA_PASSPHRASE" ] && return 1
+
+	# check the destination directory actually exists
+	[ -z "$CERT_DIR" -o ! -d "${CERT_DIR}" ] && return 1
+
+	# move to the desired cert location
+	OLD_DIR=$(pwd)
+	cd $CERT_DIR
+
+	# if no certificate authority is present then create a dummy
+	if [ -z "${CERT_CA}" ]
+	then
+		CERT_CA="CA.pem"
+		CERT_CA_PASSPHRASE=$(echo ${RANDOM} | md5sum -t | awk '{print $1}')
+
+		# build a self signed certificate to act as our CA to sign the later CSR
+		echo "$CERT_CA_PASSPHRASE" | openssl req -out ${CERT_CA} -new -x509 -subj "/C=${SUBJ_C}/ST=${SUBJ_ST}/L=${SUBJ_L}/CN=localhost/emailAddress=root@localhost" -passout stdin 2>/dev/null
+	fi
+
+	# generate a 1024-bit RSA key for the CSR
+	openssl genrsa -out sguild.key 1024 2>/dev/null
+	if [ "$?" -ne 0 ]
+	then
+		# clean up and restore original path
+		rm -f CA.pem privkey.pem sguild.key
+		cd $OLD_PWD
+		return 1
+	fi
+	 
+	# create the Certificate Signing Request (CSR)
+	openssl req -new -key sguild.key -out sguild.csr -subj "/C=${SUBJ_C}/ST=${SUBJ_ST}/L=${SUBJ_L}/CN=${SUBJ_CN}/emailAddress=${SUBJ_EA}" 2>/dev/null
+	if [ "$?" -ne 0 ]
+	then
+		# clean up and restore original path
+		rm -f CA.pem privkey.pem sguild.key sguild.csr
+		cd $OLD_PWD
+		return 1
+	fi
+
+	# create the CA serial file starting arbitrarily at 0x66
+	echo "66" > $CERT_DIR/sguild.srl
+	if [ "$?" -ne 0 ]
+	then
+		# clean up and restore original path
+		rm -f CA.pem privkey.pem sguild.key sguild.csr sguild.srl
+		cd $OLD_PWD
+		return 1
+	fi
+
+	# create the real certificate
+	echo "$CERT_CA_PASSPHRASE" | openssl x509 -req -in sguild.csr -CA ${CERT_CA} -CAkey privkey.pem -CAserial sguild.srl -out sguild.pem -passin stdin 2>/dev/null
+	if [ "$?" -ne 0 ]
+	then
+		# clean up and restore original path
+		rm -f CA.pem privkey.pem sguild.key sguild.csr sguild.srl sguild.pem
+		cd $OLD_PWD
+		return 1
+	fi
+
+	return 0
+}
+
+#
+# server_ceritificates_new()
+#
+# Removes any server certificates required of the Sguil server from the 
+# certificate directory.
+#
+# Arguments:
+#   - CA directory (string)     destination directory containing generated
+#                                 certificates
+#
+# Returns:
+#   A zero (0) exit code is returned when the certificates are successfully 
+#   removed whilst a non-zero (1) exit code is returned on any failure.
+#
+server_certificates_del()
+{
+	# grab input variables with sane defaulting
+	CERT_DIR=${1:-}
+
+	# sanity checks
+	# check the destination directory actually exists
+	[ -z "$CERT_DIR" -o ! -d "${CERT_DIR}" ] && return 1
+
+	# move to the desired cert location
+	OLD_DIR=$(pwd)
+	cd $CERT_DIR
+
+	# remove all NSMnow generated certificate specific files
+	rm -f CA.pem privkey.pem sguild.key sguild.csr sguild.srl sguild.pem
+	RET=$?
+
+	# restore orginal path
+	cd $OLD_PWD
+
+	return $RET
+}
+
+#
+# SGUIL SERVER FUNCTIONS
+#
+
+#
+# server_sguil_users_get ()
+#
+# Return all the names available in the given user file (ie. sguild.users file).
+#
+# Arguments:
+#   - userfile (string)	valid filename of the sguild.users file
+#
+# Returns:
+#   The user names are echoed one at a time, each followed by a new line
+#   character. A zero (0) exit code is returned when there are names echoed
+#   whilst a non-zero (1) exit code is returned on any failure.
+#
+server_sguil_users_get()
+{
+	# grab input variables with sane defaulting
+	USER_FILE=${1:-}
+
+	# reset required variables
+	USER_NAMES=""
+
+	[ -f "${USER_FILE}" ] || return 1
+	
+	# grab the users from the sguild.users file
+	USERS=$(cat "${USER_FILE}" | egrep "^.*\(\.\)" | cut -d "(" -f 1)
+
+	# loop through and generate return string
+	for USER in $USERS
+	do
+		USER_NAMES="${USER_NAMES} ${USER}"
+	done
+
+	echo $USER_NAMES
+}
+
+#
+# server_sguil_user_add ()
+#
+# Adds a user to the Sguil user database
+#
+# Arguments:
+#   - userfile (string)	valid filename of the sguild.users file
+#   - name (string)     name of the new user
+#   - pass (string)     password for the new user
+#
+# Returns:
+#   A zero (0) exit code is returned when the user is successfully added to 
+#   the user file whilst a non-zero (1) exit code is returned on any failure.
+#
+server_sguil_user_add()
+{
+	# grab input variables with sane defaulting
+	USER_FILE=${1:-}
+	USER=${2:-}
+	PASS=${3:-}
+
+	# all parameters are required
+	[ -z "${USER_FILE}" -o -z "${USER}" -o -z "${PASS}" ] && return 1
+
+	return 0
+}
+
+#
+# server_sguil_user_del ()
+#
+# Removes a user from the Sguil user file (ie. sguild.users file).
+#
+# Arguments:
+#   - userfile (string)	valid filename of the sguild.users file
+#   - name (string)     name of the user to remove
+#
+# Returns:
+#   A zero (0) exit code is returned when the user is successfully removed from
+#   the user file whilst a non-zero (1) exit code is returned on any failure.
+#
+server_sguil_user_del()
+{
+	# grab input variables with sane defaulting
+	USER_FILE=${1:-}
+	USER=${2:-}
+
+	# all parameters are required
+	[ -z "$USER_FILE" -o -z "$USER" ] && return 1
+
+	# check user exists
+	[ "$(cat $USER_FILE | egrep ^$USER\(\.\) | wc -l)" -eq 0 ] && return 1
+
+	sed -i "/^$USER(.)/D" ${USER_FILE}
+
+	return $?
+}
+
+#
+# server_sguil_database_create()
+#
+# Creates the Sguil database structure in the specificed database name with
+# the specified user credentials.
+#
+# Arguments:
+#   - DB name (string)	name of the database to create the tables
+#   - DB user (string)  user name to provide appropriate privileges on DB name
+#   - DB pass (string)  password for the aforementioned user name
+#
+# Returns:
+#   A zero (0) exit code is returned when the datbase is successfully created
+#   whilst a non-zero (1) exit code is returned on any failure.
+#
+server_sguil_database_create()
+{
+	# grab input variables with sane defaulting
+	DB_NAME=${1:-}
+	DB_USER=${2:-}
+	DB_PASS=${3:-}
+
+	# all parameters are required
+	[ -z "$DB_NAME" -o -z "$DB_USER" -o -z "$DB_PASS" ] && return 1
+
+	# check mysql password requirements
+	MYSQL_NO_PASSWORD=""
+	echo "quit" | mysql -u root 2>/dev/null && MYSQL_NO_PASSWORD=yes
+
+	# check if table already exists
+
+	# create table compatible as of version sguil v0.8.0
+cat >/tmp/create_sguil_db.sql << EOF_SGUIL_DB
+create database ${DB_NAME};
+grant file on *.* to ${DB_USER}@localhost identified by "${DB_PASS}";
+grant all privileges on ${DB_NAME}.* to ${DB_USER}@localhost;
+flush privileges;
+use ${DB_NAME};
+ 
+CREATE TABLE sensor
+(
+  sid		INT UNSIGNED	NOT NULL AUTO_INCREMENT,
+  hostname	VARCHAR(255)	NOT NULL,
+  agent_type    VARCHAR(40),
+  net_name	VARCHAR(40),
+  interface	VARCHAR(255),
+  description	TEXT,
+  bpf_filter	TEXT,
+  updated	TIMESTAMP NOT NULL,
+  active	ENUM('Y','N') DEFAULT 'Y',
+  ip		VARCHAR(15) DEFAULT NULL,
+  public_key	VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (sid),
+  INDEX hostname_idx (hostname)
+);
+
+CREATE TABLE portscan
+(
+  hostname	VARCHAR(255),
+  timestamp	DATETIME,
+  src_ip	varchar(16),
+  src_port	INT UNSIGNED,
+  dst_ip	varchar(16),
+  dst_port	INT UNSIGNED,
+  data		TEXT,
+  INDEX ps_src_ip (src_ip),
+  INDEX ps_timestamp (timestamp));
+
+CREATE TABLE status
+(
+  status_id	SMALLINT UNSIGNED NOT NULL,
+  description	VARCHAR(255) NOT NULL,
+  long_desc     VARCHAR(255),
+  PRIMARY KEY (status_id)
+);
+
+CREATE TABLE history
+(
+  sid		INT UNSIGNED	NOT NULL,
+  cid		INT UNSIGNED	NOT NULL,
+  uid		INT UNSIGNED	NOT NULL,
+  timestamp	DATETIME	NOT NULL,
+  status	SMALLINT UNSIGNED	NOT NULL,
+  comment	VARCHAR(255),
+  INDEX log_time (timestamp)
+);
+
+CREATE TABLE user_info
+(
+  uid		INT UNSIGNED	NOT NULL AUTO_INCREMENT,
+  username	VARCHAR(16)	NOT NULL,
+  last_login    DATETIME,
+  password      VARCHAR(42),
+  PRIMARY KEY (uid)
+);
+
+CREATE TABLE nessus_data
+(
+  rid           VARCHAR(40)	NOT NULL,
+  port          VARCHAR(40),
+  nessus_id     INT UNSIGNED,
+  level	        VARCHAR(20),
+  description		TEXT,
+  INDEX rid (rid));
+
+CREATE TABLE nessus
+(
+  uid           INT            NOT NULL,
+  rid           VARCHAR(40)    NOT NULL,
+  ip            VARCHAR(15)    NOT NULL,
+  timestart     DATETIME,
+  timeend       DATETIME,
+  PRIMARY KEY (rid),
+  INDEX ip (ip));
+
+CREATE TABLE IF NOT EXISTS \`pads\`
+(
+  hostname              VARCHAR(255)     NOT NULL,
+  sid                   INT UNSIGNED     NOT NULL,
+  asset_id              INT UNSIGNED     NOT NULL,
+  timestamp             DATETIME         NOT NULL,
+  ip                    INT UNSIGNED     NOT NULL,
+  service               VARCHAR(40)      NOT NULL,
+  port                  INT UNSIGNED     NOT NULL,
+  ip_proto              TINYINT UNSIGNED NOT NULL,
+  application           VARCHAR(255)     NOT NULL,
+  hex_payload           VARCHAR(255),
+  PRIMARY KEY (sid,asset_id)
+);
+
+INSERT INTO status (status_id, description, long_desc) VALUES (0, "New", "Real Time Event");
+INSERT INTO status (status_id, description, long_desc) VALUES (1, "No Further Action Required", "No Further Action Required");
+INSERT INTO status (status_id, description, long_desc) VALUES (2, "Escalated", "Escalated");
+INSERT INTO status (status_id, description, long_desc) VALUES (11, "Category I", "Unauthorized Root Access");
+INSERT INTO status (status_id, description, long_desc) VALUES (12, "Category II", "Unauthorized User Access");
+INSERT INTO status (status_id, description, long_desc) VALUES (13, "Category III", "Attempted Unauthorized Access");
+INSERT INTO status (status_id, description, long_desc) VALUES (14, "Category IV", "Successful Denial of Service Attack");
+INSERT INTO status (status_id, description, long_desc) VALUES (15, "Category V", "Poor Security Practice or Policy Violation");
+INSERT INTO status (status_id, description, long_desc) VALUES (16, "Category VI", "Reconnaissance/Probes/Scans");
+INSERT INTO status (status_id, description, long_desc) VALUES (17, "Category VII", "Virus Infection");
+
+
+CREATE TABLE version
+(
+  version	VARCHAR(32),
+  installed	DATETIME
+);
+
+INSERT INTO version (version, installed) VALUES ("0.14", now());
+
+CREATE TABLE IF NOT EXISTS \`autocat\`
+(
+  autoid        INT UNSIGNED            NOT NULL AUTO_INCREMENT,
+  erase         DATETIME,
+  sensorname    VARCHAR(255),
+  src_ip        VARCHAR(18),
+  src_port      INT UNSIGNED,
+  dst_ip        VARCHAR(18),
+  dst_port      INT UNSIGNED,  
+  ip_proto      TINYINT UNSIGNED,
+  signature     VARCHAR(255),  
+  status        SMALLINT UNSIGNED       NOT NULL,
+  active        ENUM('Y','N') DEFAULT 'Y',
+  timestamp     DATETIME NOT NULL,
+  uid           INT UNSIGNED    NOT NULL,
+  comment       VARCHAR(255),
+  PRIMARY KEY (autoid)
+) ENGINE = MYISAM;
+
+INSERT INTO autocat (uid,timestamp,signature,status) VALUES ('1',now(),'%%REGEXP%%^URL','1')
+
+EOF_SGUIL_DB
+
+	# execute SQL script
+	if [ -z "$MYSQL_NO_PASSWORD" ]
+	then
+		echo
+		echo "Adding the tables requires the password of the database root user"
+		mysql -u root -p < /tmp/create_sguil_db.sql
+	else
+		mysql -u root < /tmp/create_sguil_db.sql
+	fi
+	RET=$?
+
+	# clean up after ourselves
+	rm -f /tmp/create_sguil_db.sql
+
+	# MOVED FROM /usr/bin/sosetup
+	cat /var/www/squert/.scripts/squert.sql | mysql -uroot -U securityonion_db
+	mysql -N -B --user=root -e "GRANT SELECT ON securityonion_db.* TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
+	mysql -N -B --user=root -e "GRANT ALL PRIVILEGES ON securityonion_db.mappings TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
+	mysql -N -B --user=root -e "GRANT ALL PRIVILEGES ON securityonion_db.ip2c TO 'readonly'@'localhost';"
+	mysql -N -B --user=root -e "GRANT FILE ON *.* TO 'readonly'@'localhost';"
+	mysql -N -B --user=root -e "GRANT INSERT,UPDATE,DELETE ON securityonion_db.filters TO 'readonly'@'localhost';"
+	mysql -N -B --user=root -e "GRANT DELETE on securityonion_db.history to 'readonly'@'localhost';"
+	mysql -N -B --user=root -e "GRANT UPDATE on securityonion_db.user_info TO 'readonly'@'localhost';"
+
+	# Allow pivoting from Squert to ELSA
+	bash /var/www/squert/.scripts/securityonion_create_elsa_link.sh
+
+	return $RET
+}
+
+#
+# server_sguil_database_drop()
+#
+# Deletes (ie. drops) the Sguil database structure in the specificed database.
+#
+# Arguments:
+#   - DB name (string)	name of the database to drop the tables from
+#
+# Returns:
+#   A zero (0) exit code is returned when the datbase is successfully deleted
+#   whilst a non-zero (1) exit code is returned on any failure.
+#
+server_sguil_database_drop()
+{
+	# grab input variables with sane defaulting
+	DB_NAME=${1:-}
+
+	# all parameters are required (except user right now)
+	[ -z "$DB_NAME" ] && return 1
+
+	# check mysql password requirements
+	MYSQL_NO_PASSWORD=""
+	echo "quit" | mysql -u root 2>/dev/null && MYSQL_NO_PASSWORD=yes
+
+	# check if table already exists
+cat >/tmp/drop_sguil_db.sql << EOF_SGUIL_DB
+drop database if exists ${DB_NAME};
+EOF_SGUIL_DB
+
+	# execute SQL script
+	if [ -z "$MYSQL_NO_PASSWORD" ]
+	then
+		echo
+		echo "Removing the tables requires the password of the database root user"
+		mysql -u root -p < /tmp/drop_sguil_db.sql
+	else
+		mysql -u root < /tmp/drop_sguil_db.sql
+	fi
+	RET=$?
+
+	# clean up after ourselves
+	rm -f /tmp/drop_sguil_db.sql
+
+	return 0
+}
+
+#
+# server_sguil_database_clear()
+#
+# Clears all data within the Sguil database structure of the specified
+# database name with the specified user credentials.
+#
+# Arguments:
+#   - DB name (string)	name of the database to clear
+#   - DB user (string)  user name to provide appropriate privileges on DB name
+#   - DB pass (string)  password for the aforementioned user name
+#
+# Returns:
+#   A zero (0) exit code is returned when the datbase is successfully cleared
+#   whilst a non-zero (1) exit code is returned on any failure.
+#
+server_sguil_database_clear()
+{
+	# grab input variables with sane defaulting
+	DB_NAME=${1:-}
+	DB_USER=${2:-}
+	DB_PASS=${3:-}
+
+	# all parameters are required
+	[ -z "$DB_NAME" -o -z "$DB_USER" -o -z "$DB_PASS" ] && return 1
+
+	# check mysql password requirements
+	MYSQL_NO_PASSWORD=""
+	echo "quit" | mysql -u root 2>/dev/null && MYSQL_NO_PASSWORD=yes
+
+	# check if table already exists
+
+	# drop and then recreate table compatible as of version sguil v0.8.0
+cat >/tmp/clear_sguil_db.sql << EOF_SGUIL_DB
+drop database if exists ${DB_NAME};
+create database ${DB_NAME};
+grant file on *.* to ${DB_USER}@localhost identified by "${DB_PASS}";
+grant all privileges on ${DB_NAME}.* to ${DB_USER}@localhost;
+flush privileges;
+use ${DB_NAME};
+ 
+CREATE TABLE sensor
+(
+  sid		INT UNSIGNED	NOT NULL AUTO_INCREMENT,
+  hostname	VARCHAR(255)	NOT NULL,
+  agent_type    VARCHAR(40),
+  net_name	VARCHAR(40),
+  interface	VARCHAR(255),
+  description	TEXT,
+  bpf_filter	TEXT,
+  updated	TIMESTAMP NOT NULL,
+  active	ENUM('Y','N') DEFAULT 'Y',
+  ip		VARCHAR(15) DEFAULT NULL,
+  public_key	VARCHAR(255) DEFAULT NULL,
+  PRIMARY KEY (sid),
+  INDEX hostname_idx (hostname)
+);
+
+CREATE TABLE portscan
+(
+  hostname	VARCHAR(255),
+  timestamp	DATETIME,
+  src_ip	varchar(16),
+  src_port	INT UNSIGNED,
+  dst_ip	varchar(16),
+  dst_port	INT UNSIGNED,
+  data		TEXT,
+  INDEX ps_src_ip (src_ip),
+  INDEX ps_timestamp (timestamp));
+
+CREATE TABLE status
+(
+  status_id	SMALLINT UNSIGNED NOT NULL,
+  description	VARCHAR(255) NOT NULL,
+  long_desc     VARCHAR(255),
+  PRIMARY KEY (status_id)
+);
+
+CREATE TABLE history
+(
+  sid		INT UNSIGNED	NOT NULL,
+  cid		INT UNSIGNED	NOT NULL,
+  uid		INT UNSIGNED	NOT NULL,
+  timestamp	DATETIME	NOT NULL,
+  status	SMALLINT UNSIGNED	NOT NULL,
+  comment	VARCHAR(255),
+  INDEX log_time (timestamp)
+);
+
+CREATE TABLE user_info
+(
+  uid		INT UNSIGNED	NOT NULL AUTO_INCREMENT,
+  username	VARCHAR(16)	NOT NULL,
+  last_login    DATETIME,
+  password      VARCHAR(42),
+  PRIMARY KEY (uid)
+);
+
+CREATE TABLE nessus_data
+(
+  rid           VARCHAR(40)	NOT NULL,
+  port          VARCHAR(40),
+  nessus_id     INT UNSIGNED,
+  level	        VARCHAR(20),
+  description		TEXT,
+  INDEX rid (rid));
+
+CREATE TABLE nessus
+(
+  uid           INT            NOT NULL,
+  rid           VARCHAR(40)    NOT NULL,
+  ip            VARCHAR(15)    NOT NULL,
+  timestart     DATETIME,
+  timeend       DATETIME,
+  PRIMARY KEY (rid),
+  INDEX ip (ip));
+
+CREATE TABLE IF NOT EXISTS \`pads\`
+(
+  hostname              VARCHAR(255)     NOT NULL,
+  sid                   INT UNSIGNED     NOT NULL,
+  asset_id              INT UNSIGNED     NOT NULL,
+  timestamp             DATETIME         NOT NULL,
+  ip                    INT UNSIGNED     NOT NULL,
+  service               VARCHAR(40)      NOT NULL,
+  port                  INT UNSIGNED     NOT NULL,
+  ip_proto              TINYINT UNSIGNED NOT NULL,
+  application           VARCHAR(255)     NOT NULL,
+  hex_payload           VARCHAR(255),
+  PRIMARY KEY (sid,asset_id)
+);
+
+INSERT INTO status (status_id, description, long_desc) VALUES (0, "New", "Real Time Event");
+INSERT INTO status (status_id, description, long_desc) VALUES (1, "No Further Action Required", "No Further Action Required");
+INSERT INTO status (status_id, description, long_desc) VALUES (2, "Escalated", "Escalated");
+INSERT INTO status (status_id, description, long_desc) VALUES (11, "Category I", "Unauthorized Root Access");
+INSERT INTO status (status_id, description, long_desc) VALUES (12, "Category II", "Unauthorized User Access");
+INSERT INTO status (status_id, description, long_desc) VALUES (13, "Category III", "Attempted Unauthorized Access");
+INSERT INTO status (status_id, description, long_desc) VALUES (14, "Category IV", "Successful Denial of Service Attack");
+INSERT INTO status (status_id, description, long_desc) VALUES (15, "Category V", "Poor Security Practice or Policy Violation");
+INSERT INTO status (status_id, description, long_desc) VALUES (16, "Category VI", "Reconnaissance/Probes/Scans");
+INSERT INTO status (status_id, description, long_desc) VALUES (17, "Category VII", "Virus Infection");
+
+
+CREATE TABLE version
+(
+  version	VARCHAR(32),
+  installed	DATETIME
+);
+
+INSERT INTO version (version, installed) VALUES ("0.14", now());
+
+CREATE TABLE IF NOT EXISTS \`autocat\`
+(
+  autoid        INT UNSIGNED            NOT NULL AUTO_INCREMENT,
+  erase         DATETIME,
+  sensorname    VARCHAR(255),
+  src_ip        VARCHAR(18),
+  src_port      INT UNSIGNED,
+  dst_ip        VARCHAR(18),
+  dst_port      INT UNSIGNED,  
+  ip_proto      TINYINT UNSIGNED,
+  signature     VARCHAR(255),  
+  status        SMALLINT UNSIGNED       NOT NULL,
+  active        ENUM('Y','N') DEFAULT 'Y',
+  timestamp     DATETIME NOT NULL,
+  uid           INT UNSIGNED    NOT NULL,
+  comment       VARCHAR(255),
+  PRIMARY KEY (autoid)
+) ENGINE = MYISAM;
+
+INSERT INTO autocat (uid,timestamp,signature,status) VALUES ('1',now(),'%%REGEXP%%^URL','1')
+
+EOF_SGUIL_DB
+
+	echo
+	echo "Creating new database..."
+
+	# execute SQL script
+	if [ -z "$MYSQL_NO_PASSWORD" ]
+	then
+		echo
+		echo "Clearing the tables requires the password of the database root user"
+		mysql -u root -p < /tmp/clear_sguil_db.sql
+	else
+		mysql -u root < /tmp/clear_sguil_db.sql
+	fi
+	RET=$?
+
+	# clean up after ourselves
+	rm -f /tmp/clear_sguil_db.sql
+
+        # COPIED FROM ABOVE
+        cat /var/www/squert/.scripts/squert.sql | mysql -uroot -U securityonion_db
+        mysql -N -B --user=root -e "GRANT SELECT ON securityonion_db.* TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
+        mysql -N -B --user=root -e "GRANT ALL PRIVILEGES ON securityonion_db.mappings TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
+        mysql -N -B --user=root -e "GRANT ALL PRIVILEGES ON securityonion_db.ip2c TO 'readonly'@'localhost';"
+        mysql -N -B --user=root -e "GRANT FILE ON *.* TO 'readonly'@'localhost';"
+        mysql -N -B --user=root -e "GRANT INSERT,UPDATE,DELETE ON securityonion_db.filters TO 'readonly'@'localhost';"
+        mysql -N -B --user=root -e "GRANT DELETE on securityonion_db.history to 'readonly'@'localhost';"
+        mysql -N -B --user=root -e "GRANT UPDATE on securityonion_db.user_info TO 'readonly'@'localhost';"
+
+	# Allow pivoting from Squert to ELSA
+	bash /var/www/squert/.scripts/securityonion_create_elsa_link.sh
+
+	# IP2C
+	echo "Populating SQueRT IP-to-country mappings..."
+	cd /var/www/squert/.scripts
+	./ip2c.tcl
+	cd ->/dev/null
+
+	return $RET
+}
+
+#
+# server_sensor_names_get ()
+#
+# Return all the sensor names available to the the given server name.
+#
+# Arguments:
+#   - name (string) name of the server to search
+#
+# Returns:
+#   The sensor names are echoed one at a time, each followed by a new line
+#   character. A zero (0) exit code is returned when there are names echoed
+#   whilst a non-zero (1) exit code is returned on any failure.
+#
+server_sensor_names_get()
+{
+	# grab input variables with sane defaulting
+	NAME=${1:-}
+
+	# all parameters are required
+	[ -z "$NAME" ] && return 1
+
+	SENSOR_NAMES=$(find /nsm/server_data/$NAME/rules -maxdepth 1 -type d -not -name rules -not -name default)
+	
+	for SENSOR in $SENSOR_NAMES
+	do
+		# grab the basename
+		SENSOR=$(basename $SENSOR)
+		echo $SENSOR
+	done
+
+	return 0
+}
