@@ -112,3 +112,4 @@ Issue-689:-NSM:-add-USE_DNS-option-to-ossec_agent.conf
 fix-if-statement
 issues-698-and-699
 Issue-691:-NSM:-chown--R-$BRO_USER:$BRO_GROUP-nsmbro->devnull-2>&1
+issues-241-392-714

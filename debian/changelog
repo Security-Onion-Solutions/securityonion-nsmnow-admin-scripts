@@ -1,3 +1,11 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion117) precise; urgency=low
+
+  * Issue 241: NSM scripts should have a timeout period when stopping services
+  * Issue 392: Patch for lib-nsm-common-utils from Mark Seiden
+  * Issue 714: nsm_server_user-disable 
+
+ -- Doug Burks <doug.burks@gmail.com>  Tue, 28 Apr 2015 10:22:24 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion116) precise; urgency=low
 
   * Issue 691: NSM: chown -R $BRO_USER:$BRO_GROUP /nsm/bro >/dev/null 2>&1
