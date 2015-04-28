@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion118) precise; urgency=low
+
+  * fix nsm_server_user-disable 
+
+ -- Doug Burks <doug.burks@gmail.com>  Tue, 28 Apr 2015 10:52:41 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion117) precise; urgency=low
 
   * Issue 241: NSM scripts should have a timeout period when stopping services

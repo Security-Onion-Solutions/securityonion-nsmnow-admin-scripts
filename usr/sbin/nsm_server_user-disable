@@ -162,12 +162,6 @@ prompt_user_yesno "Disable User" "The following information has been collected:\
 
 # disable
 echo_msg 0 "Disabling user: ${USER_NAME}"
-/usr/bin/sguild -disableuser "${USER_NAME}" >/dev/null 2>&1
-if [ "${?}" -ne 0 ]
-then
-	echo_error_msg 1 "user could not be disabled!"
-else
-	echo_msg 0 "${USER_NAME} successfully disabled."
-fi
+/usr/bin/sguild -disableuser "${USER_NAME}"
 
 exit 0
