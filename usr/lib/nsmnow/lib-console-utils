@@ -36,25 +36,52 @@ COLUMNS=${COLUMNS:-128}
 # COLOUR CONSTANTS
 #
 
-RESET="]R"					# Reset fb color mode
-CRE="[K"					# Erase to end of line
-CLEAR="c"						# Clear and reset screen
-STAT="[${COLUMNS}C[8D"	# Set message tag position (8 chars from right)
-NORMAL="[0;39m"				# Normal color
-RED_BOLD="[1;31m"				# Red: Failure/error messages
-RED="[0;31m"					# Red: Failure/error messages
-GREEN_BOLD="[1;32m"			# Green: Success messages
-GREEN="[0;32m"				# Green: Success messages
-YELLOW_BOLD="[1;33m"			# Yellow: Warning messages
-YELLOW="[0;33m"				# Yellow: Warning messages
-BLUE_BOLD="[1;34m"			# Blue: System messages
-BLUE="[0;34m"					# Blue: System messages
-MAGENTA_BOLD="[1;35m"			# Magenta: Found devices or drivers
-MAGENTA="[0;35m"				# Magenta: Found devices or drivers
-CYAN_BOLD="[1;36m"			# Cyan: Questions
-CYAN="[0;36m"					# Cyan: Questions
-WHITE_BOLD="[1;37m"			# Bold White: Hint
-WHITE="[0;37m"				# Bold White: Hint
+# Check to see if we're running on a tty
+# If not running on a tty, don't use color codes
+# this is needed so that we can run salt as follows:
+# sudo salt '*' cmd.run 'service nsm status'
+# and have output that looks correct
+if [ "$CONSOLE" = "not a tty" ]; then
+	RESET=""
+	CRE=""
+	CLEAR=""
+	STAT=""
+	NORMAL=""
+	RED_BOLD=""
+	RED=""
+	GREEN_BOLD=""
+	GREEN=""
+	YELLOW_BOLD=""
+	YELLOW=""
+	BLUE_BOLD=""
+	BLUE=""
+	MAGENTA_BOLD=""
+	MAGENTA=""
+	CYAN_BOLD=""
+	CYAN=""
+	WHITE_BOLD=""
+	WHITE=""
+else
+	RESET="]R"					# Reset fb color mode
+	CRE="[K"					# Erase to end of line
+	CLEAR="c"						# Clear and reset screen
+	STAT="[${COLUMNS}C[8D"	# Set message tag position (8 chars from right)
+	NORMAL="[0;39m"				# Normal color
+	RED_BOLD="[1;31m"				# Red: Failure/error messages
+	RED="[0;31m"					# Red: Failure/error messages
+	GREEN_BOLD="[1;32m"			# Green: Success messages
+	GREEN="[0;32m"				# Green: Success messages
+	YELLOW_BOLD="[1;33m"			# Yellow: Warning messages
+	YELLOW="[0;33m"				# Yellow: Warning messages
+	BLUE_BOLD="[1;34m"			# Blue: System messages
+	BLUE="[0;34m"					# Blue: System messages
+	MAGENTA_BOLD="[1;35m"			# Magenta: Found devices or drivers
+	MAGENTA="[0;35m"				# Magenta: Found devices or drivers
+	CYAN_BOLD="[1;36m"			# Cyan: Questions
+	CYAN="[0;36m"					# Cyan: Questions
+	WHITE_BOLD="[1;37m"			# Bold White: Hint
+	WHITE="[0;37m"				# Bold White: Hint
+fi
 
 NSM_MESSAGES="/var/log/messages.nsm"
 

@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion119) precise; urgency=low
+
+  * NSM: don't output color codes if not running on a tty #732 
+
+ -- Doug Burks <doug.burks@gmail.com>  Wed, 20 May 2015 11:21:07 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion118) precise; urgency=low
 
   * fix nsm_server_user-disable 

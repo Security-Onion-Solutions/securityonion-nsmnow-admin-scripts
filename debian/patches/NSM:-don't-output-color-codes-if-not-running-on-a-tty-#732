@@ -1,0 +1,99 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion119) precise; urgency=low
+ .
+   * NSM: don't output color codes if not running on a tty #732
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/lib/nsmnow/lib-console-utils
++++ securityonion-nsmnow-admin-scripts-20120724/usr/lib/nsmnow/lib-console-utils
+@@ -36,25 +36,52 @@ COLUMNS=${COLUMNS:-128}
+ # COLOUR CONSTANTS
+ #
+ 
+-RESET="]R"					# Reset fb color mode
+-CRE="[K"					# Erase to end of line
+-CLEAR="c"						# Clear and reset screen
+-STAT="[${COLUMNS}C[8D"	# Set message tag position (8 chars from right)
+-NORMAL="[0;39m"				# Normal color
+-RED_BOLD="[1;31m"				# Red: Failure/error messages
+-RED="[0;31m"					# Red: Failure/error messages
+-GREEN_BOLD="[1;32m"			# Green: Success messages
+-GREEN="[0;32m"				# Green: Success messages
+-YELLOW_BOLD="[1;33m"			# Yellow: Warning messages
+-YELLOW="[0;33m"				# Yellow: Warning messages
+-BLUE_BOLD="[1;34m"			# Blue: System messages
+-BLUE="[0;34m"					# Blue: System messages
+-MAGENTA_BOLD="[1;35m"			# Magenta: Found devices or drivers
+-MAGENTA="[0;35m"				# Magenta: Found devices or drivers
+-CYAN_BOLD="[1;36m"			# Cyan: Questions
+-CYAN="[0;36m"					# Cyan: Questions
+-WHITE_BOLD="[1;37m"			# Bold White: Hint
+-WHITE="[0;37m"				# Bold White: Hint
++# Check to see if we're running on a tty
++# If not running on a tty, don't use color codes
++# this is needed so that we can run salt as follows:
++# sudo salt '*' cmd.run 'service nsm status'
++# and have output that looks correct
++if [ "$CONSOLE" = "not a tty" ]; then
++	RESET=""
++	CRE=""
++	CLEAR=""
++	STAT=""
++	NORMAL=""
++	RED_BOLD=""
++	RED=""
++	GREEN_BOLD=""
++	GREEN=""
++	YELLOW_BOLD=""
++	YELLOW=""
++	BLUE_BOLD=""
++	BLUE=""
++	MAGENTA_BOLD=""
++	MAGENTA=""
++	CYAN_BOLD=""
++	CYAN=""
++	WHITE_BOLD=""
++	WHITE=""
++else
++	RESET="]R"					# Reset fb color mode
++	CRE="[K"					# Erase to end of line
++	CLEAR="c"						# Clear and reset screen
++	STAT="[${COLUMNS}C[8D"	# Set message tag position (8 chars from right)
++	NORMAL="[0;39m"				# Normal color
++	RED_BOLD="[1;31m"				# Red: Failure/error messages
++	RED="[0;31m"					# Red: Failure/error messages
++	GREEN_BOLD="[1;32m"			# Green: Success messages
++	GREEN="[0;32m"				# Green: Success messages
++	YELLOW_BOLD="[1;33m"			# Yellow: Warning messages
++	YELLOW="[0;33m"				# Yellow: Warning messages
++	BLUE_BOLD="[1;34m"			# Blue: System messages
++	BLUE="[0;34m"					# Blue: System messages
++	MAGENTA_BOLD="[1;35m"			# Magenta: Found devices or drivers
++	MAGENTA="[0;35m"				# Magenta: Found devices or drivers
++	CYAN_BOLD="[1;36m"			# Cyan: Questions
++	CYAN="[0;36m"					# Cyan: Questions
++	WHITE_BOLD="[1;37m"			# Bold White: Hint
++	WHITE="[0;37m"				# Bold White: Hint
++fi
+ 
+ NSM_MESSAGES="/var/log/messages.nsm"
+ 

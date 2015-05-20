@@ -114,3 +114,4 @@ issues-698-and-699
 Issue-691:-NSM:-chown--R-$BRO_USER:$BRO_GROUP-nsmbro->devnull-2>&1
 issues-241-392-714
 fix-nsm_server_user-disable
+NSM:-don't-output-color-codes-if-not-running-on-a-tty-#732
