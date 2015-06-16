@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion120) precise; urgency=low
+
+  * Issue 751: change watchdog run time to avoid race condition 
+
+ -- Doug Burks <doug.burks@gmail.com>  Tue, 16 Jun 2015 11:56:02 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion119) precise; urgency=low
 
   * NSM: don't output color codes if not running on a tty #732 
