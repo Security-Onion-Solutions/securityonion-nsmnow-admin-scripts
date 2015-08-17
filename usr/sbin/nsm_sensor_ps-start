@@ -367,6 +367,10 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/se
 	setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/bro
 	setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/capstats
 
+	# update Dir settings if Bro 2.4 was a fresh installation
+	sed -i 's|SpoolDir = /opt/bro/spool|SpoolDir = /nsm/bro/spool|g' /opt/bro/etc/broctl.cfg
+	sed -i 's|LogDir = /opt/bro/logs|LogDir = /nsm/bro/logs|g' /opt/bro/etc/broctl.cfg
+
 	# Update Bro config
 	su $BRO_USER -c '/opt/bro/bin/broctl install' 2>&1 | grep -v "warning: new bro version detected"
 

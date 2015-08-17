@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion121) precise; urgency=low
+
+  * Issue 797: NSM: update SpoolDir and LogDir in broctl.cfg
+
+ -- Doug Burks <doug.burks@gmail.com>  Mon, 17 Aug 2015 15:28:51 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion120) precise; urgency=low
 
   * Issue 751: change watchdog run time to avoid race condition 
