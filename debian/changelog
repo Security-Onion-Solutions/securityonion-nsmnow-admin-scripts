@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion122) precise; urgency=low
+
+  * Issue 799: NSM: add stderr redirect to stdout on adduser 
+
+ -- Doug Burks <doug.burks@gmail.com>  Tue, 18 Aug 2015 11:10:03 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion121) precise; urgency=low
 
   * Issue 797: NSM: update SpoolDir and LogDir in broctl.cfg

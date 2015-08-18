@@ -117,3 +117,4 @@ fix-nsm_server_user-disable
 NSM:-don't-output-color-codes-if-not-running-on-a-tty-#732
 Issue-751:-change-watchdog-run-time-to-avoid-race-condition
 Issue-797:-NSM:-update-SpoolDir-and-LogDir-in-broctl.cfg
+Issue-799:-NSM:-add-stderr-redirect-to-stdout-on-adduser
