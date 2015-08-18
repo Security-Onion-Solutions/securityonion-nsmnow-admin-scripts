@@ -347,7 +347,7 @@ if [ "$OSSEC_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_OSSEC_AGENT" ]; then
 	fi
 
         # Add OSSEC_AGENT_USER to ossec group
-        adduser $OSSEC_AGENT_USER ossec >/dev/null
+        adduser $OSSEC_AGENT_USER ossec 2>&1 >/dev/null
 
         $ACTION "/usr/bin/ossec_agent.tcl" "-o -f /var/ossec/logs/alerts/alerts.log -i 127.0.0.1 -p $OSSEC_AGENT_LEVEL -c $OSSEC_AGENT_CONF" "$PROCESS_PID_DIR/ossec_agent.pid" "$PROCESS_LOG_DIR/ossec_agent.log" "ossec_agent (sguil)" "$OSSEC_AGENT_USER"
 
