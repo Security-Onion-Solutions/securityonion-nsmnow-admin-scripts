@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion123) trusty; urgency=medium
+
+  * move squert to /var/www/so/squert 
+
+ -- Doug Burks <doug.burks@gmail.com>  Fri, 02 Oct 2015 16:26:27 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion122) precise; urgency=low
 
   * Issue 799: NSM: add stderr redirect to stdout on adduser 

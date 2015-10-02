@@ -598,7 +598,7 @@ EOF_SGUIL_DB
 	rm -f /tmp/create_sguil_db.sql
 
 	# MOVED FROM /usr/bin/sosetup
-	cat /var/www/squert/.scripts/squert.sql | mysql -uroot -U securityonion_db
+	cat /var/www/so/squert/.scripts/squert.sql | mysql -uroot -U securityonion_db
 	mysql -N -B --user=root -e "GRANT SELECT ON securityonion_db.* TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
 	mysql -N -B --user=root -e "GRANT ALL PRIVILEGES ON securityonion_db.mappings TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
 	mysql -N -B --user=root -e "GRANT ALL PRIVILEGES ON securityonion_db.ip2c TO 'readonly'@'localhost';"
@@ -608,7 +608,7 @@ EOF_SGUIL_DB
 	mysql -N -B --user=root -e "GRANT UPDATE on securityonion_db.user_info TO 'readonly'@'localhost';"
 
 	# Allow pivoting from Squert to ELSA
-	bash /var/www/squert/.scripts/securityonion_create_elsa_link.sh
+	bash /var/www/so/squert/.scripts/securityonion_create_elsa_link.sh
 
 	return $RET
 }
@@ -851,7 +851,7 @@ EOF_SGUIL_DB
 	rm -f /tmp/clear_sguil_db.sql
 
         # COPIED FROM ABOVE
-        cat /var/www/squert/.scripts/squert.sql | mysql -uroot -U securityonion_db
+        cat /var/www/so/squert/.scripts/squert.sql | mysql -uroot -U securityonion_db
         mysql -N -B --user=root -e "GRANT SELECT ON securityonion_db.* TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
         mysql -N -B --user=root -e "GRANT ALL PRIVILEGES ON securityonion_db.mappings TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
         mysql -N -B --user=root -e "GRANT ALL PRIVILEGES ON securityonion_db.ip2c TO 'readonly'@'localhost';"
@@ -861,11 +861,11 @@ EOF_SGUIL_DB
         mysql -N -B --user=root -e "GRANT UPDATE on securityonion_db.user_info TO 'readonly'@'localhost';"
 
 	# Allow pivoting from Squert to ELSA
-	bash /var/www/squert/.scripts/securityonion_create_elsa_link.sh
+	bash /var/www/so/squert/.scripts/securityonion_create_elsa_link.sh
 
 	# IP2C
 	echo "Populating SQueRT IP-to-country mappings..."
-	cd /var/www/squert/.scripts
+	cd /var/www/so/squert/.scripts
 	./ip2c.tcl
 	cd ->/dev/null
 

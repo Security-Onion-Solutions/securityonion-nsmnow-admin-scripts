@@ -155,7 +155,7 @@ then
 fi
 
 # prompt to clear the server
-prompt_user_yesno "Clear Server" "All collected data for Sguil/Squert will be cleared.\n\nThis includes any user accounts used to login to Sguil/Squert/ELSA!\n\nThis does not affect the Snorby database.\n\nDo you want to continue?" "N"
+prompt_user_yesno "Clear Server" "All collected data for Sguil/Squert will be cleared.\n\nThis includes any user accounts used to login to Sguil/Squert/ELSA!\n\nDo you want to continue?" "N"
 [ "$?" -ne 0 ] && exit 1
 if [ "$PROMPT_RET" != "Y" -a "$PROMPT_RET" != "y" ]
 then

@@ -1,0 +1,117 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion123) trusty; urgency=medium
+ .
+   * move squert to /var/www/so/squert
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/etc/init/securityonion.conf
++++ securityonion-nsmnow-admin-scripts-20120724/etc/init/securityonion.conf
+@@ -61,24 +61,24 @@ script
+         service nsm start
+ 
+         # If this is a MASTER, then start Snorby and Xplico
+-        if [ -d /var/lib/mysql/snorby/ ]; then 
++	#if [ -d /var/lib/mysql/snorby/ ]; then 
+                 # check for variables in /etc/nsm/securityonion.conf
+-                SO_CONF="/etc/nsm/securityonion.conf"
++                #SO_CONF="/etc/nsm/securityonion.conf"
+ 
+                 # default values (can override in $SO_CONF)
+-                SNORBY_ENABLED="yes"
+-                XPLICO_ENABLED="yes"
++                #SNORBY_ENABLED="yes"
++                #XPLICO_ENABLED="yes"
+ 
+                 # add parameters to $SO_CONF if they don't already exist
+-                grep SNORBY_ENABLED $SO_CONF >/dev/null || echo "SNORBY_ENABLED=yes" >> $SO_CONF
+-                grep XPLICO_ENABLED $SO_CONF >/dev/null || echo "XPLICO_ENABLED=yes" >> $SO_CONF
++                #grep SNORBY_ENABLED $SO_CONF >/dev/null || echo "SNORBY_ENABLED=yes" >> $SO_CONF
++                #grep XPLICO_ENABLED $SO_CONF >/dev/null || echo "XPLICO_ENABLED=yes" >> $SO_CONF
+ 
+                 # load in user config
+-		SNORBY_ENABLED=`grep SNORBY_ENABLED $SO_CONF | cut -d\= -f2 | tail -1`
+-		XPLICO_ENABLED=`grep XPLICO_ENABLED $SO_CONF | cut -d\= -f2 | tail -1`
++		#SNORBY_ENABLED=`grep SNORBY_ENABLED $SO_CONF | cut -d\= -f2 | tail -1`
++		#XPLICO_ENABLED=`grep XPLICO_ENABLED $SO_CONF | cut -d\= -f2 | tail -1`
+ 
+-                [ "$XPLICO_ENABLED" = "yes" ] && /etc/init.d/xplico start
+-                [ "$SNORBY_ENABLED" = "yes" ] && rm -f /opt/snorby/tmp/pids/delayed_job.pid && su www-data -c "cd /opt/snorby; bundle exec rake snorby:update RAILS_ENV=production"
+-        fi
++                #[ "$XPLICO_ENABLED" = "yes" ] && /etc/init.d/xplico start
++                #[ "$SNORBY_ENABLED" = "yes" ] && rm -f /opt/snorby/tmp/pids/delayed_job.pid && su www-data -c "cd /opt/snorby; bundle exec rake snorby:update RAILS_ENV=production"
++        #fi
+ 
+ end script
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/lib/nsmnow/lib-nsm-server-utils
++++ securityonion-nsmnow-admin-scripts-20120724/usr/lib/nsmnow/lib-nsm-server-utils
+@@ -598,7 +598,7 @@ EOF_SGUIL_DB
+ 	rm -f /tmp/create_sguil_db.sql
+ 
+ 	# MOVED FROM /usr/bin/sosetup
+-	cat /var/www/squert/.scripts/squert.sql | mysql -uroot -U securityonion_db
++	cat /var/www/so/squert/.scripts/squert.sql | mysql -uroot -U securityonion_db
+ 	mysql -N -B --user=root -e "GRANT SELECT ON securityonion_db.* TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
+ 	mysql -N -B --user=root -e "GRANT ALL PRIVILEGES ON securityonion_db.mappings TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
+ 	mysql -N -B --user=root -e "GRANT ALL PRIVILEGES ON securityonion_db.ip2c TO 'readonly'@'localhost';"
+@@ -608,7 +608,7 @@ EOF_SGUIL_DB
+ 	mysql -N -B --user=root -e "GRANT UPDATE on securityonion_db.user_info TO 'readonly'@'localhost';"
+ 
+ 	# Allow pivoting from Squert to ELSA
+-	bash /var/www/squert/.scripts/securityonion_create_elsa_link.sh
++	bash /var/www/so/squert/.scripts/securityonion_create_elsa_link.sh
+ 
+ 	return $RET
+ }
+@@ -851,7 +851,7 @@ EOF_SGUIL_DB
+ 	rm -f /tmp/clear_sguil_db.sql
+ 
+         # COPIED FROM ABOVE
+-        cat /var/www/squert/.scripts/squert.sql | mysql -uroot -U securityonion_db
++        cat /var/www/so/squert/.scripts/squert.sql | mysql -uroot -U securityonion_db
+         mysql -N -B --user=root -e "GRANT SELECT ON securityonion_db.* TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
+         mysql -N -B --user=root -e "GRANT ALL PRIVILEGES ON securityonion_db.mappings TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
+         mysql -N -B --user=root -e "GRANT ALL PRIVILEGES ON securityonion_db.ip2c TO 'readonly'@'localhost';"
+@@ -861,11 +861,11 @@ EOF_SGUIL_DB
+         mysql -N -B --user=root -e "GRANT UPDATE on securityonion_db.user_info TO 'readonly'@'localhost';"
+ 
+ 	# Allow pivoting from Squert to ELSA
+-	bash /var/www/squert/.scripts/securityonion_create_elsa_link.sh
++	bash /var/www/so/squert/.scripts/securityonion_create_elsa_link.sh
+ 
+ 	# IP2C
+ 	echo "Populating SQueRT IP-to-country mappings..."
+-	cd /var/www/squert/.scripts
++	cd /var/www/so/squert/.scripts
+ 	./ip2c.tcl
+ 	cd ->/dev/null
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_clear
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_clear
+@@ -155,7 +155,7 @@ then
+ fi
+ 
+ # prompt to clear the server
+-prompt_user_yesno "Clear Server" "All collected data for Sguil/Squert will be cleared.\n\nThis includes any user accounts used to login to Sguil/Squert/ELSA!\n\nThis does not affect the Snorby database.\n\nDo you want to continue?" "N"
++prompt_user_yesno "Clear Server" "All collected data for Sguil/Squert will be cleared.\n\nThis includes any user accounts used to login to Sguil/Squert/ELSA!\n\nDo you want to continue?" "N"
+ [ "$?" -ne 0 ] && exit 1
+ if [ "$PROMPT_RET" != "Y" -a "$PROMPT_RET" != "y" ]
+ then
