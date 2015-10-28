@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion124) trusty; urgency=medium
+
+  * Issue 815: NSM: add log directory creation to postinst 
+
+ -- Doug Burks <doug.burks@gmail.com>  Wed, 28 Oct 2015 19:22:12 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion123) trusty; urgency=medium
 
   * move squert to /var/www/so/squert 
