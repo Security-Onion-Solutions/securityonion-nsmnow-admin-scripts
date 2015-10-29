@@ -19,6 +19,10 @@ case "$1" in
 	
 	# Make scripts executable
 	chmod +x /usr/sbin/so-snorby-wipe /usr/sbin/so-bro-cron
+	
+	# create log directory so cron scripts don't complain
+	DIR="/var/log/nsm"
+	[ -d $DIR ] || mkdir -p $DIR
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
