@@ -173,6 +173,9 @@ do
 		chmod -R g+w $ELSA_REG_LOG_DIR
 	fi
 
+	# make sure that we're using non-threaded tcl8.6
+	update-alternatives --install /usr/bin/tclsh tclsh /usr/bin/tclsh8.6 1000
+
 	# Start sguild as $SERVER_USER
 	process_start "/usr/bin/sguild" "-c $SERVER_CONF_DIR/sguild.conf -a $SERVER_CONF_DIR/autocat.conf -g $SERVER_CONF_DIR/sguild.queries -A $SERVER_CONF_DIR/sguild.access -C $SERVER_CONF_DIR/certs" "$PROCESS_PID_DIR/$SERVER/sguild.pid" "$PROCESS_LOG_DIR/$SERVER/sguild.log" "sguil server" "$SERVER_USER"
 

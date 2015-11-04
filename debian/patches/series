@@ -119,3 +119,4 @@ Issue-751:-change-watchdog-run-time-to-avoid-race-condition
 Issue-797:-NSM:-update-SpoolDir-and-LogDir-in-broctl.cfg
 Issue-799:-NSM:-add-stderr-redirect-to-stdout-on-adduser
 move-squert-to-varwwwsosquert
+ensure-non-threaded-tcl8.6-for-sguild

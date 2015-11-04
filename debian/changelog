@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion125) trusty; urgency=medium
+
+  * ensure non-threaded tcl8.6 for sguild 
+
+ -- Doug Burks <doug.burks@gmail.com>  Wed, 04 Nov 2015 15:37:18 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion124) trusty; urgency=medium
 
   * Issue 815: NSM: add log directory creation to postinst 
