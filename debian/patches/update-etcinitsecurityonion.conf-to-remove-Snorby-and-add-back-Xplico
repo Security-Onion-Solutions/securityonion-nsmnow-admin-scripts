@@ -1,0 +1,74 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion126) trusty; urgency=medium
+ .
+   * update /etc/init/securityonion.conf to remove Snorby and add back Xplico
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/etc/init/securityonion.conf
++++ securityonion-nsmnow-admin-scripts-20120724/etc/init/securityonion.conf
+@@ -12,6 +12,7 @@ script
+ 	# If starting the securityonion services at boot-time, sleep for 60 seconds to allow link to negotiate.
+         # If running Setup, we don't need to pause as the link should have already been negotiated.
+         pgrep sosetup >/dev/null || sleep 60
++
+         # If this is a SLAVE start SSH tunnel and start ELSA if required
+         SSH_DIR="/root/.ssh"
+         SSH_CONF="$SSH_DIR/securityonion_ssh.conf"
+@@ -60,25 +61,18 @@ script
+         # Both SLAVES and MASTERS need to start NSM services
+         service nsm start
+ 
+-        # If this is a MASTER, then start Snorby and Xplico
+-	#if [ -d /var/lib/mysql/snorby/ ]; then 
+-                # check for variables in /etc/nsm/securityonion.conf
+-                #SO_CONF="/etc/nsm/securityonion.conf"
+-
+-                # default values (can override in $SO_CONF)
+-                #SNORBY_ENABLED="yes"
+-                #XPLICO_ENABLED="yes"
+-
+-                # add parameters to $SO_CONF if they don't already exist
+-                #grep SNORBY_ENABLED $SO_CONF >/dev/null || echo "SNORBY_ENABLED=yes" >> $SO_CONF
+-                #grep XPLICO_ENABLED $SO_CONF >/dev/null || echo "XPLICO_ENABLED=yes" >> $SO_CONF
+-
+-                # load in user config
+-		#SNORBY_ENABLED=`grep SNORBY_ENABLED $SO_CONF | cut -d\= -f2 | tail -1`
+-		#XPLICO_ENABLED=`grep XPLICO_ENABLED $SO_CONF | cut -d\= -f2 | tail -1`
+-
+-                #[ "$XPLICO_ENABLED" = "yes" ] && /etc/init.d/xplico start
+-                #[ "$SNORBY_ENABLED" = "yes" ] && rm -f /opt/snorby/tmp/pids/delayed_job.pid && su www-data -c "cd /opt/snorby; bundle exec rake snorby:update RAILS_ENV=production"
+-        #fi
++	# check for variables in /etc/nsm/securityonion.conf
++	SO_CONF="/etc/nsm/securityonion.conf"
++
++	# default values (can override in $SO_CONF)
++	XPLICO_ENABLED="no"
++
++	# add parameters to $SO_CONF if they don't already exist
++	grep XPLICO_ENABLED $SO_CONF >/dev/null || echo "XPLICO_ENABLED=no" >> $SO_CONF
++
++	# load in user config
++	XPLICO_ENABLED=`grep XPLICO_ENABLED $SO_CONF | cut -d\= -f2 | tail -1`
++
++	[ "$XPLICO_ENABLED" = "yes" ] && /etc/init.d/xplico start
+ 
+ end script

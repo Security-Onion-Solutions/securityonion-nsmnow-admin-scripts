@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion126) trusty; urgency=medium
+
+  * update /etc/init/securityonion.conf to remove Snorby and add back Xplico 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 10 Dec 2015 16:09:41 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion125) trusty; urgency=medium
 
   * ensure non-threaded tcl8.6 for sguild 
