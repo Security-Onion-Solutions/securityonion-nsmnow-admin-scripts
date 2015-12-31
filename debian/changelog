@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion127) trusty; urgency=medium
+
+  * disable snorby output in all barnyard2.conf files 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 31 Dec 2015 13:16:51 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion126) trusty; urgency=medium
 
   * update /etc/init/securityonion.conf to remove Snorby and add back Xplico 

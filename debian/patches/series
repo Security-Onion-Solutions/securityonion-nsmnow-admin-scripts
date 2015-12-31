@@ -121,3 +121,4 @@ Issue-799:-NSM:-add-stderr-redirect-to-stdout-on-adduser
 move-squert-to-varwwwsosquert
 ensure-non-threaded-tcl8.6-for-sguild
 update-etcinitsecurityonion.conf-to-remove-Snorby-and-add-back-Xplico
+disable-snorby-output-in-all-barnyard2.conf-files
