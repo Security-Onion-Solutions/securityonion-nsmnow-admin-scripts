@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion128) trusty; urgency=medium
+
+  * check for snorby output before trying to disable 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 21 Jan 2016 08:05:33 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion127) trusty; urgency=medium
 
   * disable snorby output in all barnyard2.conf files 
