@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion129) trusty; urgency=medium
+
+  * Issues 853 854 855 
+
+ -- Doug Burks <doug.burks@gmail.com>  Fri, 05 Feb 2016 13:40:05 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion128) trusty; urgency=medium
 
   * check for snorby output before trying to disable 

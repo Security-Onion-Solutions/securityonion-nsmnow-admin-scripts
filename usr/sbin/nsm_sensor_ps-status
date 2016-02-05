@@ -377,8 +377,7 @@ do
 	[ "$PCAP_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_PCAP_AGENT" ] && process_status "pcap_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/pcap_agent.pid" "pcap_agent (sguil)"
 
 	# snort_agent
-        if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
-	then
+        if [ "$ENGINE" == "suricata" ]; then
 		[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && process_status "snort_agent.tcl" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "snort_agent (sguil)"
 	else
                 for i in `seq 1 $IDS_LB_PROCS`; do
@@ -387,8 +386,7 @@ do
 	fi
 
 	# status the IDS engine
-        if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
-	then
+        if [ "$ENGINE" == "suricata" ]; then
 		[ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && process_status "suricata" "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "suricata (alert data)"
 	else
                 for i in `seq 1 $IDS_LB_PROCS`; do
@@ -397,8 +395,7 @@ do
 	fi
 
 	# status barnyard2
-        if grep -i "suricata" /etc/nsm/securityonion.conf >/dev/null
-	then
+        if [ "$ENGINE" == "suricata" ]; then
 		[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && process_status "barnyard2" "$PROCESS_PID_DIR/$SENSOR/barnyard2.pid" "barnyard2 (spooler, unified2 format)"
 	else
                 for i in `seq 1 $IDS_LB_PROCS`; do
