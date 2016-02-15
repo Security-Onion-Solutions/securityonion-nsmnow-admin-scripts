@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion130) trusty; urgency=medium
+
+  * Issue #859: NSM: mkdir -p /var/run/nsm/ before trying to chown 
+
+ -- Doug Burks <doug.burks@gmail.com>  Mon, 15 Feb 2016 14:58:29 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion129) trusty; urgency=medium
 
   * Issues 853 854 855 

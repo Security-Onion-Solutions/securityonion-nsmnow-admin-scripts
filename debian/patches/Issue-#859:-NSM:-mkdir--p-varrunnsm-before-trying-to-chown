@@ -1,0 +1,56 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion130) trusty; urgency=medium
+ .
+   * Issue #859: NSM: mkdir -p /var/run/nsm/ before trying to chown
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_ps-restart
+@@ -171,8 +171,11 @@ do
+ 		[ "$?" -ne 0 ] && exit 1
+ 	fi
+ 
+-	# Create /var/log/sguild/ if it doesn't already exist
+-        mkdir -p /var/log/sguild/
++	# Create directories if they doesn't already exist
++	mkdir -p /var/log/sguild/
++	mkdir -p $PROCESS_LOG_DIR
++	mkdir -p $PROCESS_PID_DIR
++	mkdir -p $SERVER_LOG_DIR
+ 
+         # Set permissions
+         chown -R $SERVER_USER:$SERVER_GROUP /var/log/sguild/
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_ps-start
+@@ -157,8 +157,11 @@ do
+ 		[ "$?" -ne 0 ] && exit 1
+ 	fi
+ 
+-	# Create /var/log/sguild/ if it doesn't already exist
++	# Create directories if they doesn't already exist
+ 	mkdir -p /var/log/sguild/
++	mkdir -p $PROCESS_LOG_DIR
++	mkdir -p $PROCESS_PID_DIR
++	mkdir -p $SERVER_LOG_DIR
+ 
+ 	# Set permissions
+ 	chown -R $SERVER_USER:$SERVER_GROUP /var/log/sguild/

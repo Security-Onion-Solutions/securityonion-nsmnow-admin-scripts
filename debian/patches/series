@@ -124,3 +124,4 @@ update-etcinitsecurityonion.conf-to-remove-Snorby-and-add-back-Xplico
 disable-snorby-output-in-all-barnyard2.conf-files
 check-for-snorby-output-before-trying-to-disable
 Issues-853-854-855
+Issue-#859:-NSM:-mkdir--p-varrunnsm-before-trying-to-chown
