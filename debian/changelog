@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion132) trusty; urgency=medium
+
+  * fix postinst to run mysql with --defaults-file 
+
+ -- Doug Burks <doug.burks@gmail.com>  Fri, 11 Mar 2016 15:28:26 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion131) trusty; urgency=medium
 
   * NSM: Squert object_mappings table has wrong permissions #866 

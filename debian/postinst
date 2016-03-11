@@ -26,7 +26,7 @@ case "$1" in
 
 	# update Squert database permissions if necessary
 	if [ -d /var/lib/mysql/securityonion_db ] ; then
-		mysql -N -B --user=root -e "GRANT INSERT,UPDATE ON securityonion_db.object_mappings TO 'readonly'@'localhost';" || echo "Error updating permissions on Squert object_mappings."
+		mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT INSERT,UPDATE ON securityonion_db.object_mappings TO 'readonly'@'localhost';" || echo "Error updating permissions on Squert object_mappings."
 	fi
 
     ;;
