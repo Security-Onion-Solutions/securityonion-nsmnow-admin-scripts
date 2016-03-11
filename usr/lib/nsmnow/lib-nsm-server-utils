@@ -606,6 +606,7 @@ EOF_SGUIL_DB
 	mysql -N -B --user=root -e "GRANT INSERT,UPDATE,DELETE ON securityonion_db.filters TO 'readonly'@'localhost';"
 	mysql -N -B --user=root -e "GRANT DELETE on securityonion_db.history to 'readonly'@'localhost';"
 	mysql -N -B --user=root -e "GRANT UPDATE on securityonion_db.user_info TO 'readonly'@'localhost';"
+	mysql -N -B --user=root -e "GRANT INSERT,UPDATE ON securityonion_db.object_mappings TO 'readonly'@'localhost';"
 
 	# Allow pivoting from Squert to ELSA
 	bash /var/www/so/squert/.scripts/securityonion_create_elsa_link.sh
@@ -859,6 +860,7 @@ EOF_SGUIL_DB
         mysql -N -B --user=root -e "GRANT INSERT,UPDATE,DELETE ON securityonion_db.filters TO 'readonly'@'localhost';"
         mysql -N -B --user=root -e "GRANT DELETE on securityonion_db.history to 'readonly'@'localhost';"
         mysql -N -B --user=root -e "GRANT UPDATE on securityonion_db.user_info TO 'readonly'@'localhost';"
+	mysql -N -B --user=root -e "GRANT INSERT,UPDATE ON securityonion_db.object_mappings TO 'readonly'@'localhost';"
 
 	# Allow pivoting from Squert to ELSA
 	bash /var/www/so/squert/.scripts/securityonion_create_elsa_link.sh

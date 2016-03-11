@@ -125,3 +125,4 @@ disable-snorby-output-in-all-barnyard2.conf-files
 check-for-snorby-output-before-trying-to-disable
 Issues-853-854-855
 Issue-#859:-NSM:-mkdir--p-varrunnsm-before-trying-to-chown
+NSM:-Squert-object_mappings-table-has-wrong-permissions-#866

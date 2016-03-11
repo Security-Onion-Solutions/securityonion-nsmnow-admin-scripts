@@ -23,6 +23,12 @@ case "$1" in
 	# create log directory so cron scripts don't complain
 	DIR="/var/log/nsm"
 	[ -d $DIR ] || mkdir -p $DIR
+
+	# update Squert database permissions if necessary
+	if [ -d /var/lib/mysql/securityonion_db ] ; then
+		mysql -N -B --user=root -e "GRANT INSERT,UPDATE ON securityonion_db.object_mappings TO 'readonly'@'localhost';" || echo "Error updating permissions on Squert object_mappings."
+	fi
+
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
