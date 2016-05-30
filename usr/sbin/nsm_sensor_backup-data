@@ -201,7 +201,7 @@ then
 fi
 
 # create the tarball
-tar -czf $BACKUP_FILE nsm/sensor_data/$SENSOR_NAME
+tar -czf $BACKUP_FILE /nsm/sensor_data/$SENSOR_NAME
 if [ "$?" -ne 0 ]
 then
 	echo_error_msg 1 "OOPS: Unable to create $BACKUP_FILE"

@@ -1,0 +1,36 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion134) trusty; urgency=medium
+ .
+   * nsm_sensor_backup-data missing leading slash in directory #931
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_backup-data
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_backup-data
+@@ -201,7 +201,7 @@ then
+ fi
+ 
+ # create the tarball
+-tar -czf $BACKUP_FILE nsm/sensor_data/$SENSOR_NAME
++tar -czf $BACKUP_FILE /nsm/sensor_data/$SENSOR_NAME
+ if [ "$?" -ne 0 ]
+ then
+ 	echo_error_msg 1 "OOPS: Unable to create $BACKUP_FILE"

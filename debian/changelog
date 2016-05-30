@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion134) trusty; urgency=medium
+
+  * nsm_sensor_backup-data missing leading slash in directory #931 
+
+ -- Doug Burks <doug.burks@gmail.com>  Mon, 30 May 2016 06:26:43 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion133) trusty; urgency=medium
 
   * Issue 924: NSM: set DEBUG 1 in /etc/sguild/sguild.conf 
