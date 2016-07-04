@@ -1,0 +1,95 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion137) trusty; urgency=medium
+ .
+   * fix typos
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_backup-config
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_backup-config
+@@ -136,7 +136,7 @@ then
+ 		exit 1
+ 	fi
+ 
+-	prompt_user_radiolist "Select Sensor" "Select the sensor you wish to delete." "${SENSOR_NAME}" "$(sensortab_names_get)"
++	prompt_user_radiolist "Select Sensor" "Select the sensor you wish to backup." "${SENSOR_NAME}" "$(sensortab_names_get)"
+ 	[ "$?" -ne 0 ] && exit 1
+ 	SENSOR_NAME=$PROMPT_RET
+ fi
+@@ -190,7 +190,7 @@ then
+ 	[ "$?" -ne 0 ] && exit 1
+ 	if [ "$PROMPT_RET" != "Y" -a "$PROMPT_RET" != "y" ]
+ 	then
+-		echo_error_msg 1 "OOPS: Destintation directory does not exist!"
++		echo_error_msg 1 "OOPS: Destination directory does not exist!"
+ 		exit 1
+ 	fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_backup-data
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_backup-data
+@@ -136,7 +136,7 @@ then
+ 		exit 1
+ 	fi
+ 
+-	prompt_user_radiolist "Select Sensor" "Select the sensor you wish to delete." "${SENSOR_NAME}" "$(sensortab_names_get)"
++	prompt_user_radiolist "Select Sensor" "Select the sensor you wish to backup." "${SENSOR_NAME}" "$(sensortab_names_get)"
+ 	[ "$?" -ne 0 ] && exit 1
+ 	SENSOR_NAME=$PROMPT_RET
+ fi
+@@ -187,7 +187,7 @@ then
+ 	[ "$?" -ne 0 ] && exit 1
+ 	if [ "$PROMPT_RET" != "Y" -a "$PROMPT_RET" != "y" ]
+ 	then
+-		echo_error_msg 1 "OOPS: Destintation directory does not exist!"
++		echo_error_msg 1 "OOPS: Destination directory does not exist!"
+ 		exit 1
+ 	fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_backup-config
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_backup-config
+@@ -164,7 +164,6 @@ fi
+ 
+ # prompt to backup the configuration, ignore if --force-yes is used
+ prompt_user_yesno "Backup Server Configuration" "All configurations for server \"$SERVER_NAME\" will be backed up to:\n$BACKUP_FILE\n\nDo you want to continue?" "N"
+-Do you want to continue?" "N"
+ if [ $FORCE_YES == "yes" ]
+ then
+ 	PROMPT_RET=Y
+@@ -189,7 +188,7 @@ then
+ 	[ "$?" -ne 0 ] && exit 1
+ 	if [ "$PROMPT_RET" != "Y" -a "$PROMPT_RET" != "y" ]
+ 	then
+-		echo_error_msg 1 "OOPS: Destintation directory does not exist!"
++		echo_error_msg 1 "OOPS: Destination directory does not exist!"
+ 		exit 1
+ 	fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_backup-data
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_backup-data
+@@ -183,7 +183,7 @@ then
+ 	[ "$?" -ne 0 ] && exit 1
+ 	if [ "$PROMPT_RET" != "Y" -a "$PROMPT_RET" != "y" ]
+ 	then
+-		echo_error_msg 1 "OOPS: Destintation directory does not exist!"
++		echo_error_msg 1 "OOPS: Destination directory does not exist!"
+ 		exit 1
+ 	fi
+ 

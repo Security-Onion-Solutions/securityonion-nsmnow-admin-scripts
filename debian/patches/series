@@ -130,3 +130,4 @@ Issue-924:-NSM:-set-DEBUG-1-in-etcsguildsguild.conf
 nsm_sensor_backup-data-missing-leading-slash-in-directory-#931
 issues-944-937-943
 nsm_server_user-list---only-show-enabled-users
+fix-typos

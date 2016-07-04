@@ -136,7 +136,7 @@ then
 		exit 1
 	fi
 
-	prompt_user_radiolist "Select Sensor" "Select the sensor you wish to delete." "${SENSOR_NAME}" "$(sensortab_names_get)"
+	prompt_user_radiolist "Select Sensor" "Select the sensor you wish to backup." "${SENSOR_NAME}" "$(sensortab_names_get)"
 	[ "$?" -ne 0 ] && exit 1
 	SENSOR_NAME=$PROMPT_RET
 fi
@@ -190,7 +190,7 @@ then
 	[ "$?" -ne 0 ] && exit 1
 	if [ "$PROMPT_RET" != "Y" -a "$PROMPT_RET" != "y" ]
 	then
-		echo_error_msg 1 "OOPS: Destintation directory does not exist!"
+		echo_error_msg 1 "OOPS: Destination directory does not exist!"
 		exit 1
 	fi
 

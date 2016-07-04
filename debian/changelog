@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion137) trusty; urgency=medium
+
+  * fix typos 
+
+ -- Doug Burks <doug.burks@gmail.com>  Mon, 04 Jul 2016 13:53:44 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion136) trusty; urgency=medium
 
   * nsm_server_user-list - only show enabled users 
