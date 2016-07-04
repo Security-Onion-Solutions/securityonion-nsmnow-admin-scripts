@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion135) trusty; urgency=medium
+
+  * issues 944 937 943 
+
+ -- Doug Burks <doug.burks@gmail.com>  Mon, 04 Jul 2016 11:36:19 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion134) trusty; urgency=medium
 
   * nsm_sensor_backup-data missing leading slash in directory #931 
