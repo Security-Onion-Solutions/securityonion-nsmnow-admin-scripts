@@ -49,7 +49,7 @@ else
 	. /etc/nsm/${SERVER_NAME}/server.conf
 fi
 
-mysql --defaults-file=/etc/mysql/debian.cnf -Dsecurityonion_db -e 'select uid,username,email,last_login,tzoffset from user_info where username != "auto";'
+mysql --defaults-file=/etc/mysql/debian.cnf -Dsecurityonion_db -e 'select uid,username,email,last_login,tzoffset from user_info where username != "auto" and password != "LOCKED";'
 
 exit 0
 
