@@ -164,7 +164,7 @@ fi
 
 # prompt to backup the configuration, ignore if --force-yes is used
 prompt_user_yesno "Backup Server Configuration" "All configurations for server \"$SERVER_NAME\" will be backed up to:\n$BACKUP_FILE\n\nDo you want to continue?" "N"
-if [ $FORCE_YES == "yes" ]
+if [ "$FORCE_YES" == "yes" ]
 then
 	PROMPT_RET=Y
 fi
