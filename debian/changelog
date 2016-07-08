@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion138) trusty; urgency=medium
+
+  * merge Wes's pull request to add quotes around $FORCE_YES 
+
+ -- Doug Burks <doug.burks@gmail.com>  Fri, 08 Jul 2016 07:35:43 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion137) trusty; urgency=medium
 
   * fix typos 
