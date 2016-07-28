@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion139) trusty; urgency=medium
+
+  * Issue 968: NSM: wipe stats.log when restarting Suricata 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 28 Jul 2016 07:37:58 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion138) trusty; urgency=medium
 
   * merge Wes's pull request to add quotes around $FORCE_YES 

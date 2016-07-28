@@ -132,3 +132,4 @@ issues-944-937-943
 nsm_server_user-list---only-show-enabled-users
 fix-typos
 merge-Wes's-pull-request-to-add-quotes-around-$FORCE_YES
+-Issue-968:-NSM:-wipe-stats.log-when-restarting-Suricata
