@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion140) trusty; urgency=medium
+
+  * wipe stats.log if doing a full restart of Suricata, but not if we're just doing the watchdog check for stale processes 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 28 Jul 2016 09:15:47 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion139) trusty; urgency=medium
 
   * Issue 968: NSM: wipe stats.log when restarting Suricata 
