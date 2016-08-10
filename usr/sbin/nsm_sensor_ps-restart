@@ -471,7 +471,7 @@ do
         if [ "$ENGINE" == "suricata" ]; then
 		[ "$SNORT_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_AGENT" ] && $ACTION "/usr/bin/snort_agent.tcl" "-c $SNORT_AGENT_CONFIG" "$PROCESS_PID_DIR/$SENSOR/snort_agent.pid" "$PROCESS_LOG_DIR/$SENSOR/snort_agent.log" "snort_agent (sguil)" "$SENSOR_USER"
 	else
-                for i in `seq 1 $IDS_LB_PROCS`; do
+		for i in `seq 1 $IDS_LB_PROCS`; do
 			SNORT_AGENT_CONFIG=/etc/nsm/$SENSOR/snort_agent-$i.conf
 			SNORT_AGENT_PID=$PROCESS_PID_DIR/$SENSOR/snort_agent-$i.pid
 			SNORT_AGENT_LOG=$PROCESS_LOG_DIR/$SENSOR/snort_agent-$i.log
@@ -528,6 +528,11 @@ do
 		# start Suricata
                 [ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && $ACTION "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --pfring=$SENSOR_INTERFACE_SHORT $BPF_OPTION -l $SENSOR_LOG_DIR " "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
 	else
+		# Grab MTU for interface(s) and add 24 to snaplen for VLAN-tagging, etc
+		MTU=`cat /sys/class/net/$SENSOR_INTERFACE_SHORT/mtu`
+		MTU_FIN=`echo $(($MTU+24))`
+		# Set MTU for interface(s) in snort.conf
+		sed -i "s|^.*config snaplen:.*|config snaplen: $MTU_FIN|g" /etc/nsm/"$SENSOR"/snort.conf
 		# Need to set a unique PF_RING CLUSTER_ID for each interface
                 CLUSTER_ID=`grep -n $SENSOR /etc/nsm/sensortab |cut -d\: -f1`; let CLUSTER_ID+=50
                 sed -i "s|^config daq_var: clusterid=.*$|config daq_var: clusterid=$CLUSTER_ID|g" /etc/nsm/$SENSOR/snort.conf

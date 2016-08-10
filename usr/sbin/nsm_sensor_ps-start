@@ -536,6 +536,11 @@ do
 		# start Suricata
    		[ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && process_start "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --pfring=$SENSOR_INTERFACE_SHORT $BPF_OPTION -l $SENSOR_LOG_DIR " "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
 	else	
+		# Grab MTU for interface(s) and add 24 to snaplen for VLAN-tagging, etc
+		MTU=`cat /sys/class/net/$SENSOR_INTERFACE_SHORT/mtu`
+		MTU_FIN=`echo $(($MTU+24))`
+		# Set MTU for interface(s) in snort.conf
+		sed -i "s|^.*config snaplen:.*|config snaplen: $MTU_FIN|g" /etc/nsm/"$SENSOR"/snort.conf
 		# Start $IDS_LB_PROCS instances of Snort using pfring load-balancing
 		for i in `seq 1 $IDS_LB_PROCS`; do
 			PID=$PROCESS_PID_DIR/$SENSOR/snortu-$i.pid
