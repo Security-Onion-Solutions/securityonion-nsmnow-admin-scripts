@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion141) trusty; urgency=medium
+
+  * Issue 975: NSM: configure Snort snaplen via command line argument 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 11 Aug 2016 16:58:39 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion140) trusty; urgency=medium
 
   * wipe stats.log if doing a full restart of Suricata, but not if we're just doing the watchdog check for stale processes 
