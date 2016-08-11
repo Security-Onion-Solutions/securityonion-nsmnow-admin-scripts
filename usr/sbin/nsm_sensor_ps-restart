@@ -531,8 +531,6 @@ do
 		# Grab MTU for interface(s) and add 24 to snaplen for VLAN-tagging, etc
 		MTU=`cat /sys/class/net/$SENSOR_INTERFACE_SHORT/mtu`
 		MTU_FIN=`echo $(($MTU+24))`
-		# Set MTU for interface(s) in snort.conf
-		sed -i "s|^.*config snaplen:.*|config snaplen: $MTU_FIN|g" /etc/nsm/"$SENSOR"/snort.conf
 		# Need to set a unique PF_RING CLUSTER_ID for each interface
                 CLUSTER_ID=`grep -n $SENSOR /etc/nsm/sensortab |cut -d\: -f1`; let CLUSTER_ID+=50
                 sed -i "s|^config daq_var: clusterid=.*$|config daq_var: clusterid=$CLUSTER_ID|g" /etc/nsm/$SENSOR/snort.conf
@@ -544,7 +542,7 @@ do
                         UNI_DIR=$SENSOR_LOG_DIR/snort-$i
 			mkdir -p $UNI_DIR
 			chown $SENSOR_USER:$SENSOR_GROUP $UNI_DIR
-			[ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && $ACTION "snort" "-c $SNORT_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -i $SENSOR_INTERFACE_SHORT $BPF_OPTION -l $UNI_DIR --perfmon-file $PERFMON $SNORT_OPTIONS" "$PID" "$LOG" "snort-$i (alert data)"
+			[ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && $ACTION "snort" "-c $SNORT_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -i $SENSOR_INTERFACE_SHORT $BPF_OPTION -l $UNI_DIR --perfmon-file $PERFMON $SNORT_OPTIONS --snaplen $MTU_FIN" "$PID" "$LOG" "snort-$i (alert data)"
 		done
 	fi
 
