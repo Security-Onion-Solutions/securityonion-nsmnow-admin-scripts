@@ -1,0 +1,47 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion142) trusty; urgency=medium
+ .
+   * Issue 993: NSM: start/restart errors on systems with ethXX (2 or more numbers)
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -509,7 +509,7 @@ do
+ 
+ 	# restart the IDS engine
+         # Need to set a unique PF_RING CLUSTER_ID for each interface
+-        CLUSTER_ID=`grep -n $SENSOR /etc/nsm/sensortab |cut -d\: -f1`; let CLUSTER_ID+=50
++        CLUSTER_ID=`awk '{print $1}' /etc/nsm/sensortab |grep -n "^$SENSOR$" |cut -d\: -f1`; let CLUSTER_ID+=50
+         # Update snort.conf with new $CLUSTER_ID
+         sed -i "s|^config daq_var: clusterid=.*$|config daq_var: clusterid=$CLUSTER_ID|g" /etc/nsm/$SENSOR/snort.conf
+         # Update suricata.yaml with new $CLUSTER_ID
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -517,7 +517,7 @@ do
+ 
+ 	# Start IDS Engine with unified2 output
+ 	# Need to set a unique PF_RING CLUSTER_ID for each interface
+-	CLUSTER_ID=`grep -n $SENSOR /etc/nsm/sensortab |cut -d\: -f1`; let CLUSTER_ID+=50
++	CLUSTER_ID=`awk '{print $1}' /etc/nsm/sensortab |grep -n "^$SENSOR$" |cut -d\: -f1`; let CLUSTER_ID+=50
+ 	# Update snort.conf with new $CLUSTER_ID
+ 	sed -i "s|^config daq_var: clusterid=.*$|config daq_var: clusterid=$CLUSTER_ID|g" /etc/nsm/$SENSOR/snort.conf
+ 	# Update suricata.yaml with new $CLUSTER_ID

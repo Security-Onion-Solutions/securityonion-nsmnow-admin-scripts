@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion142) trusty; urgency=medium
+
+  * Issue 993: NSM: start/restart errors on systems with ethXX (2 or more numbers) 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 22 Sep 2016 13:52:18 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion141) trusty; urgency=medium
 
   * Issue 975: NSM: configure Snort snaplen via command line argument 

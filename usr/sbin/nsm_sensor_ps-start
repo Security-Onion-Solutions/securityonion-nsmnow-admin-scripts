@@ -517,7 +517,7 @@ do
 
 	# Start IDS Engine with unified2 output
 	# Need to set a unique PF_RING CLUSTER_ID for each interface
-	CLUSTER_ID=`grep -n $SENSOR /etc/nsm/sensortab |cut -d\: -f1`; let CLUSTER_ID+=50
+	CLUSTER_ID=`awk '{print $1}' /etc/nsm/sensortab |grep -n "^$SENSOR$" |cut -d\: -f1`; let CLUSTER_ID+=50
 	# Update snort.conf with new $CLUSTER_ID
 	sed -i "s|^config daq_var: clusterid=.*$|config daq_var: clusterid=$CLUSTER_ID|g" /etc/nsm/$SENSOR/snort.conf
 	# Update suricata.yaml with new $CLUSTER_ID

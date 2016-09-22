@@ -135,3 +135,4 @@ merge-Wes's-pull-request-to-add-quotes-around-$FORCE_YES
 -Issue-968:-NSM:-wipe-stats.log-when-restarting-Suricata
 wipe-stats.log-if-doing-a-full-restart-of-Suricata,-but-not-if-we're-just-doing-the-watchdog-check-for-stale-processes
 -Issue-975:-NSM:-configure-Snort-snaplen-via-command-line-argument
+Issue-993:-NSM:-startrestart-errors-on-systems-with-ethXX-(2-or-more-numbers)
