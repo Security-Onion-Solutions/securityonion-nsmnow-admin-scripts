@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion143) trusty; urgency=medium
+
+  * NSM: redirect iostreams to logfile during ossec-agent restart #1005 
+
+ -- Doug Burks <doug.burks@gmail.com>  Wed, 28 Sep 2016 15:16:01 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion142) trusty; urgency=medium
 
   * Issue 993: NSM: start/restart errors on systems with ethXX (2 or more numbers) 
