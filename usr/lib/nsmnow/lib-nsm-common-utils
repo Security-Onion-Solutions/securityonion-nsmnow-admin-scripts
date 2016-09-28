@@ -955,10 +955,10 @@ process_start()
 	if [ "$#" -eq "6" ]; then
 
 	        # Create home dir if it doesn't already exist
-	        mkdir -p /home/$USER
+	        mkdir -p /home/$USER >>$LOG_FILE 2>&1
 
         	# Set permissions
-       		chown -R $USER /home/$USER
+       		chown -R $USER /home/$USER >>$LOG_FILE 2>&1
 
 		# Exec as user in user's home directory
 		eval exec su - $USER -- "$APP $APP_OPTIONS" >>$LOG_FILE 2>&1 &
