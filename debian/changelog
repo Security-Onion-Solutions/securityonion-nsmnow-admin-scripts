@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion144) trusty; urgency=medium
+
+  * Issue 1030: NSM: remove chown from /usr/sbin/so-bro-cron 
+
+ -- Doug Burks <doug.burks@gmail.com>  Wed, 07 Dec 2016 16:04:32 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion143) trusty; urgency=medium
 
   * NSM: redirect iostreams to logfile during ossec-agent restart #1005 

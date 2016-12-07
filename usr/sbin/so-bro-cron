@@ -15,8 +15,11 @@ fi
 
 if [ "$BRO_ENABLED" == "yes" ]; then
 
-	# set ownership of Bro directories to Bro user
-	chown -R $BRO_USER:$BRO_GROUP /nsm/bro >/dev/null 2>&1
+	# Set ownership of Bro directories to Bro user.
+	# Large sensors with lots of Bro logs can take longer than 5 minutes to chown.
+	# This can result in the cron jobs piling up.
+	# Commenting this out for now.
+	#chown -R $BRO_USER:$BRO_GROUP /nsm/bro >/dev/null 2>&1
 
 	# Run "broctl cron" as Bro user
 	su $BRO_USER -c '/opt/bro/bin/broctl cron'
