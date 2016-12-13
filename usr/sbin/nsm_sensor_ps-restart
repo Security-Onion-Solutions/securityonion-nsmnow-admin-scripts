@@ -366,7 +366,8 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "$SKIP_BRO" ] && [ "$ACTION" == "process_
 	/opt/bro/bin/broctl stop 2>&1 | grep -v "warning: new bro version detected"
 
         # set ownership of Bro directories
-	chown -R $BRO_USER:$BRO_GROUP /nsm/bro >/dev/null 2>&1
+	chown -R $BRO_USER:$BRO_GROUP /nsm/bro/logs /nsm/bro/spool >/dev/null 2>&1
+	chown $BRO_USER:$BRO_GROUP /nsm/bro/extracted >/dev/null 2>&1
 
         # set capabilities on Bro binaries
         setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/bro
