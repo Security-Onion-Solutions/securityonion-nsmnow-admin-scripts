@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion146) trusty; urgency=medium
+
+  * Issue 1033: NSM: only allow one instance of nsm_sensor_clean at a time 
+
+ -- Doug Burks <doug.burks@gmail.com>  Wed, 14 Dec 2016 18:50:55 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion145) trusty; urgency=medium
 
   * Issue 1032: NSM: don't chown every file in /nsm/bro/extracted 

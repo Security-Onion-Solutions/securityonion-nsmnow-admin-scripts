@@ -139,3 +139,4 @@ Issue-993:-NSM:-startrestart-errors-on-systems-with-ethXX-(2-or-more-numbers)
 NSM:-redirect-iostreams-to-logfile-during-ossec-agent-restart-#1005
 Issue-1030:-NSM:-remove-chown-from-usrsbinso-bro-cron
 Issue-1032:-NSM:-don't-chown-every-file-in-nsmbroextracted
+Issue-1033:-NSM:-only-allow-one-instance-of-nsm_sensor_clean-at-a-time

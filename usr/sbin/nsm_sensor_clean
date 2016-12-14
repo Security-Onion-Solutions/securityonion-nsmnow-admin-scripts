@@ -117,6 +117,14 @@ then
 	exit 1;
 fi
 	
+# check to see if we're already running
+for pid in $(pidof -x nsm_sensor_clean); do
+    if [ $pid != $$ ]; then
+        echo "[$(date)] : nsm_sensor_clean : Process is already running with PID $pid"
+        exit 1
+    fi
+done
+
 #
 # COLLECT INPUT
 #
