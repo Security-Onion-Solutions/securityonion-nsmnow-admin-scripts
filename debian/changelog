@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion147) trusty; urgency=medium
+
+  * NSM: more gracefully handle large number of files in /nsm/bro/extracted #942 
+
+ -- Doug Burks <doug.burks@gmail.com>  Wed, 14 Dec 2016 18:56:37 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion146) trusty; urgency=medium
 
   * Issue 1033: NSM: only allow one instance of nsm_sensor_clean at a time 

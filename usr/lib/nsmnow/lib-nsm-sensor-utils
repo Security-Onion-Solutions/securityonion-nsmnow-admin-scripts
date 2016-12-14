@@ -334,16 +334,15 @@ sensor_cleandisk()
                 fi
 
 		# find the oldest extracted files in /nsm/bro/extracted/ and exclude today
-		# NOTE: --time-style="long-iso" must be used so that the script works properly in a cron job where the locale is not set
-		OLDEST_EXTRACT=$(ls -l --time-style="long-iso" /nsm/bro/extracted/*-* 2>/dev/null | awk '{print $6 " " $8}' |sort | grep -v $TODAY | head -n 1)
+		OLDEST_EXTRACT=$(find /nsm/bro/extracted -type f -printf '%T+ %p\n' 2>/dev/null | sort | grep -v $TODAY | head -n 1)
 		if [ -z "$OLDEST_EXTRACT" -o "$OLDEST_EXTRACT" == ".." -o "$OLDEST_EXTRACT" == "." ]
 		then
 			echo_msg 1 "${RED}no old extracted files available to clean up in /nsm/bro/extracted/"
 		else
-			OLDEST_EXTRACT_DATE=`echo $OLDEST_EXTRACT | awk '{print $1}'`
+			OLDEST_EXTRACT_DATE=`echo $OLDEST_EXTRACT | awk '{print $1}' | cut -d+ -f1`
 			OLDEST_EXTRACT_FILE=`echo $OLDEST_EXTRACT | awk '{print $2}'`
 			echo_msg 1 "removing extracted files for $OLDEST_EXTRACT_DATE"
-			ls -l --time-style="long-iso" /nsm/bro/extracted/*-* | grep $OLDEST_EXTRACT_DATE | awk '{print $8}' |while read FILE
+			find /nsm/bro/extracted -type f -printf '%T+ %p\n' | grep $OLDEST_EXTRACT_DATE | awk '{print $2}' |while read FILE
 			do
 				echo_msg 1 "removing extracted file: $FILE"
 				rm -f "$FILE"

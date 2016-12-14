@@ -1,0 +1,47 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion147) trusty; urgency=medium
+ .
+   * NSM: more gracefully handle large number of files in /nsm/bro/extracted #942
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/lib/nsmnow/lib-nsm-sensor-utils
++++ securityonion-nsmnow-admin-scripts-20120724/usr/lib/nsmnow/lib-nsm-sensor-utils
+@@ -334,16 +334,15 @@ sensor_cleandisk()
+                 fi
+ 
+ 		# find the oldest extracted files in /nsm/bro/extracted/ and exclude today
+-		# NOTE: --time-style="long-iso" must be used so that the script works properly in a cron job where the locale is not set
+-		OLDEST_EXTRACT=$(ls -l --time-style="long-iso" /nsm/bro/extracted/*-* 2>/dev/null | awk '{print $6 " " $8}' |sort | grep -v $TODAY | head -n 1)
++		OLDEST_EXTRACT=$(find /nsm/bro/extracted -type f -printf '%T+ %p\n' 2>/dev/null | sort | grep -v $TODAY | head -n 1)
+ 		if [ -z "$OLDEST_EXTRACT" -o "$OLDEST_EXTRACT" == ".." -o "$OLDEST_EXTRACT" == "." ]
+ 		then
+ 			echo_msg 1 "${RED}no old extracted files available to clean up in /nsm/bro/extracted/"
+ 		else
+-			OLDEST_EXTRACT_DATE=`echo $OLDEST_EXTRACT | awk '{print $1}'`
++			OLDEST_EXTRACT_DATE=`echo $OLDEST_EXTRACT | awk '{print $1}' | cut -d+ -f1`
+ 			OLDEST_EXTRACT_FILE=`echo $OLDEST_EXTRACT | awk '{print $2}'`
+ 			echo_msg 1 "removing extracted files for $OLDEST_EXTRACT_DATE"
+-			ls -l --time-style="long-iso" /nsm/bro/extracted/*-* | grep $OLDEST_EXTRACT_DATE | awk '{print $8}' |while read FILE
++			find /nsm/bro/extracted -type f -printf '%T+ %p\n' | grep $OLDEST_EXTRACT_DATE | awk '{print $2}' |while read FILE
+ 			do
+ 				echo_msg 1 "removing extracted file: $FILE"
+ 				rm -f "$FILE"

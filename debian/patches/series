@@ -140,3 +140,4 @@ NSM:-redirect-iostreams-to-logfile-during-ossec-agent-restart-#1005
 Issue-1030:-NSM:-remove-chown-from-usrsbinso-bro-cron
 Issue-1032:-NSM:-don't-chown-every-file-in-nsmbroextracted
 Issue-1033:-NSM:-only-allow-one-instance-of-nsm_sensor_clean-at-a-time
+NSM:-more-gracefully-handle-large-number-of-files-in-nsmbroextracted-#942
