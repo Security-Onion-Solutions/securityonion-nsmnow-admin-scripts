@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2011 Doug Burks and Security Onion
+# Copyright (C) 2011-2016 Doug Burks and Security Onion
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -17,13 +17,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #
-
-# Version:
-# 20111229
-
-# Changelog:
-# 20111214 - Initial version
-# 20111229 - Add date to output
 
 #
 # INCLUDES
@@ -120,7 +113,7 @@ fi
 # check to see if we're already running
 for pid in $(pidof -x nsm_sensor_clean); do
     if [ $pid != $$ ]; then
-        echo "[$(date)] : nsm_sensor_clean : Process is already running with PID $pid"
+        echo_error_msg 0 "Process is already running with PID $pid"
         exit 1
     fi
 done

@@ -1,0 +1,49 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion149) trusty; urgency=medium
+ .
+   * update copyright date in nsm_sensor_clean
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_clean
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_clean
+@@ -1,6 +1,6 @@
+ #!/bin/bash
+ #
+-# Copyright (C) 2011 Doug Burks and Security Onion
++# Copyright (C) 2011-2016 Doug Burks and Security Onion
+ #
+ # This program is free software; you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License Version 2 as
+@@ -18,13 +18,6 @@
+ # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ #
+ 
+-# Version:
+-# 20111229
+-
+-# Changelog:
+-# 20111214 - Initial version
+-# 20111229 - Add date to output
+-
+ #
+ # INCLUDES
+ #
