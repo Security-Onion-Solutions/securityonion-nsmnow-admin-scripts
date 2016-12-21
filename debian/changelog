@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion151) trusty; urgency=medium
+
+  * make /usr/sbin/broctl executable 
+
+ -- Doug Burks <doug.burks@gmail.com>  Wed, 21 Dec 2016 17:54:42 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion150) trusty; urgency=medium
 
   * NSM: create /usr/sbin/broctl #1043 
