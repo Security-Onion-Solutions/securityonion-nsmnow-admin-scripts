@@ -1,0 +1,17 @@
+#!/bin/bash
+
+SO_CONF="/etc/nsm/securityonion.conf"
+
+# Add new Bro entries to SO_CONF if necessary
+if ! grep BRO_USER $SO_CONF >/dev/null; then
+	echo >> $SO_CONF
+	echo "# BRO_USER specifies the user account used to start Bro." >> $SO_CONF
+	echo "BRO_USER=sguil"	>> $SO_CONF
+	echo "BRO_GROUP=sguil"	>> $SO_CONF
+fi
+
+# load in user config
+. $SO_CONF
+
+# Run "broctl" as Bro user and pass along arguments
+su $BRO_USER -c "/opt/bro/bin/broctl $@"
