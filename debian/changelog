@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion152) trusty; urgency=medium
+
+  * /usr/sbin/broctl - check for root privileges 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 22 Dec 2016 07:16:38 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion151) trusty; urgency=medium
 
   * make /usr/sbin/broctl executable 
