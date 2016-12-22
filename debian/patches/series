@@ -145,3 +145,4 @@ standardize-error-message-in-nsm_sensor_clean
 update-copyright-date-in-nsm_sensor_clean
 NSM:-create-usrsbinbroctl-#1043
 usrsbinbroctl---check-for-root-privileges
+sguild-add-user-and-sguild-changepasswd-are-now-in-usrsbin

@@ -183,7 +183,7 @@ prompt_user_yesno "Change User Password" "The following information has been col
 echo_msg 0 "Changing password for: ${USER_NAME} => ${SERVER_NAME}"
 
 # add client user details
-/usr/bin/sguild-changepasswd "${USER_NAME}" "${USER_PASS}" >/dev/null 2>&1
+/usr/sbin/sguild-changepasswd "${USER_NAME}" "${USER_PASS}" >/dev/null 2>&1
 if [ "${?}" -ne 0 ]
 then
 	echo_error_msg 1 "password could not be changed!"

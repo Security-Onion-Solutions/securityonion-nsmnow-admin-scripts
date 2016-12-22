@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion153) trusty; urgency=medium
+
+  * sguild-add-user and sguild-changepasswd are now in /usr/sbin/ 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 22 Dec 2016 17:31:25 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion152) trusty; urgency=medium
 
   * /usr/sbin/broctl - check for root privileges 

@@ -183,7 +183,7 @@ prompt_user_yesno "Add User to Server" "The following information has been colle
 echo_msg 0 "Adding user: ${USER_NAME}"
 
 # add client user details
-/usr/bin/sguild-add-user "${USER_NAME}" "${USER_PASS}" >/dev/null 2>&1
+/usr/sbin/sguild-add-user "${USER_NAME}" "${USER_PASS}" >/dev/null 2>&1
 if [ "${?}" -ne 0 ]
 then
 	echo_error_msg 1 "user could not be added!"
