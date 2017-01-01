@@ -411,7 +411,7 @@ then
 	fi
 fi
 
-# udpate servertab
+# update servertab
 servertab_entry_del $SERVER_NAME
 if [ "$?" -ne 0 ]
 then
