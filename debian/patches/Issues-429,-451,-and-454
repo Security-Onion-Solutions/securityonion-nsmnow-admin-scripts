@@ -55,7 +55,7 @@ Last-Update: <YYYY-MM-DD>
  chmod 775 -R "/nsm/server_data/${SERVER_NAME}" "/etc/nsm/${SERVER_NAME}"
  chmod 775 "/etc/nsm/${SERVER_NAME}" "/etc/nsm/${SERVER_NAME}/certs"
  
--# udpate servertab
+-# update servertab
 +# update servertab
  servertab_entry_add $SERVER_NAME $SERVER_AUTO
  if [ "$?" -ne 0 ]
