@@ -316,7 +316,7 @@ Last-Update: <YYYY-MM-DD>
 -#ip HOME_NET any tcp any https, stats pass
 -EOF_SANCP
 -
- # udpate sensortab (remove old and add the new)
+ # update sensortab (remove old and add the new)
  sensortab_entry_del $SENSOR_NAME
  if [ "$?" -ne 0 ]
 --- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
