@@ -522,7 +522,7 @@ input unified2
 output sguil: sensor_name=$NEW_SENSOR_NAME agent_port=$NEW_SENSOR_BARNYARD2_PORT
 EOF_BARNYARD2
 
-# udpate sensortab (remove old and add the new)
+# update sensortab (remove old and add the new)
 sensortab_entry_del $SENSOR_NAME
 if [ "$?" -ne 0 ]
 then
