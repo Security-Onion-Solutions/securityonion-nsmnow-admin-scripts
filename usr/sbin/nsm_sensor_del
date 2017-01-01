@@ -189,7 +189,7 @@ then
     fi
 fi
 
-# udpate sensortab
+# update sensortab
 echo_msg_begin 1 "updating the sensor table"
 sensortab_entry_del $SENSOR_NAME
 echo_msg_end "$?"
