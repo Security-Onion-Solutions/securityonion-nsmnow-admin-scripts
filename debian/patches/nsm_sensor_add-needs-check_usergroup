@@ -42,4 +42,4 @@ Last-Update: <YYYY-MM-DD>
 +fi
  chmod 775 "/nsm/sensor_data/$SENSOR_NAME" "/nsm/sensor_data/$SENSOR_NAME/dailylogs" "/nsm/sensor_data/$SENSOR_NAME/portscans" "/nsm/sensor_data/$SENSOR_NAME/sancp" "/etc/nsm/$SENSOR_NAME" "/etc/nsm/$SENSOR_NAME/rules"
  
- # update sensortab
+ # udpate sensortab
