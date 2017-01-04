@@ -581,7 +581,7 @@ fi
 #chmod 775 "/nsm/sensor_data/$SENSOR_NAME" "/nsm/sensor_data/$SENSOR_NAME/dailylogs" "/nsm/sensor_data/$SENSOR_NAME/portscans" "/nsm/sensor_data/$SENSOR_NAME/sancp" "/etc/nsm/$SENSOR_NAME" "/etc/nsm/$SENSOR_NAME/rules"
 chmod 775 "/nsm/sensor_data/$SENSOR_NAME" "/nsm/sensor_data/$SENSOR_NAME/dailylogs" "/nsm/sensor_data/$SENSOR_NAME/portscans" "/nsm/sensor_data/$SENSOR_NAME/sancp" "/etc/nsm/$SENSOR_NAME"
 
-# udpate sensortab
+# update sensortab
 sensortab_entry_add $SENSOR_NAME $SENSOR_AUTO $SENSOR_BARNYARD2_PORT $SENSOR_INTERFACE
 if [ "$?" -ne 0 ]
 then

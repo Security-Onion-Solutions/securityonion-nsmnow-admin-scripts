@@ -196,7 +196,7 @@ echo_msg_begin 1 "removing database"
 server_sguil_database_drop "$SERVER_DB_NAME" "$SERVER_DB_USER"
 echo_msg_end "$?"
 
-# udpate servertab
+# update servertab
 echo_msg_begin 1 "updating the server table"
 servertab_entry_del $SERVER_NAME
 echo_msg_end "$?"

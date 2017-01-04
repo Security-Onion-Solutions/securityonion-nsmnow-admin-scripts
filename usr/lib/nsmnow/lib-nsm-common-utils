@@ -2392,7 +2392,7 @@ apparmor_del()
 # Update an existing entry in the specified profile file.
 #
 # Arguments:
-#   profile (string)        profile containing the entry to udpate
+#   profile (string)        profile containing the entry to update
 #   entry_old (string)      entry to be replaced
 #   entry_new (string)      entry to be inserted
 #
