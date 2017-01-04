@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion154) trusty; urgency=medium
+
+  * NSM: fix spelling error #1055 
+
+ -- Doug Burks <doug.burks@gmail.com>  Wed, 04 Jan 2017 09:02:49 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion153) trusty; urgency=medium
 
   * sguild-add-user and sguild-changepasswd are now in /usr/sbin/ 

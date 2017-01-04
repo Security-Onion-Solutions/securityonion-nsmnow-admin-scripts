@@ -1,0 +1,91 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion154) trusty; urgency=medium
+ .
+   * NSM: fix spelling error #1055
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/lib/nsmnow/lib-nsm-common-utils
++++ securityonion-nsmnow-admin-scripts-20120724/usr/lib/nsmnow/lib-nsm-common-utils
+@@ -2392,7 +2392,7 @@ apparmor_del()
+ # Update an existing entry in the specified profile file.
+ #
+ # Arguments:
+-#   profile (string)        profile containing the entry to udpate
++#   profile (string)        profile containing the entry to update
+ #   entry_old (string)      entry to be replaced
+ #   entry_new (string)      entry to be inserted
+ #
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_add
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_add
+@@ -581,7 +581,7 @@ fi
+ #chmod 775 "/nsm/sensor_data/$SENSOR_NAME" "/nsm/sensor_data/$SENSOR_NAME/dailylogs" "/nsm/sensor_data/$SENSOR_NAME/portscans" "/nsm/sensor_data/$SENSOR_NAME/sancp" "/etc/nsm/$SENSOR_NAME" "/etc/nsm/$SENSOR_NAME/rules"
+ chmod 775 "/nsm/sensor_data/$SENSOR_NAME" "/nsm/sensor_data/$SENSOR_NAME/dailylogs" "/nsm/sensor_data/$SENSOR_NAME/portscans" "/nsm/sensor_data/$SENSOR_NAME/sancp" "/etc/nsm/$SENSOR_NAME"
+ 
+-# udpate sensortab
++# update sensortab
+ sensortab_entry_add $SENSOR_NAME $SENSOR_AUTO $SENSOR_BARNYARD2_PORT $SENSOR_INTERFACE
+ if [ "$?" -ne 0 ]
+ then
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_del
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_del
+@@ -189,7 +189,7 @@ then
+     fi
+ fi
+ 
+-# udpate sensortab
++# update sensortab
+ echo_msg_begin 1 "updating the sensor table"
+ sensortab_entry_del $SENSOR_NAME
+ echo_msg_end "$?"
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_edit
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_edit
+@@ -522,7 +522,7 @@ input unified2
+ output sguil: sensor_name=$NEW_SENSOR_NAME agent_port=$NEW_SENSOR_BARNYARD2_PORT
+ EOF_BARNYARD2
+ 
+-# udpate sensortab (remove old and add the new)
++# update sensortab (remove old and add the new)
+ sensortab_entry_del $SENSOR_NAME
+ if [ "$?" -ne 0 ]
+ then
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_del
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_del
+@@ -196,7 +196,7 @@ echo_msg_begin 1 "removing database"
+ server_sguil_database_drop "$SERVER_DB_NAME" "$SERVER_DB_USER"
+ echo_msg_end "$?"
+ 
+-# udpate servertab
++# update servertab
+ echo_msg_begin 1 "updating the server table"
+ servertab_entry_del $SERVER_NAME
+ echo_msg_end "$?"
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_edit
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_edit
+@@ -411,7 +411,7 @@ then
+ 	fi
+ fi
+ 
+-# udpate servertab
++# update servertab
+ servertab_entry_del $SERVER_NAME
+ if [ "$?" -ne 0 ]
+ then
