@@ -515,6 +515,10 @@ do
         sed -i "s|^config daq_var: clusterid=.*$|config daq_var: clusterid=$CLUSTER_ID|g" /etc/nsm/$SENSOR/snort.conf
         # Update suricata.yaml with new $CLUSTER_ID
         sed -i "s|cluster-id:.*$|cluster-id: $CLUSTER_ID|g" /etc/nsm/$SENSOR/suricata.yaml
+	# Disable local.rules in snort.conf since they are included in downloaded.rules
+	sed -i 's|^include $RULE_PATH/local.rules$|#include $RULE_PATH/local.rules|g' /etc/nsm/$SENSOR/snort.conf
+	# Disable local.rules in suricata.yaml since they are included in downloaded.rules
+	sed -i 's|^ - local.rules$|# - local.rules|g' /etc/nsm/$SENSOR/suricata.yaml
 	# PF_RING 6.2.0 won't allow an empty BPF file
 	BPF_OPTION=""
 	BPF_IDS=/etc/nsm/$SENSOR/bpf-ids.conf

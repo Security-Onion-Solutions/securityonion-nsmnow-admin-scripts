@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion155) trusty; urgency=medium
+
+  * NSM: avoid loading IDS rules twice #1062 
+
+ -- Doug Burks <doug.burks@gmail.com>  Mon, 16 Jan 2017 11:14:13 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion154) trusty; urgency=medium
 
   * NSM: fix spelling error #1055 
