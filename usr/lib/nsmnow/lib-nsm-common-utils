@@ -1097,7 +1097,7 @@ process_restart()
 
 	# Rotate the log file and keep a maximum of 10	
 	[ -f "$LOG_FILE" ] && mv "$LOG_FILE" "$LOG_FILE".`date +%Y%m%d%H%M%S`
-	[ `ls "$LOG_FILE".* |wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f
+	[ `ls "$LOG_FILE".* 2>/dev/null|wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f
 
 	# Start the process
 	if [ "$#" -eq "6" ]; then
@@ -1154,7 +1154,7 @@ process_restart_if_stale()
         		process_stop "$APP" "$PID_FILE" "$APP_DESC"
 			# Rotate the log file and keep a maximum of 10	
 			[ -f "$LOG_FILE" ] && mv "$LOG_FILE" "$LOG_FILE".`date +%Y%m%d%H%M%S`
-			[ `ls "$LOG_FILE".* |wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f
+			[ `ls "$LOG_FILE".* 2>/dev/null|wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f
 			if [ "$#" -eq "6" ]; then
 				process_start "$APP" "$APP_OPTIONS" "$PID_FILE" "$LOG_FILE" "$APP_DESC" "$USER"
 			else
@@ -1213,7 +1213,7 @@ process_restart_with_overlap()
 		else
 			# Rotate the log file and keep a maximum of 10	
 			[ -f "$LOG_FILE" ] && mv "$LOG_FILE" "$LOG_FILE".`date +%Y%m%d%H%M%S`
-			[ `ls "$LOG_FILE".* |wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f
+			[ `ls "$LOG_FILE".* 2>/dev/null|wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f
 
 			rm -f $PID_FILE
 			process_start "$APP" "$APP_OPTIONS" "$PID_FILE" "$LOG_FILE" "$APP_DESC"
