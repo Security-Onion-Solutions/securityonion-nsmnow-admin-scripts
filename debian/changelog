@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion156) trusty; urgency=medium
+
+  * stderr redirects when listing logfiles 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 22 Jun 2017 08:55:16 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion155) trusty; urgency=medium
 
   * NSM: avoid loading IDS rules twice #1062 

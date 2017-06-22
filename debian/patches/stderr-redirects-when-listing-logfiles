@@ -1,0 +1,54 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion156) trusty; urgency=medium
+ .
+   * stderr redirects when listing logfiles
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/lib/nsmnow/lib-nsm-common-utils
++++ securityonion-nsmnow-admin-scripts-20120724/usr/lib/nsmnow/lib-nsm-common-utils
+@@ -1097,7 +1097,7 @@ process_restart()
+ 
+ 	# Rotate the log file and keep a maximum of 10	
+ 	[ -f "$LOG_FILE" ] && mv "$LOG_FILE" "$LOG_FILE".`date +%Y%m%d%H%M%S`
+-	[ `ls "$LOG_FILE".* |wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f
++	[ `ls "$LOG_FILE".* 2>/dev/null|wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f
+ 
+ 	# Start the process
+ 	if [ "$#" -eq "6" ]; then
+@@ -1154,7 +1154,7 @@ process_restart_if_stale()
+         		process_stop "$APP" "$PID_FILE" "$APP_DESC"
+ 			# Rotate the log file and keep a maximum of 10	
+ 			[ -f "$LOG_FILE" ] && mv "$LOG_FILE" "$LOG_FILE".`date +%Y%m%d%H%M%S`
+-			[ `ls "$LOG_FILE".* |wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f
++			[ `ls "$LOG_FILE".* 2>/dev/null|wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f
+ 			if [ "$#" -eq "6" ]; then
+ 				process_start "$APP" "$APP_OPTIONS" "$PID_FILE" "$LOG_FILE" "$APP_DESC" "$USER"
+ 			else
+@@ -1213,7 +1213,7 @@ process_restart_with_overlap()
+ 		else
+ 			# Rotate the log file and keep a maximum of 10	
+ 			[ -f "$LOG_FILE" ] && mv "$LOG_FILE" "$LOG_FILE".`date +%Y%m%d%H%M%S`
+-			[ `ls "$LOG_FILE".* |wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f
++			[ `ls "$LOG_FILE".* 2>/dev/null|wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f
+ 
+ 			rm -f $PID_FILE
+ 			process_start "$APP" "$APP_OPTIONS" "$PID_FILE" "$LOG_FILE" "$APP_DESC"

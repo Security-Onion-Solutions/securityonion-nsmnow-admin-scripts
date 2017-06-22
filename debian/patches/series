@@ -148,3 +148,4 @@ usrsbinbroctl---check-for-root-privileges
 sguild-add-user-and-sguild-changepasswd-are-now-in-usrsbin
 NSM:-fix-spelling-error-#1055
 NSM:-avoid-loading-IDS-rules-twice-#1062
+stderr-redirects-when-listing-logfiles
