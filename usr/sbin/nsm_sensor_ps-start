@@ -588,7 +588,7 @@ do
 			chown $SENSOR_USER:$SENSOR_GROUP $WALDO
 
 			# start barnyard2
-			[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && process_start "barnyard2" "-c $BARNYARD2_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -d $UNI_DIR -f snort.unified2 -w $WALDO -i $i $BARNYARD2_OPTIONS" "$PID" "$LOG" "barnyard2-$i (spooler, unified2 format)"
+			[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && process_start "barnyard2" "-c $BARNYARD2_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -d $UNI_DIR -f snort.unified2 -w $WALDO -i $SENSOR_NAME-$i $BARNYARD2_OPTIONS" "$PID" "$LOG" "barnyard2-$i (spooler, unified2 format)"
 		done
 	fi
 
