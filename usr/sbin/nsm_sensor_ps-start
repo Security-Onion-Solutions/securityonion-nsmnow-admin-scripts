@@ -566,6 +566,11 @@ do
 		touch $BARNYARD2_WALDO
 		chown $SENSOR_USER:$SENSOR_GROUP $BARNYARD2_WALDO
 
+                # add option to barnyard config
+                if ! grep "config alert_with_interface_name" $BARNYARD2_CONFIG >/dev/null 2>&1; then
+                        sed -i '/^# barnyard2.conf: /a config alert_with_interface_name' $BARNYARD2_CONFIG
+                fi
+
 		# start barnyard2
 		[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && process_start "barnyard2" "-c $BARNYARD2_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -d $SENSOR_LOG_DIR -f snort.unified2 -w $BARNYARD2_WALDO -i $SENSOR_NAME $BARNYARD2_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/barnyard2.pid" "$PROCESS_LOG_DIR/$SENSOR/barnyard2.log" "barnyard2 (spooler, unified2 format)"
 	else
@@ -586,6 +591,11 @@ do
 			# make sure the waldo file exists and is owned by proper user
 			touch $WALDO
 			chown $SENSOR_USER:$SENSOR_GROUP $WALDO
+
+	                # add option to barnyard config
+        	        if ! grep "config alert_with_interface_name" $BARNYARD2_CONFIG >/dev/null 2>&1; then
+                	        sed -i '/^# barnyard2.conf: /a config alert_with_interface_name' $BARNYARD2_CONFIG
+	                fi
 
 			# start barnyard2
 			[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && process_start "barnyard2" "-c $BARNYARD2_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -d $UNI_DIR -f snort.unified2 -w $WALDO -i $SENSOR_NAME-$i $BARNYARD2_OPTIONS" "$PID" "$LOG" "barnyard2-$i (spooler, unified2 format)"
