@@ -567,7 +567,7 @@ do
 		chown $SENSOR_USER:$SENSOR_GROUP $BARNYARD2_WALDO
 
 		# start barnyard2
-		[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && process_start "barnyard2" "-c $BARNYARD2_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -d $SENSOR_LOG_DIR -f snort.unified2 -w $BARNYARD2_WALDO -i 1 $BARNYARD2_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/barnyard2.pid" "$PROCESS_LOG_DIR/$SENSOR/barnyard2.log" "barnyard2 (spooler, unified2 format)"
+		[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && process_start "barnyard2" "-c $BARNYARD2_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -d $SENSOR_LOG_DIR -f snort.unified2 -w $BARNYARD2_WALDO -i $SENSOR_NAME $BARNYARD2_OPTIONS" "$PROCESS_PID_DIR/$SENSOR/barnyard2.pid" "$PROCESS_LOG_DIR/$SENSOR/barnyard2.log" "barnyard2 (spooler, unified2 format)"
 	else
 		# we need one instance of barnyard2 per Snort instance
 		for i in `seq 1 $IDS_LB_PROCS`; do
@@ -588,7 +588,7 @@ do
 			chown $SENSOR_USER:$SENSOR_GROUP $WALDO
 
 			# start barnyard2
-			[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && process_start "barnyard2" "-c $BARNYARD2_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -d $UNI_DIR -f snort.unified2 -w $WALDO -i $i $BARNYARD2_OPTIONS" "$PID" "$LOG" "barnyard2-$i (spooler, unified2 format)"
+			[ "$BARNYARD2_ENABLED" == "yes" ] && [ -z "$SKIP_BARNYARD2" ] && process_start "barnyard2" "-c $BARNYARD2_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -d $UNI_DIR -f snort.unified2 -w $WALDO -i $SENSOR_NAME-$i $BARNYARD2_OPTIONS" "$PID" "$LOG" "barnyard2-$i (spooler, unified2 format)"
 		done
 	fi
 
