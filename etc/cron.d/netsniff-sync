@@ -1,0 +1,8 @@
+# /etc/cron.d/elsa
+#
+# crontab entry for netsniff-ng
+
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+* * * * * root /usr/sbin/so-netsniff-ng-cron > /dev/null 2>&1
