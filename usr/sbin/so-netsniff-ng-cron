@@ -3,6 +3,7 @@
 # Define initial variables
 SENSORTAB="/etc/nsm/sensortab"
 INTERFACES=$(grep -v '#' $SENSORTAB | awk '{print $1}')
+NETSNIFF_ENABLED="no"
 OS_DATE=$(date +"%Y-%m-%d")
 
 # Check to see if netsniff-ng is enabled.
@@ -12,14 +13,8 @@ for i in $INTERFACES; do
         	if pgrep -af netsniff-ng > /dev/null 2>&1; then
         		NETSNIFF_DATE=$(pgrep -af -oldest netsniff-ng | cut -d'/' -f6)
         		if [ "$NETSNIFF_DATE" == $OS_DATE ]; then
-        			exit
-			else
         			nsm_sensor_ps-restart --sensor-name=$i --only-pcap > /dev/null 2>&1 && echo "$(date) -  netsniff-ng for $i was restarted due to a date mismatch (Current date is: $OS_DATE.  Previously writing to /nsm/sensor_data/$i/dailylogs/$NETSNIFF_DATE)." >> /var/log/nsm/netsniff-sync.log
 			fi
-		else
-			exit
 		fi
-	else
-		exit
 	fi
 done
