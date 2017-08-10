@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion157) trusty; urgency=medium
+
+  * NSM: barnyard sending blank interface to syslog output #652 
+
+ -- Doug Burks <doug.burks@gmail.com>  Wed, 09 Aug 2017 18:46:15 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion156) trusty; urgency=medium
 
   * stderr redirects when listing logfiles 

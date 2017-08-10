@@ -1,6 +1,6 @@
-# /etc/cron.d/netsniff
+# /etc/cron.d/netsniff-sync
 #
-# crontab entry for netsniff-ng
+# crontab entry to ensure netsniff-ng is recording with the correct date
 
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
