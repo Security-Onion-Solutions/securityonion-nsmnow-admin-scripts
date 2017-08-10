@@ -11,7 +11,7 @@ for i in $INTERFACES; do
 		# Check to see if netsniff-ng is running.
         	if pgrep -af netsniff-ng > /dev/null 2>&1; then
         		NETSNIFF_DATE=$(pgrep -af -oldest netsniff-ng | cut -d'/' -f6)
-        		if [ "$NETSNIFF_DATE" == $OS_DATE ]; then
+        		if [ "$NETSNIFF_DATE" != $OS_DATE ]; then
         			nsm_sensor_ps-restart --sensor-name=$i --only-pcap > /dev/null 2>&1 && echo "$(date) -  netsniff-ng for $i was restarted due to a date mismatch (Current date is: $OS_DATE.  Previously writing to /nsm/sensor_data/$i/dailylogs/$NETSNIFF_DATE)." >> /var/log/nsm/netsniff-sync.log
 			fi
 		fi
