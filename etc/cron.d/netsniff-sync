@@ -1,4 +1,4 @@
-# /etc/cron.d/elsa
+# /etc/cron.d/netsniff
 #
 # crontab entry for netsniff-ng
 
