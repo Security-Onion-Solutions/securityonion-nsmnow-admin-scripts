@@ -4,7 +4,7 @@
 SENSORTAB="/etc/nsm/sensortab"
 INTERFACES=$(grep -v '#' $SENSORTAB | awk '{print $1}')
 NETSNIFF_ENABLED="no"
-NETSNIF_RUNNING="no"
+NETSNIFF_RUNNING="no"
 OS_DATE=$(date +"%Y-%m-%d")
 
 # Check to see if netsniff-ng is enabled.
