@@ -1,3 +1,15 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion159) trusty; urgency=medium
+
+  * skip netsniff date check at midnight and work around issue 1118 
+
+ -- Doug Burks <doug.burks@gmail.com>  Tue, 15 Aug 2017 07:37:51 -0400
+
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion158) trusty; urgency=medium
+
+  * ensure netsniff-ng is writing with the correct date 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 10 Aug 2017 17:24:32 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion157) trusty; urgency=medium
 
   * NSM: barnyard sending blank interface to syslog output #652 

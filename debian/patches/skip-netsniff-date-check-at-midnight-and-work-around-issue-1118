@@ -1,0 +1,70 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion159) trusty; urgency=medium
+ .
+   * skip netsniff date check at midnight and work around issue 1118
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/so-netsniff-ng-cron
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/so-netsniff-ng-cron
+@@ -3,17 +3,36 @@
+ # Define initial variables
+ SENSORTAB="/etc/nsm/sensortab"
+ INTERFACES=$(grep -v '#' $SENSORTAB | awk '{print $1}')
++LOG="/var/log/nsm/netsniff-sync.log"
++NEED_TO_RESTART="no"
+ OS_DATE=$(date +"%Y-%m-%d")
++OS_TIME=$(date +"%H%M")
+ 
+-# Check to see if netsniff-ng is enabled.
++if [ $OS_TIME -eq 0000 ]; then
++	echo "$(date) Time is 00:00, so skipping check for netsniff date since /etc/cron.d/sensor-newday should be restarting it anyway." >> $LOG
++	exit 0
++fi
++
++# Check all enabled sniffing interfaces
+ for i in $INTERFACES; do
++	# Check to see if pcap has been enabled on that interface
+ 	if grep -q 'PCAP_ENABLED="yes"' /etc/nsm/$i/sensor.conf; then
+-		# Check to see if netsniff-ng is running.
+-        	if pgrep -af netsniff-ng.*/nsm/sensor_data/$i > /dev/null 2>&1; then
+-        		NETSNIFF_DATE=$(pgrep -af netsniff-ng.*/nsm/sensor_data/$i | cut -d'/' -f6)
+-        		if [ "$NETSNIFF_DATE" != $OS_DATE ]; then
+-        			nsm_sensor_ps-restart --sensor-name=$i --only-pcap > /dev/null 2>&1 && echo "$(date) -  netsniff-ng for $i was restarted due to a date mismatch (Current date is: $OS_DATE.  Previously writing to /nsm/sensor_data/$i/dailylogs/$NETSNIFF_DATE)." >> /var/log/nsm/$i/netsniff-sync.log
++		# Check to see if netsniff-ng is running on that interface
++       		if pgrep -af netsniff-ng.*/nsm/sensor_data/$i > /dev/null 2>&1; then
++       			NETSNIFF_DATE=$(pgrep -af netsniff-ng.*/nsm/sensor_data/$i | cut -d'/' -f6)
++			# Check to see if netsniff's date matches current OS date
++        		if [ "$NETSNIFF_DATE" != "$OS_DATE" ]; then
++				NEED_TO_RESTART="yes"
+ 			fi
+ 		fi
+ 	fi
+ done
++
++# Due to Issue 1118, if we try to restart pcap on a single interface, it will also restart Bro:
++# https://github.com/Security-Onion-Solutions/security-onion/issues/1118
++# To avoid this, we'll just restart all pcap instances.
++# This is probably a good idea anyway since, in most cases, if one netsniff instance is recording to the wrong date, then all of them are.
++if [ "$NEED_TO_RESTART" == "yes" ]; then
++	echo "$(date) netsniff-ng date mismatch detected.  Restarting all netsniff-ng instances." >> $LOG
++	nsm_sensor_ps-restart --only-pcap >> $LOG 2>&1
++fi

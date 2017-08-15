@@ -1,0 +1,58 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion158) trusty; urgency=medium
+ .
+   * ensure netsniff-ng is writing with the correct date
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- /dev/null
++++ securityonion-nsmnow-admin-scripts-20120724/etc/cron.d/netsniff-sync
+@@ -0,0 +1,8 @@
++# /etc/cron.d/netsniff-sync
++#
++# crontab entry to ensure netsniff-ng is recording with the correct date
++
++SHELL=/bin/sh
++PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
++
++* * * * * root /usr/sbin/so-netsniff-ng-cron > /dev/null 2>&1
+--- /dev/null
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/so-netsniff-ng-cron
+@@ -0,0 +1,19 @@
++#!/bin/bash
++
++# Define initial variables
++SENSORTAB="/etc/nsm/sensortab"
++INTERFACES=$(grep -v '#' $SENSORTAB | awk '{print $1}')
++OS_DATE=$(date +"%Y-%m-%d")
++
++# Check to see if netsniff-ng is enabled.
++for i in $INTERFACES; do
++	if grep -q 'PCAP_ENABLED="yes"' /etc/nsm/$i/sensor.conf; then
++		# Check to see if netsniff-ng is running.
++        	if pgrep -af netsniff-ng.*/nsm/sensor_data/$i > /dev/null 2>&1; then
++        		NETSNIFF_DATE=$(pgrep -af netsniff-ng.*/nsm/sensor_data/$i | cut -d'/' -f6)
++        		if [ "$NETSNIFF_DATE" != $OS_DATE ]; then
++        			nsm_sensor_ps-restart --sensor-name=$i --only-pcap > /dev/null 2>&1 && echo "$(date) -  netsniff-ng for $i was restarted due to a date mismatch (Current date is: $OS_DATE.  Previously writing to /nsm/sensor_data/$i/dailylogs/$NETSNIFF_DATE)." >> /var/log/nsm/$i/netsniff-sync.log
++			fi
++		fi
++	fi
++done

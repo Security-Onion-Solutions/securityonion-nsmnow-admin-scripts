@@ -150,3 +150,5 @@ NSM:-fix-spelling-error-#1055
 NSM:-avoid-loading-IDS-rules-twice-#1062
 stderr-redirects-when-listing-logfiles
 NSM:-barnyard-sending-blank-interface-to-syslog-output-#652
+ensure-netsniff-ng-is-writing-with-the-correct-date
+skip-netsniff-date-check-at-midnight-and-work-around-issue-1118
