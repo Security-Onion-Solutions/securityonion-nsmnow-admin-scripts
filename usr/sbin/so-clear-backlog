@@ -45,7 +45,10 @@ ENGINE=$(grep ENGINE /etc/nsm/securityonion.conf | cut -d= -f2)
 
 if [ $SKIP -ne 1 ] ; then
 	echo
-	echo "This script will delete the following files:"
+	echo "This script can be used to clear a backlog of unified2 files from"
+	echo "sensor data directories."
+	echo
+	echo "Please use this script with caution, as it will delete the following files:"
 	echo
 
 	if [ "$ENGINE" == "snort" ]; then
