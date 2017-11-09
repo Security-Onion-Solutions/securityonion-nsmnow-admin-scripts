@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion160) trusty; urgency=medium
+
+  * Issue 1162: NSM: Add new script to clear sensor backlog 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 09 Nov 2017 09:43:57 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion159) trusty; urgency=medium
 
   * skip netsniff date check at midnight and work around issue 1118 
