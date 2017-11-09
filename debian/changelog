@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion163) trusty; urgency=medium
+
+  * avoid errors when no unified2 files are available for deletion 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 09 Nov 2017 14:27:21 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion162) trusty; urgency=medium
 
   * postinst - add conditions for updating /etc/init/securityonion.conf 

@@ -31,10 +31,10 @@ fi
 # Count and list files to be deleted
 if [ "$ENGINE" == "snort" ]; then
 	COUNT=$(ls -la /nsm/sensor_data/*/snort-*/snort.unified2.* 2>/dev/null | wc -l)
-	FILES=$(ls -la /nsm/sensor_data/*/snort-*/snort.unified2.*)
+	FILES=$(ls -la /nsm/sensor_data/*/snort-*/snort.unified2.* 2>/dev/null)
 else
 	COUNT=$(ls -la /nsm/sensor_data/*/snort.unified2.* 2>/dev/null | wc -l)
-	FILES=$(ls -la /nsm/sensor_data/*/snort.unified2.*)
+	FILES=$(ls -la /nsm/sensor_data/*/snort.unified2.* 2>/dev/null)
 fi
 
 # If no files are found, exit immediately
