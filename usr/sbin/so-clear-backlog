@@ -60,8 +60,8 @@ if [ $SKIP -ne 1 ] ; then
 		COUNT=$(ls -la /nsm/sensor_data/*/snort.unified2.* | wc -l)
 		ls -la /nsm/sensor_data/*/snort.unified2.*
 	fi
-	
 	echo
+	
 	[[ ! -z $COUNT ]] && echo "$COUNT file(s) will be deleted."
 
 	echo
@@ -70,13 +70,19 @@ if [ $SKIP -ne 1 ] ; then
 	read INPUT
         if [ "$INPUT" != "YES" ] ; then exit 0; fi
 fi
-
-ENGINE=${ENGINE:1}
 echo
 
+# Exit if no files are found.
+[ "$COUNT" -eq 0 ] && echo "No files to delete!  Exiting..." && echo && exit 0
+
+# We're about to use pgrep to search for the $ENGINE process (snort or suricata).
+# "pgrep suricata" won't work since the process shows up as Suricata,
+# so do "pgrep Suricata" instead.
+[ "$ENGINE" == "suricata" ] && ENGINE="Suricata"
+
 # Check to see if Snort/Suricata is running -- if it is, stop it.
-if pgrep [Ss]$ENGINE > /dev/null; then
-	echo "Stopping S$ENGINE ..."
+if pgrep $ENGINE > /dev/null; then
+	echo "Stopping $ENGINE..."
 	nsm_sensor_ps-stop --only-snort-alert > /dev/null
 fi
 
@@ -87,8 +93,8 @@ if pgrep barnyard2 > /dev/null; then
 fi
 
 # If process is still not stopped, warn user and exit script.
-if pgrep [Ss]$ENGINE > /dev/null; then
-	echo "S$ENGINE has not been stopped -- please manually stop it."
+if pgrep $ENGINE > /dev/null; then
+	echo "$ENGINE has not been stopped -- please manually stop it."
 	exit 0;
 fi
 if pgrep barnyard2 > /dev/null; then
@@ -108,7 +114,7 @@ fi
 # Start processes back up
 echo
 ! pgrep barnyard2 && echo "Starting barnyard2..." && nsm_sensor_ps-start --only-barnyard2 > /dev/null
-! pgrep [Ss]$ENGINE && echo "Starting S$ENGINE..." && nsm_sensor_ps-start --only-snort-alert > /dev/null
+! pgrep $ENGINE && echo "Starting $ENGINE..." && nsm_sensor_ps-start --only-snort-alert > /dev/null
 
 echo
 echo "Finished!"
