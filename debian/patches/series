@@ -153,3 +153,5 @@ NSM:-barnyard-sending-blank-interface-to-syslog-output-#652
 ensure-netsniff-ng-is-writing-with-the-correct-date
 skip-netsniff-date-check-at-midnight-and-work-around-issue-1118
 Issue-1162:-NSM:-Add-new-script-to-clear-sensor-backlog
+remove-so-common-since-it-already-exists-in-securityonion-elastic-package
+remove-old-files
