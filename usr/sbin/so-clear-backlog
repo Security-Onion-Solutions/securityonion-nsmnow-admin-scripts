@@ -1,0 +1,121 @@
+#!/bin/bash
+. /usr/sbin/so-common
+
+. /etc/nsm/securityonion.conf
+
+if [ -d /nsm/sensor_data ]; then
+	:
+else
+	echo "Not a sensor!  Exiting..."
+	exit 1;
+fi
+
+SKIP=0
+
+#########################################
+# Options
+#########################################
+usage()
+{
+cat <<EOF
+Security Onion Backlog Purge
+  Options:
+  -h         This message
+  -y         Skip interactive mode
+
+EOF
+}
+
+while getopts "h:y" OPTION
+do
+        case $OPTION in
+                h)
+                        usage
+                        exit 0
+                        ;;
+                y)
+                        SKIP=1
+                        ;;
+                *)
+                        usage
+                        exit 0
+                        ;;
+        esac
+done
+
+if [ $SKIP -ne 1 ] ; then
+	echo
+	echo "This script can be used to clear a backlog of unified2 files from"
+	echo "sensor data directories."
+	echo
+	echo "Please use this script with caution, as it will delete the following files:"
+	echo
+
+	if [ "$ENGINE" == "snort" ]; then
+		# Get count and listing of files
+		COUNT=$(ls -la /nsm/sensor_data/*/snort-*/snort.unified2.* | wc -l)
+		ls -la /nsm/sensor_data/*/snort-*/snort.unified2.*
+	else
+        	# Get count and listing of files
+		COUNT=$(ls -la /nsm/sensor_data/*/snort.unified2.* | wc -l)
+		ls -la /nsm/sensor_data/*/snort.unified2.*
+	fi
+	echo
+	
+	[[ ! -z $COUNT ]] && echo "$COUNT file(s) will be deleted."
+
+	echo
+	echo "If you wish to continue, please type YES and press the ENTER key"
+	echo
+	read INPUT
+        if [ "$INPUT" != "YES" ] ; then exit 0; fi
+fi
+echo
+
+# Exit if no files are found.
+[ "$COUNT" -eq 0 ] && echo "No files to delete!  Exiting..." && echo && exit 0
+
+# We're about to use pgrep to search for the $ENGINE process (snort or suricata).
+# "pgrep suricata" won't work since the process shows up as Suricata,
+# so do "pgrep Suricata" instead.
+[ "$ENGINE" == "suricata" ] && ENGINE="Suricata"
+
+# Check to see if Snort/Suricata is running -- if it is, stop it.
+if pgrep $ENGINE > /dev/null; then
+	echo "Stopping $ENGINE..."
+	nsm_sensor_ps-stop --only-snort-alert > /dev/null
+fi
+
+# Check to see if barnyard2 is running -- if it is, stop it.
+if pgrep barnyard2 > /dev/null; then
+	echo "Stopping barnyard2..."
+	nsm_sensor_ps-stop --only-barnyard2 > /dev/null
+fi
+
+# If process is still not stopped, warn user and exit script.
+if pgrep $ENGINE > /dev/null; then
+	echo "$ENGINE has not been stopped -- please manually stop it."
+	exit 0;
+fi
+if pgrep barnyard2 > /dev/null; then
+	echo "Barnyard2 has not been stopped -- please manually stop it."
+	exit 0;
+fi
+
+# Remove files
+echo
+echo "Deleting files..."
+if [ "$ENGINE" == "snort" ]; then
+	rm -f /nsm/sensor_data/*/snort-*/snort.unified2.*
+else
+	rm -f /nsm/sensor_data/*/snort.unified2.*	
+fi
+
+# Start processes back up
+echo
+! pgrep barnyard2 && echo "Starting barnyard2..." && nsm_sensor_ps-start --only-barnyard2 > /dev/null
+! pgrep $ENGINE && echo "Starting $ENGINE..." && nsm_sensor_ps-start --only-snort-alert > /dev/null
+
+echo
+echo "Finished!"
+echo
