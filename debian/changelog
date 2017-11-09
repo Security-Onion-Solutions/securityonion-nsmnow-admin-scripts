@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion162) trusty; urgency=medium
+
+  * postinst - add conditions for updating /etc/init/securityonion.conf 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 09 Nov 2017 13:47:00 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion161) trusty; urgency=medium
 
   * remove so-common since it already exists in securityonion-elastic package 
