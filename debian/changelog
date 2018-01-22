@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion165) trusty; urgency=medium
+
+  * when configuring Squert, run securityonion_update.sh as well 
+
+ -- Doug Burks <doug.burks@gmail.com>  Mon, 22 Jan 2018 09:33:53 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion164) trusty; urgency=medium
 
   * fix postinst 
