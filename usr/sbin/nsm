@@ -315,7 +315,7 @@ then
 	print_usage
 elif [ -n "$SHOW_VERSION_ONLY" ]
 then
-	print_version
+	print_nsmnow_version
 elif [ -n "$UPGRADE_ONLY" ]
 then
     nsmadmin_upgrade

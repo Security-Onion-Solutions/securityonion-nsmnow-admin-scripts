@@ -155,7 +155,7 @@ then
 	exit 0
 elif [ -n "$SHOW_VERSION_ONLY" ]
 then
-	print_version
+	print_nsmnow_version
 	exit 0
 fi
 
