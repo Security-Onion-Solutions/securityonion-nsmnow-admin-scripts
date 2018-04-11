@@ -1,0 +1,357 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion166) trusty; urgency=medium
+ .
+   * issues 1227 and 1234
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/lib/nsmnow/lib-nsm-sensor-utils
++++ securityonion-nsmnow-admin-scripts-20120724/usr/lib/nsmnow/lib-nsm-sensor-utils
+@@ -368,8 +368,8 @@ sensor_cleandisk()
+ 				# there are no pcaps from previous days, so look for pcaps from today that we can delete
+ 			        CUR_USAGE=$(df -P $SENSOR_DIR | grep -v -i filesystem | awk '{print $5}' | tr -d %)
+ 				# keep looping until EITHER disk usage is no longer critical OR we're out of pcaps to delete
+-				while [ "$CUR_USAGE" -gt "$CRIT_DISK_USAGE" ] && [ `ls $SENSOR/dailylogs/$TODAY/snort.log.* | wc -l` -gt 1 ]; do
+-					PCAP=`ls $SENSOR/dailylogs/$TODAY/snort.log.* |head -1`
++				while [ "$CUR_USAGE" -gt "$CRIT_DISK_USAGE" ] && [ `find $SENSOR/dailylogs/$TODAY/ -type f -name 'snort.log.*' | wc -l` -gt 1 ]; do
++					PCAP=`find $SENSOR/dailylogs/$TODAY/ -type f -name 'snort.log.*' | sort | head -1`
+ 					echo_msg 1 "removing pcap from today's directory: $PCAP"
+ 					rm -f "$PCAP"
+ 				        CUR_USAGE=$(df -P $SENSOR_DIR | grep -v -i filesystem | awk '{print $5}' | tr -d %)
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm
+@@ -315,7 +315,7 @@ then
+ 	print_usage
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ elif [ -n "$UPGRADE_ONLY" ]
+ then
+     nsmadmin_upgrade
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor
+@@ -155,7 +155,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_add
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_add
+@@ -175,7 +175,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_backup-config
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_backup-config
+@@ -112,7 +112,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_backup-data
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_backup-data
+@@ -112,7 +112,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_clean
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_clean
+@@ -98,7 +98,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_clear
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_clear
+@@ -113,7 +113,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_del
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_del
+@@ -106,7 +106,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_edit
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_edit
+@@ -173,7 +173,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -249,7 +249,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -246,7 +246,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-status
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-status
+@@ -246,7 +246,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-stop
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-stop
+@@ -246,7 +246,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server
+@@ -142,7 +142,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_add
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_add
+@@ -167,7 +167,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_backup-config
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_backup-config
+@@ -119,7 +119,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_backup-data
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_backup-data
+@@ -119,7 +119,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_clear
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_clear
+@@ -113,7 +113,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_del
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_del
+@@ -114,7 +114,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_edit
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_edit
+@@ -167,7 +167,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_ps-restart
+@@ -124,7 +124,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_ps-start
+@@ -110,7 +110,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_ps-status
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_ps-status
+@@ -110,7 +110,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_ps-stop
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_ps-stop
+@@ -126,7 +126,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_sensor-add
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_sensor-add
+@@ -118,7 +118,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_sensor-del
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_sensor-del
+@@ -119,7 +119,7 @@ then
+ 	exit 0
+ elif [ -n "$SHOW_VERSION_ONLY" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_user-add
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_user-add
+@@ -123,7 +123,7 @@ then
+ 	exit 0
+ elif [ -n "${SHOW_VERSION_ONLY}" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_user-disable
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_user-disable
+@@ -113,7 +113,7 @@ then
+ 	exit 0
+ elif [ -n "${SHOW_VERSION_ONLY}" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_user-passwd
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_user-passwd
+@@ -123,7 +123,7 @@ then
+ 	exit 0
+ elif [ -n "${SHOW_VERSION_ONLY}" ]
+ then
+-	print_version
++	print_nsmnow_version
+ 	exit 0
+ fi
+ 

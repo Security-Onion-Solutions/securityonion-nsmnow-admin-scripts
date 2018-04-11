@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion166) trusty; urgency=medium
+
+  * issues 1227 and 1234 
+
+ -- Doug Burks <doug.burks@gmail.com>  Wed, 11 Apr 2018 09:07:18 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion165) trusty; urgency=medium
 
   * when configuring Squert, run securityonion_update.sh as well 

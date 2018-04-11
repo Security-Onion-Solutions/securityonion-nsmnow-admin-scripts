@@ -158,3 +158,4 @@ remove-old-files
 postinst---add-conditions-for-updating-etcinitsecurityonion.conf
 avoid-errors-when-no-unified2-files-are-available-for-deletion
 when-configuring-Squert,-run-securityonion_update.sh-as-well
+issues-1227-and-1234
