@@ -599,14 +599,14 @@ EOF_SGUIL_DB
 
 	# MOVED FROM /usr/bin/sosetup
 	cat /var/www/so/squert/.scripts/squert.sql | mysql --defaults-file=/etc/mysql/debian.cnf -U securityonion_db
-	mysql -N -B --defaults-file=/etc/mysql/debian.cnf -e "GRANT SELECT ON securityonion_db.* TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
-	mysql -N -B --defaults-file=/etc/mysql/debian.cnf -e "GRANT ALL PRIVILEGES ON securityonion_db.mappings TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
-	mysql -N -B --defaults-file=/etc/mysql/debian.cnf -e "GRANT ALL PRIVILEGES ON securityonion_db.ip2c TO 'readonly'@'localhost';"
-	mysql -N -B --defaults-file=/etc/mysql/debian.cnf -e "GRANT FILE ON *.* TO 'readonly'@'localhost';"
-	mysql -N -B --defaults-file=/etc/mysql/debian.cnf -e "GRANT INSERT,UPDATE,DELETE ON securityonion_db.filters TO 'readonly'@'localhost';"
-	mysql -N -B --defaults-file=/etc/mysql/debian.cnf -e "GRANT DELETE on securityonion_db.history to 'readonly'@'localhost';"
-	mysql -N -B --defaults-file=/etc/mysql/debian.cnf -e "GRANT UPDATE on securityonion_db.user_info TO 'readonly'@'localhost';"
-	mysql -N -B --defaults-file=/etc/mysql/debian.cnf -e "GRANT INSERT,UPDATE ON securityonion_db.object_mappings TO 'readonly'@'localhost';"
+	mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT SELECT ON securityonion_db.* TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
+	mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT ALL PRIVILEGES ON securityonion_db.mappings TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
+	mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT ALL PRIVILEGES ON securityonion_db.ip2c TO 'readonly'@'localhost';"
+	mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT FILE ON *.* TO 'readonly'@'localhost';"
+	mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT INSERT,UPDATE,DELETE ON securityonion_db.filters TO 'readonly'@'localhost';"
+	mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT DELETE on securityonion_db.history to 'readonly'@'localhost';"
+	mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT UPDATE on securityonion_db.user_info TO 'readonly'@'localhost';"
+	mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT INSERT,UPDATE ON securityonion_db.object_mappings TO 'readonly'@'localhost';"
 
 	# Additional perms in securityonion_update.sql
 	bash /var/www/so/squert/.scripts/securityonion_update.sh
@@ -856,14 +856,14 @@ EOF_SGUIL_DB
 
         # COPIED FROM ABOVE
         cat /var/www/so/squert/.scripts/squert.sql | mysql --defaults-file=/etc/mysql/debian.cnf -U securityonion_db
-        mysql -N -B --defaults-file=/etc/mysql/debian.cnf -e "GRANT SELECT ON securityonion_db.* TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
-        mysql -N -B --defaults-file=/etc/mysql/debian.cnf -e "GRANT ALL PRIVILEGES ON securityonion_db.mappings TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
-        mysql -N -B --defaults-file=/etc/mysql/debian.cnf -e "GRANT ALL PRIVILEGES ON securityonion_db.ip2c TO 'readonly'@'localhost';"
-        mysql -N -B --defaults-file=/etc/mysql/debian.cnf -e "GRANT FILE ON *.* TO 'readonly'@'localhost';"
-        mysql -N -B --defaults-file=/etc/mysql/debian.cnf -e "GRANT INSERT,UPDATE,DELETE ON securityonion_db.filters TO 'readonly'@'localhost';"
-        mysql -N -B --defaults-file=/etc/mysql/debian.cnf -e "GRANT DELETE on securityonion_db.history to 'readonly'@'localhost';"
-        mysql -N -B --defaults-file=/etc/mysql/debian.cnf -e "GRANT UPDATE on securityonion_db.user_info TO 'readonly'@'localhost';"
-	mysql -N -B --defaults-file=/etc/mysql/debian.cnf -e "GRANT INSERT,UPDATE ON securityonion_db.object_mappings TO 'readonly'@'localhost';"
+        mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT SELECT ON securityonion_db.* TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
+        mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT ALL PRIVILEGES ON securityonion_db.mappings TO 'readonly'@'localhost' IDENTIFIED BY 'securityonion';"
+        mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT ALL PRIVILEGES ON securityonion_db.ip2c TO 'readonly'@'localhost';"
+        mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT FILE ON *.* TO 'readonly'@'localhost';"
+        mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT INSERT,UPDATE,DELETE ON securityonion_db.filters TO 'readonly'@'localhost';"
+        mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT DELETE on securityonion_db.history to 'readonly'@'localhost';"
+        mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT UPDATE on securityonion_db.user_info TO 'readonly'@'localhost';"
+	mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT INSERT,UPDATE ON securityonion_db.object_mappings TO 'readonly'@'localhost';"
 
 	# Allow pivoting from Squert to ELSA
 	bash /var/www/so/squert/.scripts/securityonion_create_elsa_link.sh

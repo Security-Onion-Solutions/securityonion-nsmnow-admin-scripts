@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion175) xenial; urgency=medium
+
+  * fix mysql calls 
+
+ -- Doug Burks <doug.burks@gmail.com>  Fri, 25 May 2018 12:54:06 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion174) xenial; urgency=medium
 
   * mysql --defaults-file=/etc/mysql/debian.cnf 

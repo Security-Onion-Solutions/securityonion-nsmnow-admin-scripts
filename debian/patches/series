@@ -167,3 +167,4 @@ remove-service-nsm-reference
 remove-so-snorby-wipe
 change-ELSA-to-Kibana
 mysql---defaults-file=etcmysqldebian.cnf
+fix-mysql-calls
