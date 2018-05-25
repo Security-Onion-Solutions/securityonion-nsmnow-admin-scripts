@@ -4,7 +4,7 @@
 [ "$(id -u)" -ne 0 ] && echo "This script must be run using sudo!" && exit 1
 
 # First, stop all services
-service nsm stop
+/usr/sbin/so-stop
 
 # Delete all sensors
 if [ -f /etc/nsm/sensortab ]; then

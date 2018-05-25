@@ -18,7 +18,7 @@ case "$1" in
 	[ -f $FILE ] && rm -f $FILE
 	
 	# Make scripts executable
-	chmod +x /usr/sbin/so-snorby-wipe /usr/sbin/so-bro-cron /usr/sbin/broctl /usr/sbin/so-clear-backlog || echo "Error making scripts executable."
+	chmod +x /usr/sbin/so-bro-cron /usr/sbin/broctl /usr/sbin/so-clear-backlog || echo "Error making scripts executable."
 	
 	# create log directory so cron scripts don't complain
 	DIR="/var/log/nsm"
@@ -28,36 +28,6 @@ case "$1" in
 	if [ -d /var/lib/mysql/securityonion_db ] ; then
 		mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT INSERT,UPDATE ON securityonion_db.object_mappings TO 'readonly'@'localhost';" || echo "Error updating permissions on Squert object_mappings."
 	fi
-
-	# If necessary, copy /etc/nsm/templates/init/securityonion.conf to /etc/init/securityonion.conf:
-	# If new installation (file does not exist), copy file
-	# If pre-elastic, copy file
-	# If post-elastic, do not copy file
-	INIT="/etc/init/securityonion.conf"
-	TEMPLATE="/etc/nsm/templates/init/securityonion.conf"
-	if ! [ -f ${INIT} ]; then
-		echo "${INIT} does not exist.  Creating ${INIT}."
-		cp ${TEMPLATE} ${INIT} || echo "Error copying ${TEMPLATE} to ${INIT}"
-	else
-		if grep -q "/usr/sbin/so-elastic-start" ${INIT} ; then
-			echo "Elastic Stack installed.  Not updating ${INIT}."
-		else
-			echo "${INIT} is an older version.  Updating ${INIT}."
-			cp ${TEMPLATE} ${INIT} || echo "Error copying ${TEMPLATE} to ${INIT}"
-		fi			
-	fi
-
-	# commenting out the following section because some users rely on sguild debug 2
-	# example: https://github.com/Security-Onion-Solutions/security-onion/wiki/ThirdPartyIntegration
-	# change sguild debug to 1
-	#FILE='/etc/sguild/sguild.conf'
-	#if [ -f $FILE ]; then
-	#		if grep "set DEBUG 2" $FILE >/dev/null 2>&1; then
-	#		echo "Sguild DEBUG is currently set to 2."
-	#		echo "Setting sguild DEBUG to 1."
-	#		sed -i 's|set DEBUG 2|set DEBUG 1|g' $FILE || echo "Error updating $FILE"
-	#	fi
-	#fi
 
     ;;
 

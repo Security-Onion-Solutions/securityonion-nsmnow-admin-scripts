@@ -1,3 +1,39 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion172) xenial; urgency=medium
+
+  * remove so-snorby-wipe 
+
+ -- Doug Burks <doug.burks@gmail.com>  Tue, 22 May 2018 09:55:53 -0400
+
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion171) xenial; urgency=medium
+
+  * remove service nsm reference 
+
+ -- Doug Burks <doug.burks@gmail.com>  Tue, 22 May 2018 08:59:42 -0400
+
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion170) xenial; urgency=medium
+
+  * remove init.d scripts 
+
+ -- Doug Burks <doug.burks@gmail.com>  Sat, 19 May 2018 17:22:59 -0400
+
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion169) xenial; urgency=medium
+
+  * update systemd script 
+
+ -- Doug Burks <doug.burks@gmail.com>  Sat, 19 May 2018 17:04:29 -0400
+
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion168) xenial; urgency=medium
+
+  * add systemd script 
+
+ -- Doug Burks <doug.burks@gmail.com>  Fri, 04 May 2018 08:47:43 -0400
+
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion167) xenial; urgency=medium
+
+  * update start script 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 03 May 2018 10:46:44 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion166) trusty; urgency=medium
 
   * issues 1227 and 1234 

@@ -1,0 +1,104 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion172) xenial; urgency=medium
+ .
+   * remove so-snorby-wipe
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/so-snorby-wipe
++++ /dev/null
+@@ -1,76 +0,0 @@
+-#!/bin/bash
+-
+-TABLES="settings users lookups sensor"
+-DATE=`date +%Y%m%d%H%m%S`
+-BACKUP="/root/snorby-backup-$DATE"
+-
+-# Check for root
+-[ "$(id -u)" -ne 0 ] && echo "This script must be run using sudo!" && exit 1
+-
+-echo
+-echo "===================================================================="
+-echo "This script will delete all alerts in the Snorby database."
+-echo "It will attempt to do the following:"
+-echo "- backup the following Snorby tables to $BACKUP"
+-echo "$TABLES"
+-echo "- initialize a new Snorby database"
+-echo "- restore the Snorby backup from $BACKUP"
+-echo 
+-echo "If you have other sensors reporting to this server, you should"
+-echo "manually stop their services before continuing."
+-echo "You can do so by running the following command on each sensor:"
+-echo "sudo service nsm stop"
+-echo
+-echo "To continue, press Enter."
+-echo "To cancel, press Ctrl-c."
+-echo "===================================================================="
+-read input
+-
+-# shut down NSM services and Snorby
+-service nsm stop
+-pkill delayed_job
+-
+-# purge all unified2 files since otherwise they tend to get reloaded into Snorby by barnyard2
+-rm -f /nsm/sensor_data/*-*/snort.unified2.*
+-
+-# backup snorby's config-related db tables
+-mysqldump snorby $TABLES > $BACKUP
+-
+-# Delete any existing Snorby data.
+-if [ -d /var/lib/mysql/snorby ]; then
+-   mysql -e "drop database snorby"
+-fi
+-
+-# Set a dummy email and password to facilitate initialization (will be replaced by db table restore) 
+-cp /opt/snorby/db/seeds.rb.securityonion /opt/snorby/db/seeds.rb
+-sed -i "s|ReplaceWithDesiredEmail|dummy@dummy.com|g" /opt/snorby/db/seeds.rb
+-sed -i "s|ReplaceWithDesiredPassword|dummy_password|g" /opt/snorby/db/seeds.rb
+-
+-# Set FPC options
+-IP=`ifconfig |grep "inet addr" | awk '{print $2}' |cut -d\: -f2 |grep -v "127.0.0.1" |head -1`
+-sed -i "s|packet_capture_url, nil|packet_capture_url, 'https://$IP/capme/'|g" /opt/snorby/db/seeds.rb
+-sed -i "s|packet_capture, nil|packet_capture, 1|g" /opt/snorby/db/seeds.rb
+-sed -i "s|packet_capture_auto_auth, 1|packet_capture_auto_auth, nil|g" /opt/snorby/db/seeds.rb
+-
+-# Initialize Snorby DB - will take while
+-su www-data -c "cd /opt/snorby; bundle exec rake snorby:setup RAILS_ENV=production"
+-
+-# restore config tables
+-mysql snorby < $BACKUP
+-
+-# Shred the Snorby password
+-shred -u /opt/snorby/db/seeds.rb
+-
+-# update Snorby's reference tables
+-rule-update
+-
+-# restart all SO services
+-service nsm start
+-
+-echo
+-echo "===================================================================="
+-echo "Snorby database backup can be found at $BACKUP."
+-echo "If you're able to login to Snorby and everything works properly,"
+-echo "then you'll probably want to shred this file:"
+-echo "sudo shred -u $BACKUP"
+-echo "===================================================================="

@@ -1,0 +1,11 @@
+[Unit]
+Description=Security Onion Service
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/usr/sbin/so-boot
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
