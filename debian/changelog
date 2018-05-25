@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion174) xenial; urgency=medium
+
+  * mysql --defaults-file=/etc/mysql/debian.cnf 
+
+ -- Doug Burks <doug.burks@gmail.com>  Fri, 25 May 2018 09:52:34 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion173) xenial; urgency=medium
 
   * change ELSA to Kibana 
