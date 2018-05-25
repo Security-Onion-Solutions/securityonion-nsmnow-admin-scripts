@@ -144,7 +144,7 @@ fi
 # collect user name
 if [ -z "${USER_NAME}" ]
 then
-	prompt_user_input "User Name" "Enter the name of the user that will be disabled (Sguil/Squert/ELSA)" ""
+	prompt_user_input "User Name" "Enter the name of the user that will be disabled (Sguil/Squert/Kibana)" ""
 
 	[ "${?}" -ne 0 ] && exit 1
 	USER_NAME=${PROMPT_RET}

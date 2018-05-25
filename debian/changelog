@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion173) xenial; urgency=medium
+
+  * change ELSA to Kibana 
+
+ -- Doug Burks <doug.burks@gmail.com>  Fri, 25 May 2018 08:42:15 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion172) xenial; urgency=medium
 
   * remove so-snorby-wipe 

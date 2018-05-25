@@ -165,3 +165,4 @@ update-systemd-script
 remove-init.d-scripts
 remove-service-nsm-reference
 remove-so-snorby-wipe
+change-ELSA-to-Kibana
