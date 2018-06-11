@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion176) xenial; urgency=medium
+
+  * increase systemd timeout to 5 minutes
+
+ -- Doug Burks <doug.burks@gmail.com>  Mon, 11 Jun 2018 15:35:11 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion175) xenial; urgency=medium
 
   * fix mysql calls 

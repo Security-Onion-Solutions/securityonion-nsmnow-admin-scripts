@@ -6,6 +6,7 @@ After=network.target
 Type=forking
 ExecStart=/usr/sbin/so-boot
 Restart=on-abort
+TimeoutStartSec=300
 
 [Install]
 WantedBy=multi-user.target
