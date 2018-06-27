@@ -764,6 +764,8 @@ prompt_user_password()
 				PROMPT_RET=$ANS
 			elif [ -z "${PROMPT_RET}" ]
             then
+				echo
+				echo "Provided answers do not match!"
 				return 1
 			fi
 			;;
