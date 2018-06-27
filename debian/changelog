@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion177) xenial; urgency=medium
+
+  * so-user-add: improper confirmation of password should throw an error #1271 
+
+ -- Doug Burks <doug.burks@gmail.com>  Wed, 27 Jun 2018 18:37:23 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion176) xenial; urgency=medium
 
   * increase systemd timeout to 5 minutes

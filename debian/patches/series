@@ -169,3 +169,4 @@ change-ELSA-to-Kibana
 mysql---defaults-file=etcmysqldebian.cnf
 fix-mysql-calls
 increase-systemd-timeout-to-5-minutes
+so-user-add:-improper-confirmation-of-password-should-throw-an-error-#1271
