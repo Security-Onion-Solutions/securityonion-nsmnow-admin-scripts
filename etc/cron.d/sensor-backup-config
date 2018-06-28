@@ -1,0 +1,7 @@
+# /etc/cron.d/sensor-backup-config
+#
+# crontab entry to backup server config; purge backups older than 10 days
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+* * * * * root if [ -d /etc/nsm/backup ]; then :; else mkdir /etc/nsm/backup; fi; for i in $(cat /etc/nsm/sensortab | grep -v '#' | awk '{print $1}'); do /usr/sbin/nsm_sensor_backup-config --force-yes --sensor-name=$i --backup-file=/etc/nsm/backup/$i-sensor-backup-`date +\%Y-\%m-\%d`.tar.gz >> /var/log/nsm/$i-backup-config.log 2>&1; done; /usr/bin/find  /etc/nsm/backup/*server-backup*.tar.gz -mtime +10 -exec rm -f {} \;
+

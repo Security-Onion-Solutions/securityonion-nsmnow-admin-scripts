@@ -1,0 +1,8 @@
+# /etc/cron.d/sensor-backup-config
+#
+# crontab entry to backup server config; purge backups older than 10 days
+
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+* * * * * root if [ -d /etc/nsm/backup ]; then :; else mkdir /etc/nsm/backup; fi; /usr/sbin/nsm_server_backup-config --force-yes --server-name=securityonion --backup-file=/etc/nsm/backup/securityonion-server-backup-`date +\%Y-\%m-\%d`.tar.gz >> /var/log/nsm/server-backup-config.log 2>&1; /usr/bin/find  /etc/nsm/backup/*server-backup*.tar.gz -mtime +10 -exec rm -f {} \;
+
