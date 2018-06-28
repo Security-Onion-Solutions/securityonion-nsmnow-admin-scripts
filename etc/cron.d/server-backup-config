@@ -1,4 +1,4 @@
-# /etc/cron.d/sensor-backup-config
+# /etc/cron.d/server-backup-config
 #
 # crontab entry to backup server config; purge backups older than 10 days
 
