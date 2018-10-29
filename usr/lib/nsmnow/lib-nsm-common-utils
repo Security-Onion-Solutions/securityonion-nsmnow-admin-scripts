@@ -1141,6 +1141,26 @@ process_restart_if_stale()
         APP_DESC=${5:-}
 	USER=${6:-}
 
+	# don't run while any other nsm_sensor_ps script is running
+        if [ $(pgrep -c nsm_sensor_ps) -gt 1 ]
+        then
+                echo_msg_begin 1 "waiting for other nsmnow process control script to stop"
+                sleep 1
+                loop=2
+                while [ $(pgrep -c nsm_sensor_ps) -gt 1 ]
+                do
+                        if [ $loop -ge 30 ]
+                        then
+                                echo_msg_end 1 "aborting after $loop checks"
+                                echo "nsm_sensor_ps process_restart_if_stale function call exited with error" 1>&2
+                                exit 1
+                        fi
+                        sleep 1
+                        loop=$((loop + 1))
+                done
+                echo_msg_end 2 "continuing after $loop checks"
+        fi
+
 	# check for PID file
         if [ -f $PID_FILE ]
         then
