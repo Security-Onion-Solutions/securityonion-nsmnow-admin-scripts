@@ -166,12 +166,14 @@ then
 	exit 1
 fi
 
-# prompt to clear the sensor
-prompt_user_yesno "Clear Sensor" "All collected data for sensor \"${SENSOR_NAME}\" will be cleared.\n\nDo you want to continue?" "N"
-[ "$?" -ne 0 ] && exit 1
-if [ "$PROMPT_RET" != "Y" -a "$PROMPT_RET" != "y" ]
-then
-	exit 1
+if [ "$FORCE_YES" != "yes" ]; then
+	# prompt to clear the sensor
+	prompt_user_yesno "Clear Sensor" "All collected data for sensor \"${SENSOR_NAME}\" will be cleared.\n\nDo you want to continue?" "N"
+	[ "$?" -ne 0 ] && exit 1
+	if [ "$PROMPT_RET" != "Y" -a "$PROMPT_RET" != "y" ]
+	then
+		exit 1
+	fi
 fi
 
 #
