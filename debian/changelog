@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion178) xenial; urgency=medium
+
+  * issues 1291 1292 1176 
+
+ -- Doug Burks <doug.burks@gmail.com>  Mon, 29 Oct 2018 15:17:29 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion177) xenial; urgency=medium
 
   * so-user-add: improper confirmation of password should throw an error #1271 
