@@ -171,3 +171,4 @@ fix-mysql-calls
 increase-systemd-timeout-to-5-minutes
 so-user-add:-improper-confirmation-of-password-should-throw-an-error-#1271
 issues-1291-1292-1176
+NSM:-wait-for-network-online-on-boot-#1362

@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion179) xenial; urgency=medium
+
+  * NSM: wait for network-online on boot #1362 
+
+ -- Doug Burks <doug.burks@gmail.com>  Sat, 10 Nov 2018 08:15:35 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion178) xenial; urgency=medium
 
   * issues 1291 1292 1176 
