@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion180) xenial; urgency=medium
+
+  * refactor config backup cron jobs #1376 
+
+ -- Doug Burks <doug.burks@gmail.com>  Mon, 26 Nov 2018 14:36:22 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion179) xenial; urgency=medium
 
   * NSM: wait for network-online on boot #1362 
