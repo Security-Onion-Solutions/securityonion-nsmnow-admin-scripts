@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2011-2016 Doug Burks and Security Onion
+# Copyright (C) 2011-2018 Doug Burks and Security Onion Solutions, LLC
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -121,6 +121,12 @@ done
 #
 # COLLECT INPUT
 #
+
+# If there are no sensors to clean, then exit
+NUM_INTERFACES=$(grep -v "#" /etc/nsm/sensortab 2>/dev/null | wc -l)
+if [ ${NUM_INTERFACES} -eq 0 ]; then
+	exit 1
+fi
 
 # We clean all sensors at the same time anyway, so just grab the first sensor
 SENSOR_NAME=`grep -v "^#" /etc/nsm/sensortab |awk '{print $1}' |head -1`
