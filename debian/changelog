@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion181) xenial; urgency=medium
+
+  * NSM: cron jobs should check to see if they are running on storage nodes #1337 
+
+ -- Doug Burks <doug.burks@gmail.com>  Tue, 27 Nov 2018 11:29:55 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion180) xenial; urgency=medium
 
   * refactor config backup cron jobs #1376 

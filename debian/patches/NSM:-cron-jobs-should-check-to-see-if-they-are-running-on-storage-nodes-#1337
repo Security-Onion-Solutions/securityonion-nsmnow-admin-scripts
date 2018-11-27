@@ -1,0 +1,126 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion181) xenial; urgency=medium
+ .
+   * NSM: cron jobs should check to see if they are running on storage nodes #1337
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: https://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/etc/cron.d/nsm-watchdog
++++ securityonion-nsmnow-admin-scripts-20120724/etc/cron.d/nsm-watchdog
+@@ -5,4 +5,4 @@
+ SHELL=/bin/sh
+ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+ 
+-4,9,14,19,24,29,34,39,44,49,54,59 *   * * * root  ( date ; /usr/sbin/nsm_server_ps-restart --if-stale ; /usr/sbin/nsm_sensor_ps-restart --if-stale) >> /var/log/nsm/watchdog.log
++4,9,14,19,24,29,34,39,44,49,54,59 *   * * * root  /usr/sbin/so-nsm-watchdog
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_clean
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_clean
+@@ -1,6 +1,6 @@
+ #!/bin/bash
+ #
+-# Copyright (C) 2011-2016 Doug Burks and Security Onion
++# Copyright (C) 2011-2018 Doug Burks and Security Onion Solutions, LLC
+ #
+ # This program is free software; you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License Version 2 as
+@@ -122,6 +122,12 @@ done
+ # COLLECT INPUT
+ #
+ 
++# If there are no sensors to clean, then exit
++NUM_INTERFACES=$(grep -v "#" /etc/nsm/sensortab 2>/dev/null | wc -l)
++if [ ${NUM_INTERFACES} -eq 0 ]; then
++	exit 1
++fi
++
+ # We clean all sensors at the same time anyway, so just grab the first sensor
+ SENSOR_NAME=`grep -v "^#" /etc/nsm/sensortab |awk '{print $1}' |head -1`
+ 
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-daily-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-daily-restart
+@@ -1,5 +1,14 @@
+ #!/bin/bash
+ 
++# Define initial variables
++SENSORTAB="/etc/nsm/sensortab"
++NUM_INTERFACES=$(grep -v "#" ${SENSORTAB} 2>/dev/null | wc -l)
++
++# If there are no sensor interfaces enabled, then exit
++if [ ${NUM_INTERFACES} -eq 0 ]; then
++	exit 1
++fi
++
+ sleep 1
+ 
+ date >> /var/log/nsm/sensor-newday-argus.log
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/so-bro-cron
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/so-bro-cron
+@@ -1,5 +1,14 @@
+ #!/bin/bash
+ 
++# Define initial variables
++SENSORTAB="/etc/nsm/sensortab"
++NUM_INTERFACES=$(grep -v "#" ${SENSORTAB} 2>/dev/null | wc -l)
++
++# If there are no sensor interfaces enabled, then exit
++if [ ${NUM_INTERFACES} -eq 0 ]; then
++	exit 1
++fi
++
+ SO_CONF="/etc/nsm/securityonion.conf"
+ 
+ # Add new Bro entries to SO_CONF if necessary
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/so-netsniff-ng-cron
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/so-netsniff-ng-cron
+@@ -2,12 +2,18 @@
+ 
+ # Define initial variables
+ SENSORTAB="/etc/nsm/sensortab"
++NUM_INTERFACES=$(grep -v "#" ${SENSORTAB} 2>/dev/null | wc -l)
+ INTERFACES=$(grep -v '#' $SENSORTAB | awk '{print $1}')
+ LOG="/var/log/nsm/netsniff-sync.log"
+ NEED_TO_RESTART="no"
+ OS_DATE=$(date +"%Y-%m-%d")
+ OS_TIME=$(date +"%H%M")
+ 
++# If there are no sensor interfaces enabled, then exit
++if [ ${NUM_INTERFACES} -eq 0 ]; then
++        exit 1
++fi
++
+ if [ $OS_TIME -eq 0000 ]; then
+ 	echo "$(date) Time is 00:00, so skipping check for netsniff date since /etc/cron.d/sensor-newday should be restarting it anyway." >> $LOG
+ 	exit 0
+--- /dev/null
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/so-nsm-watchdog
+@@ -0,0 +1,12 @@
++#!/bin/bash
++
++# Define initial variables
++SENSORTAB="/etc/nsm/sensortab"
++NUM_INTERFACES=$(grep -v "#" ${SENSORTAB} 2>/dev/null | wc -l)
++
++# If there are no sensor interfaces enabled, then exit
++if [ ${NUM_INTERFACES} -eq 0 ]; then
++	exit 1
++fi
++
++( date ; /usr/sbin/nsm_server_ps-restart --if-stale ; /usr/sbin/nsm_sensor_ps-restart --if-stale) >> /var/log/nsm/watchdog.log

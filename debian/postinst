@@ -18,7 +18,7 @@ case "$1" in
 	[ -f $FILE ] && rm -f $FILE
 	
 	# Make scripts executable
-	chmod +x /usr/sbin/so-bro-cron /usr/sbin/broctl /usr/sbin/so-clear-backlog /usr/sbin/so-sensor-config-backup /usr/sbin/so-server-config-backup || echo "Error making scripts executable."
+	chmod +x /usr/sbin/so-bro-cron /usr/sbin/broctl /usr/sbin/so-clear-backlog /usr/sbin/so-sensor-config-backup /usr/sbin/so-server-config-backup /usr/sbin/so-nsm-watchdog || echo "Error making scripts executable."
 	
 	# create log directory so cron scripts don't complain
 	DIR="/var/log/nsm"
