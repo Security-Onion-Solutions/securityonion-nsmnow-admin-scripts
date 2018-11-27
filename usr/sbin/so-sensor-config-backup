@@ -15,6 +15,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+# If there are no sensor interfaces enabled, then exit
+FILE="/etc/nsm/sensortab"
+ENABLED=$(grep -v "#" ${FILE} 2>/dev/null | wc -l)
+if [ ${ENABLED} -eq 0 ]; then
+	exit 1
+fi
+
 # Set defaults
 SENSOR_CONFIG_BACKUPS=10
 SENSOR_CONFIG_BACKUP_DIR="/etc/nsm/backup"

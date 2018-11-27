@@ -1,0 +1,57 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion184) xenial; urgency=medium
+ .
+   * improve so-*-config-backup
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: https://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/so-sensor-config-backup
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/so-sensor-config-backup
+@@ -15,6 +15,13 @@
+ # You should have received a copy of the GNU General Public License
+ # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ 
++# If there are no sensor interfaces enabled, then exit
++FILE="/etc/nsm/sensortab"
++ENABLED=$(grep -v "#" ${FILE} 2>/dev/null | wc -l)
++if [ ${ENABLED} -eq 0 ]; then
++	exit 1
++fi
++
+ # Set defaults
+ SENSOR_CONFIG_BACKUPS=10
+ SENSOR_CONFIG_BACKUP_DIR="/etc/nsm/backup"
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/so-server-config-backup
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/so-server-config-backup
+@@ -15,6 +15,13 @@
+ # You should have received a copy of the GNU General Public License
+ # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ 
++# If server not enabled, then exit
++FILE="/etc/nsm/servertab"
++ENABLED=$(grep -v "#" ${FILE} 2>/dev/null | wc -l)
++if [ ${ENABLED} -eq 0 ]; then
++	exit 1
++fi
++
+ # Set defaults
+ SERVER_CONFIG_BACKUPS=10
+ SERVER_CONFIG_BACKUP_DIR="/etc/nsm/backup"

@@ -176,3 +176,4 @@ refactor-config-backup-cron-jobs-#1376
 NSM:-cron-jobs-should-check-to-see-if-they-are-running-on-storage-nodes-#1337
 improve-so-nsm-watchdog
 improve-so-netsniff-ng-cron
+improve-so-*-config-backup
