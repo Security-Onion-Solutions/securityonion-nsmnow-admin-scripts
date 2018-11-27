@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# Define initial variables
+SENSORTAB="/etc/nsm/sensortab"
+NUM_INTERFACES=$(grep -v "#" ${SENSORTAB} 2>/dev/null | wc -l)
+
+# If there are no sensor interfaces enabled, then exit
+if [ ${NUM_INTERFACES} -eq 0 ]; then
+	exit 1
+fi
+
 SO_CONF="/etc/nsm/securityonion.conf"
 
 # Add new Bro entries to SO_CONF if necessary

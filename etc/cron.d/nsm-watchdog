@@ -5,4 +5,4 @@
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
-4,9,14,19,24,29,34,39,44,49,54,59 *   * * * root  ( date ; /usr/sbin/nsm_server_ps-restart --if-stale ; /usr/sbin/nsm_sensor_ps-restart --if-stale) >> /var/log/nsm/watchdog.log
+4,9,14,19,24,29,34,39,44,49,54,59 *   * * * root  /usr/sbin/so-nsm-watchdog

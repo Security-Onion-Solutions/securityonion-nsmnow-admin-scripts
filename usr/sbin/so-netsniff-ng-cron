@@ -2,11 +2,17 @@
 
 # Define initial variables
 SENSORTAB="/etc/nsm/sensortab"
+NUM_INTERFACES=$(grep -v "#" ${SENSORTAB} 2>/dev/null | wc -l)
 INTERFACES=$(grep -v '#' $SENSORTAB | awk '{print $1}')
 LOG="/var/log/nsm/netsniff-sync.log"
 NEED_TO_RESTART="no"
 OS_DATE=$(date +"%Y-%m-%d")
 OS_TIME=$(date +"%H%M")
+
+# If there are no sensor interfaces enabled, then exit
+if [ ${NUM_INTERFACES} -eq 0 ]; then
+        exit 1
+fi
 
 if [ $OS_TIME -eq 0000 ]; then
 	echo "$(date) Time is 00:00, so skipping check for netsniff date since /etc/cron.d/sensor-newday should be restarting it anyway." >> $LOG

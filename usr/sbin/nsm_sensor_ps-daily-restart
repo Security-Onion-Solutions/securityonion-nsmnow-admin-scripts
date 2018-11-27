@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# Define initial variables
+SENSORTAB="/etc/nsm/sensortab"
+NUM_INTERFACES=$(grep -v "#" ${SENSORTAB} 2>/dev/null | wc -l)
+
+# If there are no sensor interfaces enabled, then exit
+if [ ${NUM_INTERFACES} -eq 0 ]; then
+	exit 1
+fi
+
 sleep 1
 
 date >> /var/log/nsm/sensor-newday-argus.log
