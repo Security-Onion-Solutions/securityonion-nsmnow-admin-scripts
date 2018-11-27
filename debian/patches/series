@@ -174,3 +174,4 @@ issues-1291-1292-1176
 NSM:-wait-for-network-online-on-boot-#1362
 refactor-config-backup-cron-jobs-#1376
 NSM:-cron-jobs-should-check-to-see-if-they-are-running-on-storage-nodes-#1337
+improve-so-nsm-watchdog
