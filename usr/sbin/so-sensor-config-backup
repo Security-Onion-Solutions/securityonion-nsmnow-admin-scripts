@@ -38,6 +38,6 @@ for i in $(cat /etc/nsm/sensortab | grep -v '#' | awk '{print $1}'); do
 done
 
 # If old backups exist, delete them
-if [ -f ${SENSOR_CONFIG_BACKUP_DIR}/*sensor-backup*.tar.gz ]; then
+if ls ${SENSOR_CONFIG_BACKUP_DIR}/*sensor-backup*.tar.gz >/dev/null 2>&1; then
 	/usr/bin/find ${SENSOR_CONFIG_BACKUP_DIR}/*sensor-backup*.tar.gz -mtime +${SENSOR_CONFIG_BACKUPS} -exec rm -f {} \;
 fi

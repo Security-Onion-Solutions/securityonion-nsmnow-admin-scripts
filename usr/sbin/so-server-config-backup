@@ -36,6 +36,6 @@ mkdir -p ${SERVER_CONFIG_BACKUP_DIR}
 /usr/sbin/nsm_server_backup-config --force-yes --server-name=securityonion --backup-file=${SERVER_CONFIG_BACKUP_DIR}/securityonion-server-backup-`date +\%Y-\%m-\%d`.tar.gz >> /var/log/nsm/server-backup-config.log 2>&1
 
 # If old backups exist, delete them
-if [ -f ${SERVER_CONFIG_BACKUP_DIR}/*server-backup*.tar.gz ]; then
+if ls ${SERVER_CONFIG_BACKUP_DIR}/*server-backup*.tar.gz >/dev/null 2>&1; then
 	/usr/bin/find ${SERVER_CONFIG_BACKUP_DIR}/*server-backup*.tar.gz -mtime +${SERVER_CONFIG_BACKUPS} -exec rm -f {} \;
 fi

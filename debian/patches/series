@@ -178,3 +178,4 @@ improve-so-nsm-watchdog
 improve-so-netsniff-ng-cron
 improve-so-*-config-backup
 fix-so-nsm-watchdog
+fix-so-*-config-backup

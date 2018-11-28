@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion186) xenial; urgency=medium
+
+  * fix so-*-config-backup 
+
+ -- Doug Burks <doug.burks@gmail.com>  Wed, 28 Nov 2018 13:51:59 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion185) xenial; urgency=medium
 
   * fix so-nsm-watchdog 
