@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion189) xenial; urgency=medium
+
+  * remove old cron jobs 
+
+ -- Doug Burks <doug.burks@gmail.com>  Wed, 28 Nov 2018 15:12:03 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion188) xenial; urgency=medium
 
   * more naming fixes 

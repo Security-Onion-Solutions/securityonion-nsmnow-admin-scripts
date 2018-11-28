@@ -29,6 +29,14 @@ case "$1" in
 		mysql --defaults-file=/etc/mysql/debian.cnf -N -B -e "GRANT INSERT,UPDATE ON securityonion_db.object_mappings TO 'readonly'@'localhost';" || echo "Error updating permissions on Squert object_mappings."
 	fi
 
+	# clean up old cron jobs if they exist
+	for FILE in /etc/cron.d/sensor-backup-config /etc/cron.d/server-backup-config; do
+		if [ -f $FILE ]; then
+			echo "Removing old cron job ${FILE}"
+			rm ${FILE} || echo "Error removing ${FILE}"
+		fi
+	done
+
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
