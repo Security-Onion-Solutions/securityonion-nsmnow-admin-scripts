@@ -1,0 +1,243 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion187) xenial; urgency=medium
+ .
+   * align to naming convention
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: https://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/etc/cron.d/sensor-backup-config
++++ /dev/null
+@@ -1,7 +0,0 @@
+-# /etc/cron.d/sensor-backup-config
+-#
+-# crontab entry to backup sensor config
+-SHELL=/bin/bash
+-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+-0 1 * * * root /usr/sbin/so-sensor-config-backup
+-
+--- securityonion-nsmnow-admin-scripts-20120724.orig/etc/cron.d/server-backup-config
++++ /dev/null
+@@ -1,7 +0,0 @@
+-# /etc/cron.d/server-backup-config
+-#
+-# crontab entry to backup server config
+-SHELL=/bin/sh
+-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+-0 1 * * * root /usr/sbin/so-server-config-backup
+-
+--- /dev/null
++++ securityonion-nsmnow-admin-scripts-20120724/etc/cron.d/so-sensor-backup-config
+@@ -0,0 +1,6 @@
++# /etc/cron.d/so-sensor-backup-config
++#
++# crontab entry to backup sensor config
++SHELL=/bin/bash
++PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
++0 1 * * * root /usr/sbin/so-sensor-backup-config
+--- /dev/null
++++ securityonion-nsmnow-admin-scripts-20120724/etc/cron.d/so-server-backup-config
+@@ -0,0 +1,6 @@
++# /etc/cron.d/so-server-backup
++#
++# crontab entry to backup server config
++SHELL=/bin/sh
++PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
++0 1 * * * root /usr/sbin/so-server-backup
+--- /dev/null
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/so-sensor-backup-config
+@@ -0,0 +1,43 @@
++#!/bin/bash
++#
++# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
++#
++# This program is free software: you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation, either version 3 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program.  If not, see <http://www.gnu.org/licenses/>.
++
++# If there are no sensor interfaces enabled, then exit
++FILE="/etc/nsm/sensortab"
++ENABLED=$(grep -v "#" ${FILE} 2>/dev/null | wc -l)
++if [ ${ENABLED} -eq 0 ]; then
++	exit 1
++fi
++
++# Set defaults
++SENSOR_CONFIG_BACKUPS=10
++SENSOR_CONFIG_BACKUP_DIR="/etc/nsm/backup"
++
++# User can override defaults in securityonion.conf
++. /etc/nsm/securityonion.conf
++
++# Make sure the backup directory exists
++mkdir -p ${SENSOR_CONFIG_BACKUP_DIR}
++
++# Create a backup for each sensor interface
++for i in $(cat /etc/nsm/sensortab | grep -v '#' | awk '{print $1}'); do 
++	/usr/sbin/nsm_sensor_backup-config --force-yes --sensor-name=${i} --backup-file=${SENSOR_CONFIG_BACKUP_DIR}/${i}-sensor-backup-`date +\%Y-\%m-\%d`.tar.gz >> /var/log/nsm/{$i}-backup-config.log 2>&1
++done
++
++# If old backups exist, delete them
++if ls ${SENSOR_CONFIG_BACKUP_DIR}/*sensor-backup*.tar.gz >/dev/null 2>&1; then
++	/usr/bin/find ${SENSOR_CONFIG_BACKUP_DIR}/*sensor-backup*.tar.gz -mtime +${SENSOR_CONFIG_BACKUPS} -exec rm -f {} \;
++fi
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/so-sensor-config-backup
++++ /dev/null
+@@ -1,43 +0,0 @@
+-#!/bin/bash
+-#
+-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
+-#
+-# This program is free software: you can redistribute it and/or modify
+-# it under the terms of the GNU General Public License as published by
+-# the Free Software Foundation, either version 3 of the License, or
+-# (at your option) any later version.
+-#
+-# This program is distributed in the hope that it will be useful,
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-# GNU General Public License for more details.
+-#
+-# You should have received a copy of the GNU General Public License
+-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-
+-# If there are no sensor interfaces enabled, then exit
+-FILE="/etc/nsm/sensortab"
+-ENABLED=$(grep -v "#" ${FILE} 2>/dev/null | wc -l)
+-if [ ${ENABLED} -eq 0 ]; then
+-	exit 1
+-fi
+-
+-# Set defaults
+-SENSOR_CONFIG_BACKUPS=10
+-SENSOR_CONFIG_BACKUP_DIR="/etc/nsm/backup"
+-
+-# User can override defaults in securityonion.conf
+-. /etc/nsm/securityonion.conf
+-
+-# Make sure the backup directory exists
+-mkdir -p ${SENSOR_CONFIG_BACKUP_DIR}
+-
+-# Create a backup for each sensor interface
+-for i in $(cat /etc/nsm/sensortab | grep -v '#' | awk '{print $1}'); do 
+-	/usr/sbin/nsm_sensor_backup-config --force-yes --sensor-name=${i} --backup-file=${SENSOR_CONFIG_BACKUP_DIR}/${i}-sensor-backup-`date +\%Y-\%m-\%d`.tar.gz >> /var/log/nsm/{$i}-backup-config.log 2>&1
+-done
+-
+-# If old backups exist, delete them
+-if ls ${SENSOR_CONFIG_BACKUP_DIR}/*sensor-backup*.tar.gz >/dev/null 2>&1; then
+-	/usr/bin/find ${SENSOR_CONFIG_BACKUP_DIR}/*sensor-backup*.tar.gz -mtime +${SENSOR_CONFIG_BACKUPS} -exec rm -f {} \;
+-fi
+--- /dev/null
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/so-server-backup-config
+@@ -0,0 +1,41 @@
++#!/bin/bash
++#
++# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
++#
++# This program is free software: you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation, either version 3 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program.  If not, see <http://www.gnu.org/licenses/>.
++
++# If server not enabled, then exit
++FILE="/etc/nsm/servertab"
++ENABLED=$(grep -v "#" ${FILE} 2>/dev/null | wc -l)
++if [ ${ENABLED} -eq 0 ]; then
++	exit 1
++fi
++
++# Set defaults
++SERVER_CONFIG_BACKUPS=10
++SERVER_CONFIG_BACKUP_DIR="/etc/nsm/backup"
++
++# User can override defaults in securityonion.conf
++. /etc/nsm/securityonion.conf
++
++# Make sure the backup directory exists
++mkdir -p ${SERVER_CONFIG_BACKUP_DIR}
++
++# Create a backup of the server config
++/usr/sbin/nsm_server_backup-config --force-yes --server-name=securityonion --backup-file=${SERVER_CONFIG_BACKUP_DIR}/securityonion-server-backup-`date +\%Y-\%m-\%d`.tar.gz >> /var/log/nsm/server-backup-config.log 2>&1
++
++# If old backups exist, delete them
++if ls ${SERVER_CONFIG_BACKUP_DIR}/*server-backup*.tar.gz >/dev/null 2>&1; then
++	/usr/bin/find ${SERVER_CONFIG_BACKUP_DIR}/*server-backup*.tar.gz -mtime +${SERVER_CONFIG_BACKUPS} -exec rm -f {} \;
++fi
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/so-server-config-backup
++++ /dev/null
+@@ -1,41 +0,0 @@
+-#!/bin/bash
+-#
+-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
+-#
+-# This program is free software: you can redistribute it and/or modify
+-# it under the terms of the GNU General Public License as published by
+-# the Free Software Foundation, either version 3 of the License, or
+-# (at your option) any later version.
+-#
+-# This program is distributed in the hope that it will be useful,
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-# GNU General Public License for more details.
+-#
+-# You should have received a copy of the GNU General Public License
+-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-
+-# If server not enabled, then exit
+-FILE="/etc/nsm/servertab"
+-ENABLED=$(grep -v "#" ${FILE} 2>/dev/null | wc -l)
+-if [ ${ENABLED} -eq 0 ]; then
+-	exit 1
+-fi
+-
+-# Set defaults
+-SERVER_CONFIG_BACKUPS=10
+-SERVER_CONFIG_BACKUP_DIR="/etc/nsm/backup"
+-
+-# User can override defaults in securityonion.conf
+-. /etc/nsm/securityonion.conf
+-
+-# Make sure the backup directory exists
+-mkdir -p ${SERVER_CONFIG_BACKUP_DIR}
+-
+-# Create a backup of the server config
+-/usr/sbin/nsm_server_backup-config --force-yes --server-name=securityonion --backup-file=${SERVER_CONFIG_BACKUP_DIR}/securityonion-server-backup-`date +\%Y-\%m-\%d`.tar.gz >> /var/log/nsm/server-backup-config.log 2>&1
+-
+-# If old backups exist, delete them
+-if ls ${SERVER_CONFIG_BACKUP_DIR}/*server-backup*.tar.gz >/dev/null 2>&1; then
+-	/usr/bin/find ${SERVER_CONFIG_BACKUP_DIR}/*server-backup*.tar.gz -mtime +${SERVER_CONFIG_BACKUPS} -exec rm -f {} \;
+-fi
