@@ -6,7 +6,7 @@ LOG="/var/log/nsm/watchdog.log"
 FILE="/etc/nsm/servertab"
 ENABLED=$(grep -v "#" ${FILE} 2>/dev/null | wc -l)
 if [ ${ENABLED} -gt 0 ]; then
-	$OUTPUT=$(/usr/sbin/nsm_server_ps-restart --if-stale)
+	OUTPUT=$(/usr/sbin/nsm_server_ps-restart --if-stale)
 	if [ "${OUTPUT}" != "" ]; then
 		echo "$(date) ${OUTPUT}" >> ${LOG}
 	fi
@@ -16,7 +16,7 @@ fi
 FILE="/etc/nsm/sensortab"
 ENABLED=$(grep -v "#" ${FILE} 2>/dev/null | wc -l)
 if [ ${ENABLED} -gt 0 ]; then
-	$OUTPUT=$(/usr/sbin/nsm_sensor_ps-restart --if-stale)
+	OUTPUT=$(/usr/sbin/nsm_sensor_ps-restart --if-stale)
 	if [ "${OUTPUT}" != "" ]; then
 		echo "$(date) ${OUTPUT}" >> ${LOG}
 	fi
