@@ -1,6 +1,6 @@
-# /etc/cron.d/so-server-backup
+# /etc/cron.d/so-server-backup-config
 #
 # crontab entry to backup server config
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-0 1 * * * root /usr/sbin/so-server-backup
+0 1 * * * root /usr/sbin/so-server-backup-config

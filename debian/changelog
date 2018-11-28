@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion188) xenial; urgency=medium
+
+  * more naming fixes 
+
+ -- Doug Burks <doug.burks@gmail.com>  Wed, 28 Nov 2018 14:47:05 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion187) xenial; urgency=medium
 
   * align to naming convention 
