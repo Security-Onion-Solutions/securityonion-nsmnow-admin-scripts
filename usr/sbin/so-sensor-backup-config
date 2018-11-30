@@ -34,7 +34,7 @@ mkdir -p ${SENSOR_CONFIG_BACKUP_DIR}
 
 # Create a backup for each sensor interface
 for i in $(cat /etc/nsm/sensortab | grep -v '#' | awk '{print $1}'); do 
-	/usr/sbin/nsm_sensor_backup-config --force-yes --sensor-name=${i} --backup-file=${SENSOR_CONFIG_BACKUP_DIR}/${i}-sensor-backup-`date +\%Y-\%m-\%d`.tar.gz >> /var/log/nsm/{$i}-backup-config.log 2>&1
+	/usr/sbin/nsm_sensor_backup-config --force-yes --sensor-name=${i} --backup-file=${SENSOR_CONFIG_BACKUP_DIR}/${i}-sensor-backup-`date +\%Y-\%m-\%d`.tar.gz >> /var/log/nsm/${i}-backup-config.log 2>&1
 done
 
 # If old backups exist, delete them
