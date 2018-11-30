@@ -3,4 +3,4 @@
 # crontab entry to backup sensor config
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-0 1 * * * root /usr/sbin/so-sensor-backup-config
+0 1 * * * root /usr/sbin/so-sensor-backup-config >> /var/log/nsm/so-sensor-backup-config.log 2>&1

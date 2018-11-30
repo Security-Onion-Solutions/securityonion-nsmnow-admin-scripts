@@ -159,6 +159,21 @@ then
 	fi
 fi
 
+# If logrotate script doesn't already exist, create it
+FILE="/etc/logrotate.d/so-sensor-clean"
+if ! [ -f ${FILE} ]; then
+cat << EOF > ${FILE}
+/var/log/nsm/sensor-clean.log {
+    daily
+    rotate 7
+    copytruncate
+    compress
+    missingok
+    notifempty
+}
+EOF
+fi
+
 #
 # CLEAN
 #

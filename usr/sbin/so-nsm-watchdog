@@ -15,7 +15,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-LOG="/var/log/nsm/watchdog.log"
+# If logrotate script doesn't already exist, create it
+FILE="/etc/logrotate.d/so-nsm-watchdog"
+if ! [ -f ${FILE} ]; then
+cat << EOF > ${FILE}
+/var/log/nsm/watchdog.log {
+    daily
+    rotate 7
+    copytruncate
+    compress
+    missingok
+    notifempty
+}
+EOF
+fi
 
 # If server enabled, then check if stale
 FILE="/etc/nsm/servertab"
@@ -23,7 +36,8 @@ ENABLED=$(grep -v "#" ${FILE} 2>/dev/null | wc -l)
 if [ ${ENABLED} -gt 0 ]; then
 	OUTPUT=$(/usr/sbin/nsm_server_ps-restart --if-stale)
 	if [ "${OUTPUT}" != "" ]; then
-		echo "$(date) ${OUTPUT}" >> ${LOG}
+		date
+		echo "${OUTPUT}"
 	fi
 fi
 
@@ -33,6 +47,7 @@ ENABLED=$(grep -v "#" ${FILE} 2>/dev/null | wc -l)
 if [ ${ENABLED} -gt 0 ]; then
 	OUTPUT=$(/usr/sbin/nsm_sensor_ps-restart --if-stale)
 	if [ "${OUTPUT}" != "" ]; then
-		echo "$(date) ${OUTPUT}" >> ${LOG}
+		date
+		echo "${OUTPUT}"
 	fi
 fi

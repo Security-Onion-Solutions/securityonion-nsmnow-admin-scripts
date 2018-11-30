@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion193) xenial; urgency=medium
+
+  * create logrotate jobs if necessary 
+
+ -- Doug Burks <doug.burks@gmail.com>  Fri, 30 Nov 2018 14:37:58 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion192) xenial; urgency=medium
 
   * fix curly brace 

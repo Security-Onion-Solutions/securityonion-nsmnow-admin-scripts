@@ -184,3 +184,4 @@ more-naming-fixes
 improve-so-bro-cron
 add-license-header
 fix-curly-brace
+create-logrotate-jobs-if-necessary

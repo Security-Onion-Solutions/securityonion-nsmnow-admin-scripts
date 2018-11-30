@@ -22,6 +22,21 @@ if [ ${ENABLED} -eq 0 ]; then
 	exit 1
 fi
 
+# If logrotate script doesn't already exist, create it
+FILE="/etc/logrotate.d/so-server-backup-config"
+if ! [ -f ${FILE} ]; then
+cat << EOF > ${FILE}
+/var/log/nsm/so-server-backup-config.log {
+    weekly
+    rotate 4
+    copytruncate
+    compress
+    missingok
+    notifempty
+}
+EOF
+fi
+
 # Set defaults
 SERVER_CONFIG_BACKUPS=10
 SERVER_CONFIG_BACKUP_DIR="/etc/nsm/backup"
@@ -33,7 +48,7 @@ SERVER_CONFIG_BACKUP_DIR="/etc/nsm/backup"
 mkdir -p ${SERVER_CONFIG_BACKUP_DIR}
 
 # Create a backup of the server config
-/usr/sbin/nsm_server_backup-config --force-yes --server-name=securityonion --backup-file=${SERVER_CONFIG_BACKUP_DIR}/securityonion-server-backup-`date +\%Y-\%m-\%d`.tar.gz >> /var/log/nsm/server-backup-config.log 2>&1
+/usr/sbin/nsm_server_backup-config --force-yes --server-name=securityonion --backup-file=${SERVER_CONFIG_BACKUP_DIR}/securityonion-server-backup-`date +\%Y-\%m-\%d`.tar.gz
 
 # If old backups exist, delete them
 if ls ${SERVER_CONFIG_BACKUP_DIR}/*server-backup*.tar.gz >/dev/null 2>&1; then
