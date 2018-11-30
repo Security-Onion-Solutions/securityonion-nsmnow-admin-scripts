@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion191) xenial; urgency=medium
+
+  * add license header 
+
+ -- Doug Burks <doug.burks@gmail.com>  Fri, 30 Nov 2018 12:25:12 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion190) xenial; urgency=medium
 
   * improve so-bro-cron 

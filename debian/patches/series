@@ -182,3 +182,4 @@ fix-so-*-config-backup
 align-to-naming-convention
 more-naming-fixes
 improve-so-bro-cron
+add-license-header
