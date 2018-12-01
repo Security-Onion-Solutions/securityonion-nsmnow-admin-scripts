@@ -185,3 +185,4 @@ improve-so-bro-cron
 add-license-header
 fix-curly-brace
 create-logrotate-jobs-if-necessary
+check-for-root

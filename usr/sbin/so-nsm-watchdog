@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+. /usr/sbin/so-nsm-common
+
 # If logrotate script doesn't already exist, create it
 FILE="/etc/logrotate.d/so-nsm-watchdog"
 if ! [ -f ${FILE} ]; then

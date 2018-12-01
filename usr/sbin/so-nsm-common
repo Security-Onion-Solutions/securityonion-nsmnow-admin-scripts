@@ -15,28 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-. /usr/sbin/so-nsm-common
-
-if ! [ -f /opt/bro/etc/node.cfg ]; then
+# Check for prerequisites
+if [ "$(id -u)" -ne 0 ]; then
+	echo "This script must be run using sudo!"
 	exit 1
 fi
-
-SO_CONF="/etc/nsm/securityonion.conf"
-
-# Add new Bro entries to SO_CONF if necessary
-if ! grep BRO_USER $SO_CONF >/dev/null; then
-	echo >> $SO_CONF
-	echo "# BRO_USER specifies the user account used to start Bro." >> $SO_CONF
-	echo "BRO_USER=sguil"	>> $SO_CONF
-	echo "BRO_GROUP=sguil"	>> $SO_CONF
-fi
-
-# load in user config
-. $SO_CONF
-
-if ! [ "$BRO_ENABLED" == "yes" ]; then
-	exit 0
-fi
-
-# Run "broctl cron" as Bro user
-su $BRO_USER -c '/opt/bro/bin/broctl cron'
