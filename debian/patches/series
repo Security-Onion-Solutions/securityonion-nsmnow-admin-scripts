@@ -186,3 +186,4 @@ add-license-header
 fix-curly-brace
 create-logrotate-jobs-if-necessary
 check-for-root
+add-more-error-checking-to-so-bro-cron

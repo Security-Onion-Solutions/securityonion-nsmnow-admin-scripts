@@ -17,26 +17,35 @@
 
 . /usr/sbin/so-nsm-common
 
-if ! [ -f /opt/bro/etc/node.cfg ]; then
-	exit 1
-fi
-
 SO_CONF="/etc/nsm/securityonion.conf"
 
 # Add new Bro entries to SO_CONF if necessary
-if ! grep BRO_USER $SO_CONF >/dev/null; then
-	echo >> $SO_CONF
-	echo "# BRO_USER specifies the user account used to start Bro." >> $SO_CONF
-	echo "BRO_USER=sguil"	>> $SO_CONF
-	echo "BRO_GROUP=sguil"	>> $SO_CONF
+if ! grep BRO_USER ${SO_CONF} >/dev/null; then
+	echo >> ${SO_CONF}
+	echo "# BRO_USER specifies the user account used to start Bro." >> ${SO_CONF}
+	echo "BRO_USER=sguil"	>> ${SO_CONF}
+	echo "BRO_GROUP=sguil"	>> ${SO_CONF}
 fi
 
 # load in user config
-. $SO_CONF
+. ${SO_CONF}
 
-if ! [ "$BRO_ENABLED" == "yes" ]; then
+# check for errors and exit if necessary
+if ! [ "${BRO_ENABLED}" == "yes" ]; then
+	exit 0
+fi
+
+if ! getent passwd ${BRO_USER} >/dev/null 2>&1; then
+	exit 0
+fi
+
+if ! [ -f /opt/bro/etc/node.cfg ]; then
+	exit 0
+fi
+
+if ! [ -x /opt/bro/bin/broctl ]; then
 	exit 0
 fi
 
 # Run "broctl cron" as Bro user
-su $BRO_USER -c '/opt/bro/bin/broctl cron'
+su ${BRO_USER} -c '/opt/bro/bin/broctl cron'

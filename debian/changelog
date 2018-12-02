@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion195) xenial; urgency=medium
+
+  * improve so-bro-cron 
+
+ -- Doug Burks <doug.burks@gmail.com>  Sun, 02 Dec 2018 15:45:47 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion194) xenial; urgency=medium
 
   * check for root 
