@@ -1,4 +1,19 @@
 #!/bin/bash
+#
+# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ############
 # Variables
@@ -12,12 +27,17 @@ SSHD_CONFIG="/etc/ssh/sshd_config"
 update_sshd ()
 {
 	echo " * Adding ClientAlive settings to $SSHD_CONFIG"
-	cat << EOF >> $SSHD_CONFIG 
-
-# Security Onion Autossh
-ClientAliveInterval 30
-ClientAliveCountMax 3
-EOF
+	# We're dealing with global settings which need to be higher in the file
+	# than Match settings.  So let's insert each of the needed lines at line
+	# 1 in reverse order.
+	sed -i '1i# End of Security Onion ClientAlive\n' $SSHD_CONFIG
+	if ! grep "ClientAliveCountMax " $SSHD_CONFIG >/dev/null 2>&1; then
+		sed -i '1iClientAliveCountMax 3' $SSHD_CONFIG
+	fi
+	if ! grep "ClientAliveInterval " $SSHD_CONFIG >/dev/null 2>&1; then
+		sed -i '1iClientAliveInterval 30' $SSHD_CONFIG
+	fi
+	sed -i '1i# Security Onion Autossh' $SSHD_CONFIG
 }
 
 # If we make changes to sshd_config later, we'll need to restart sshd
@@ -38,7 +58,7 @@ restart_sshd ()
 # Verify sshd_config exists
 [ -f $SSHD_CONFIG ] || exit
 
-# If sshd_config doesn't contain our ClientAlive settings, append them and restart sshd
+# If sshd_config doesn't contain our ClientAlive settings, insert them and restart sshd
 if ! grep "Security Onion Autossh" $SSHD_CONFIG >/dev/null 2>&1; then
 	update_sshd
 	restart_sshd

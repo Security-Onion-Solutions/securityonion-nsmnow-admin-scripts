@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion196) xenial; urgency=medium
+
+  * NSM: nsm_server_configure_sshd should check for existing config #1396 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 27 Dec 2018 10:28:55 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion195) xenial; urgency=medium
 
   * improve so-bro-cron 
