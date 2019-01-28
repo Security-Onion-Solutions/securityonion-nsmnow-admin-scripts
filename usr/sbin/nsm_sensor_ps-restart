@@ -527,7 +527,7 @@ do
         if [ "$ENGINE" == "suricata" ]; then
 		# copy IDS_LB_PROCS from sensor.conf
 		IDS_LB_PROCS=`grep IDS_LB_PROCS /etc/nsm/$SENSOR/sensor.conf | cut -d\= -f2`
-                sed -i "s|    threads: .*|    threads: $IDS_LB_PROCS|g" /etc/nsm/$SENSOR/suricata.yaml
+                sed -i "s|    threads: .*[0-9]|    threads: $IDS_LB_PROCS|g" /etc/nsm/$SENSOR/suricata.yaml
 		# wipe stats.log if doing a full restart of Suricata, but not if we're just doing the watchdog check for stale processes
                 [ "$ACTION" == "process_restart" ] && rm -f /nsm/sensor_data/$SENSOR/stats.log
 		# start Suricata
