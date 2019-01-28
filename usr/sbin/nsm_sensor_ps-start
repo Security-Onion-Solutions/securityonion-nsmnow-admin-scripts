@@ -405,6 +405,7 @@ do
 	HTTP_AGENT_ENABLED="yes"
 	PCAP_SIZE="150MiB"
 	PCAP_RING_SIZE="64MiB"
+	AF_OR_PF="pfring"
 
 	# add parameters to $SENSOR_CONF if they don't already exist
 	grep PCAP_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PCAP_ENABLED=\"yes\""		>> $SENSOR_CONF
@@ -535,11 +536,14 @@ do
 	if [ "$ENGINE" == "suricata" ]; then
 		# copy IDS_LB_PROCS from sensor.conf
 		IDS_LB_PROCS=`grep IDS_LB_PROCS /etc/nsm/$SENSOR/sensor.conf | cut -d\= -f2`
+		# PF_RING
 		sed -i "s|    threads: .*[0-9]|    threads: $IDS_LB_PROCS|g" /etc/nsm/$SENSOR/suricata.yaml
+		# AF_PACKET
+		sed -i "s|    #threads: auto|    threads: $IDS_LB_PROCS|g" /etc/nsm/$SENSOR/suricata.yaml
 		# wipe stats.log
 		rm -f /nsm/sensor_data/$SENSOR/stats.log
 		# start Suricata
-   		[ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && process_start "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --pfring=$SENSOR_INTERFACE_SHORT $BPF_OPTION -l $SENSOR_LOG_DIR " "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
+   		[ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && process_start "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --$AF_OR_PF=$SENSOR_INTERFACE_SHORT $BPF_OPTION -l $SENSOR_LOG_DIR " "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
 	else	
 		# Grab MTU for interface(s) and add 24 to snaplen for VLAN-tagging, etc
 		MTU=`cat /sys/class/net/$SENSOR_INTERFACE_SHORT/mtu`

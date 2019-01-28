@@ -188,3 +188,4 @@ create-logrotate-jobs-if-necessary
 check-for-root
 add-more-error-checking-to-so-bro-cron
 NSM:-nsm_server_configure_sshd-should-check-for-existing-config-#1396
+NSM:-support-running-Suricata-using-AF_PACKET-Security-Onion-Solutionssecurity-onion#1431
