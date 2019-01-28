@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion198) xenial; urgency=medium
+
+  * rename setting to SURICATA_CAPTURE Security-Onion-Solutions/security-onion#1431 
+
+ -- Doug Burks <doug.burks@gmail.com>  Mon, 28 Jan 2019 15:19:25 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion197) xenial; urgency=medium
 
   * NSM: support running Suricata using AF_PACKET Security-Onion-Solutions/security-onion#1431 

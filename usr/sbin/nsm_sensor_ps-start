@@ -405,21 +405,23 @@ do
 	HTTP_AGENT_ENABLED="yes"
 	PCAP_SIZE="150MiB"
 	PCAP_RING_SIZE="64MiB"
-	AF_OR_PF="pfring"
+	SURICATA_CAPTURE="pfring"
 
 	# add parameters to $SENSOR_CONF if they don't already exist
-	grep PCAP_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PCAP_ENABLED=\"yes\""		>> $SENSOR_CONF
-	grep PCAP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "PCAP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
-	grep SNORT_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "SNORT_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
-	grep IDS_ENGINE_ENABLED $SENSOR_CONF >/dev/null	|| echo "IDS_ENGINE_ENABLED=\"yes\""	>> $SENSOR_CONF
-	grep BARNYARD2_ENABLED $SENSOR_CONF >/dev/null		|| echo "BARNYARD2_ENABLED=\"yes\"" 	>> $SENSOR_CONF
-	grep PRADS_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PRADS_ENABLED=\"yes\"" 	>> $SENSOR_CONF
-	grep SANCP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "SANCP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
-	grep PADS_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "PADS_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
-	grep ARGUS_ENABLED $SENSOR_CONF >/dev/null 		|| echo "ARGUS_ENABLED=\"yes\"" 	>> $SENSOR_CONF
-	grep HTTP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "HTTP_AGENT_ENABLED=\"yes\"" 	>> $SENSOR_CONF
-	grep PCAP_SIZE $SENSOR_CONF >/dev/null			|| echo "PCAP_SIZE=\"150MiB\""		>> $SENSOR_CONF
-	grep PCAP_RING_SIZE $SENSOR_CONF >/dev/null		|| echo "PCAP_RING_SIZE=\"64MiB\""	>> $SENSOR_CONF
+	grep PCAP_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PCAP_ENABLED=\"yes\""					>> $SENSOR_CONF
+	grep PCAP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "PCAP_AGENT_ENABLED=\"yes\"" 				>> $SENSOR_CONF
+	grep SNORT_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "SNORT_AGENT_ENABLED=\"yes\"" 				>> $SENSOR_CONF
+	grep IDS_ENGINE_ENABLED $SENSOR_CONF >/dev/null		|| echo "IDS_ENGINE_ENABLED=\"yes\""				>> $SENSOR_CONF
+	grep BARNYARD2_ENABLED $SENSOR_CONF >/dev/null		|| echo "BARNYARD2_ENABLED=\"yes\"" 				>> $SENSOR_CONF
+	grep PRADS_ENABLED $SENSOR_CONF >/dev/null 		|| echo "PRADS_ENABLED=\"yes\"" 				>> $SENSOR_CONF
+	grep SANCP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "SANCP_AGENT_ENABLED=\"yes\"" 				>> $SENSOR_CONF
+	grep PADS_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "PADS_AGENT_ENABLED=\"yes\"" 				>> $SENSOR_CONF
+	grep ARGUS_ENABLED $SENSOR_CONF >/dev/null 		|| echo "ARGUS_ENABLED=\"yes\"" 				>> $SENSOR_CONF
+	grep HTTP_AGENT_ENABLED $SENSOR_CONF >/dev/null 	|| echo "HTTP_AGENT_ENABLED=\"yes\"" 				>> $SENSOR_CONF
+	grep PCAP_SIZE $SENSOR_CONF >/dev/null			|| echo "PCAP_SIZE=\"150MiB\""					>> $SENSOR_CONF
+	grep PCAP_RING_SIZE $SENSOR_CONF >/dev/null		|| echo "PCAP_RING_SIZE=\"64MiB\""				>> $SENSOR_CONF
+	grep "# SURICATA_CAPTURE" $SENSOR_CONF >/dev/null	|| echo "# SURICATA_CAPTURE: pfring (legacy) or af-packet"	>> $SENSOR_CONF
+	grep SURICATA_CAPTURE $SENSOR_CONF >/dev/null		|| echo "SURICATA_CAPTURE=\"pfring\""				>> $SENSOR_CONF
 
 	# NSM scripts originally defaulted to running Snort with "-m 112" which results in 606 permissions
 	# on the unified2 output file.  Remove the "-m 112" so that Snort will set permissions to
@@ -543,7 +545,7 @@ do
 		# wipe stats.log
 		rm -f /nsm/sensor_data/$SENSOR/stats.log
 		# start Suricata
-   		[ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && process_start "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --$AF_OR_PF=$SENSOR_INTERFACE_SHORT $BPF_OPTION -l $SENSOR_LOG_DIR " "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
+   		[ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && process_start "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --$SURICATA_CAPTURE=$SENSOR_INTERFACE_SHORT $BPF_OPTION -l $SENSOR_LOG_DIR " "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
 	else	
 		# Grab MTU for interface(s) and add 24 to snaplen for VLAN-tagging, etc
 		MTU=`cat /sys/class/net/$SENSOR_INTERFACE_SHORT/mtu`
