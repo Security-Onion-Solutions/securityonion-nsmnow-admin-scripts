@@ -1,0 +1,47 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion199) xenial; urgency=medium
+ .
+   * ensure SURICATA_CAPTURE gets added to sensor.conf Security-Onion-Solutions/security-onion#1431
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: https://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -426,7 +426,7 @@ do
+ 	grep PCAP_SIZE $SENSOR_CONF >/dev/null			|| echo "PCAP_SIZE=\"150MiB\""					>> $SENSOR_CONF
+ 	grep PCAP_RING_SIZE $SENSOR_CONF >/dev/null		|| echo "PCAP_RING_SIZE=\"64MiB\""				>> $SENSOR_CONF				
+ 	grep "# SURICATA_CAPTURE" $SENSOR_CONF >/dev/null	|| echo "# SURICATA_CAPTURE: pfring (legacy) or af-packet"	>> $SENSOR_CONF
+-	grep SURICATA_CAPTURE $SENSOR_CONF >/dev/null		|| echo "SURICATA_CAPTURE=\"pfring\""				>> $SENSOR_CONF
++	grep "SURICATA_CAPTURE=" $SENSOR_CONF >/dev/null	|| echo "SURICATA_CAPTURE=\"pfring\""				>> $SENSOR_CONF
+ 
+         # NSM scripts originally defaulted to running Snort with "-m 112" which results in 606 permissions
+         # on the unified2 output file.  Remove the "-m 112" so that Snort will set permissions to
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -421,7 +421,7 @@ do
+ 	grep PCAP_SIZE $SENSOR_CONF >/dev/null			|| echo "PCAP_SIZE=\"150MiB\""					>> $SENSOR_CONF
+ 	grep PCAP_RING_SIZE $SENSOR_CONF >/dev/null		|| echo "PCAP_RING_SIZE=\"64MiB\""				>> $SENSOR_CONF
+ 	grep "# SURICATA_CAPTURE" $SENSOR_CONF >/dev/null	|| echo "# SURICATA_CAPTURE: pfring (legacy) or af-packet"	>> $SENSOR_CONF
+-	grep SURICATA_CAPTURE $SENSOR_CONF >/dev/null		|| echo "SURICATA_CAPTURE=\"pfring\""				>> $SENSOR_CONF
++	grep "SURICATA_CAPTURE=" $SENSOR_CONF >/dev/null	|| echo "SURICATA_CAPTURE=\"pfring\""				>> $SENSOR_CONF
+ 
+ 	# NSM scripts originally defaulted to running Snort with "-m 112" which results in 606 permissions
+ 	# on the unified2 output file.  Remove the "-m 112" so that Snort will set permissions to

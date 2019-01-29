@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion199) xenial; urgency=medium
+
+  * ensure SURICATA_CAPTURE gets added to sensor.conf Security-Onion-Solutions/security-onion#1431 
+
+ -- Doug Burks <doug.burks@gmail.com>  Tue, 29 Jan 2019 08:41:08 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion198) xenial; urgency=medium
 
   * rename setting to SURICATA_CAPTURE Security-Onion-Solutions/security-onion#1431 

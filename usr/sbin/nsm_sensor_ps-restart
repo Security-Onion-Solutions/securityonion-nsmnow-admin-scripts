@@ -426,7 +426,7 @@ do
 	grep PCAP_SIZE $SENSOR_CONF >/dev/null			|| echo "PCAP_SIZE=\"150MiB\""					>> $SENSOR_CONF
 	grep PCAP_RING_SIZE $SENSOR_CONF >/dev/null		|| echo "PCAP_RING_SIZE=\"64MiB\""				>> $SENSOR_CONF				
 	grep "# SURICATA_CAPTURE" $SENSOR_CONF >/dev/null	|| echo "# SURICATA_CAPTURE: pfring (legacy) or af-packet"	>> $SENSOR_CONF
-	grep SURICATA_CAPTURE $SENSOR_CONF >/dev/null		|| echo "SURICATA_CAPTURE=\"pfring\""				>> $SENSOR_CONF
+	grep "SURICATA_CAPTURE=" $SENSOR_CONF >/dev/null	|| echo "SURICATA_CAPTURE=\"pfring\""				>> $SENSOR_CONF
 
         # NSM scripts originally defaulted to running Snort with "-m 112" which results in 606 permissions
         # on the unified2 output file.  Remove the "-m 112" so that Snort will set permissions to
