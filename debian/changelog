@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion200) xenial; urgency=medium
+
+  * NSM: wipe Suricata stats.log using truncate rather than rm Security-Onion-Solutions/security-onion#1456 
+
+ -- Doug Burks <doug.burks@gmail.com>  Mon, 18 Feb 2019 09:05:24 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion199) xenial; urgency=medium
 
   * ensure SURICATA_CAPTURE gets added to sensor.conf Security-Onion-Solutions/security-onion#1431 

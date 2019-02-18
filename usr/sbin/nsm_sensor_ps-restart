@@ -536,7 +536,7 @@ do
 		# AF_PACKET
                 sed -i "s|    #threads: auto|    threads: $IDS_LB_PROCS|g" /etc/nsm/$SENSOR/suricata.yaml
 		# wipe stats.log if doing a full restart of Suricata, but not if we're just doing the watchdog check for stale processes
-                [ "$ACTION" == "process_restart" ] && rm -f /nsm/sensor_data/$SENSOR/stats.log
+                [ "$ACTION" == "process_restart" ] && /usr/bin/truncate -s 0 /nsm/sensor_data/$SENSOR/stats.log
 		# start Suricata
                 [ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && $ACTION "suricata" "--user $SENSOR_USER --group $SENSOR_GROUP -c /etc/nsm/$SENSOR/suricata.yaml --$SURICATA_CAPTURE=$SENSOR_INTERFACE_SHORT $BPF_OPTION -l $SENSOR_LOG_DIR " "$PROCESS_PID_DIR/$SENSOR/suricata.pid" "$PROCESS_LOG_DIR/$SENSOR/suricata.log" "suricata (alert data)"
 	else

@@ -191,3 +191,4 @@ NSM:-nsm_server_configure_sshd-should-check-for-existing-config-#1396
 NSM:-support-running-Suricata-using-AF_PACKET-Security-Onion-Solutionssecurity-onion#1431
 rename-setting-to-SURICATA_CAPTURE-Security-Onion-Solutionssecurity-onion#1431
 ensure-SURICATA_CAPTURE-gets-added-to-sensor.conf-Security-Onion-Solutionssecurity-onion#1431
+NSM:-wipe-Suricata-stats.log-using-truncate-rather-than-rm-Security-Onion-Solutionssecurity-onion#1456
