@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion202) xenial; urgency=medium
+
+  * NSM: change filesystem grep Security-Onion-Solutions/security-onion#1488 
+
+ -- Doug Burks <doug.burks@gmail.com>  Tue, 19 Mar 2019 06:13:43 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion201) xenial; urgency=medium
 
   * NSM: when (re)starting Suricata, make sure stats.log has proper ownership Security-Onion-Solutions/security-onion#1477 

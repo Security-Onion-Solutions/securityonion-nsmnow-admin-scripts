@@ -292,7 +292,7 @@ sensor_cleandisk()
 	SENSOR_DIR=`pwd`
 	cd - >/dev/null
 	#echo $SENSOR_DIR
-	CUR_USAGE=$(df -P $SENSOR_DIR | grep -v -i filesystem | awk '{print $5}' | tr -d %)
+	CUR_USAGE=$(df -P $SENSOR_DIR | tail -1 | awk '{print $5}' | tr -d %)
 	#echo $CUR_USAGE
   
 	# let's change color based on severity
@@ -366,13 +366,13 @@ sensor_cleandisk()
 			if [ -z "$OLDEST_DIR" -o "$OLDEST_DIR" == ".." -o "$OLDEST_DIR" == "." ]
 			then
 				# there are no pcaps from previous days, so look for pcaps from today that we can delete
-			        CUR_USAGE=$(df -P $SENSOR_DIR | grep -v -i filesystem | awk '{print $5}' | tr -d %)
+			        CUR_USAGE=$(df -P $SENSOR_DIR | tail -1 | awk '{print $5}' | tr -d %)
 				# keep looping until EITHER disk usage is no longer critical OR we're out of pcaps to delete
 				while [ "$CUR_USAGE" -gt "$CRIT_DISK_USAGE" ] && [ `find $SENSOR/dailylogs/$TODAY/ -type f -name 'snort.log.*' | wc -l` -gt 1 ]; do
 					PCAP=`find $SENSOR/dailylogs/$TODAY/ -type f -name 'snort.log.*' | sort | head -1`
 					echo_msg 1 "removing pcap from today's directory: $PCAP"
 					rm -f "$PCAP"
-				        CUR_USAGE=$(df -P $SENSOR_DIR | grep -v -i filesystem | awk '{print $5}' | tr -d %)
+				        CUR_USAGE=$(df -P $SENSOR_DIR | tail -1 | awk '{print $5}' | tr -d %)
 				done
 				# if we're out of pcaps to delete, then increment variable
 				if [ `ls $SENSOR/dailylogs/$TODAY/snort.log.* | wc -l` -le 1 ]; then
@@ -436,7 +436,7 @@ sensor_cleandisk()
 		done
 
 		# check if we're still above disk usage threshold
-	        CUR_USAGE=$(df -P $SENSOR_DIR | grep -v -i filesystem | awk '{print $5}' | tr -d %)
+	        CUR_USAGE=$(df -P $SENSOR_DIR | tail -1 | awk '{print $5}' | tr -d %)
 		if [ "$CUR_USAGE" -gt "$CRIT_DISK_USAGE" ]; then
 			# if we're out of pcaps to delete for all sensor interfaces, then stop writing pcaps
 			if [ "$SENSORS_WITH_NO_PCAPS_TO_DELETE" -ne 0 -a "$SENSORS_WITH_NO_PCAPS_TO_DELETE" -eq "$NUMBER_OF_SENSORS" ]; then
