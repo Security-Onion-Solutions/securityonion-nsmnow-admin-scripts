@@ -189,6 +189,7 @@ then
 			exit
 		else
 			echo_msg 0 "user was not added!"
+			exit
 		fi
 fi
 
