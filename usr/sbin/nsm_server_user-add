@@ -160,6 +160,38 @@ then
 	USER_NAME=${PROMPT_RET}
 fi
 
+# Verify user account does not already exist
+USER_EXISTS=$(mysql --defaults-file=/etc/mysql/debian.cnf -Dsecurityonion_db -e 'select * from user_info where username = "'$USER_NAME'";' ; echo "$?")
+if [ "$USER_EXISTS" != 0 ]
+then
+	echo_msg 0 "User account already exists! Would you like to update the password? (Y/n)"
+	read PASSWORD_UPDATE
+		if [ ${PASSWORD_UPDATE,,} = "y" ]
+		then
+			# collect user pass
+			if [ -z "${USER_PASS}" ]
+			then
+				prompt_user_password "User Pass" "Enter the password for the new user that will be granted privilege to connect to this server"
+
+				[ "${?}" -ne 0 ] && exit 1
+				USER_PASS=${PROMPT_RET}
+			fi
+			echo_msg 0 "Updating password for : ${USER_NAME} => ${SERVER_NAME}"
+			
+			# add client user details
+			/usr/sbin/sguild-changepasswd "${USER_NAME}" "${USER_PASS}" >/dev/null 2>&1
+				if [ "${?}" -ne 0 ]
+				then
+					echo_error_msg 1 "password could not be changed!"
+				else
+					echo_msg 0 "Password for ${USER_NAME} successfully changed."
+				fi
+			exit
+		else
+			echo_msg 0 "user was not added!"
+		fi
+fi
+
 # collect user pass
 if [ -z "${USER_PASS}" ]
 then
