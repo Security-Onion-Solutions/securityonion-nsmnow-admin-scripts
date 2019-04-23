@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion203) xenial; urgency=medium
+
+  * NSM: nsm_server_user-add should check to see if user account exists and prompt user Security-Onion-Solutions/security-onion#1505 
+
+ -- Doug Burks <doug.burks@gmail.com>  Tue, 23 Apr 2019 12:37:30 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion202) xenial; urgency=medium
 
   * NSM: change filesystem grep Security-Onion-Solutions/security-onion#1488 

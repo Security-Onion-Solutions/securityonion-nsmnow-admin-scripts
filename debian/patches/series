@@ -194,3 +194,4 @@ ensure-SURICATA_CAPTURE-gets-added-to-sensor.conf-Security-Onion-Solutionssecuri
 NSM:-wipe-Suricata-stats.log-using-truncate-rather-than-rm-Security-Onion-Solutionssecurity-onion#1456
 NSM:-when-(re)starting-Suricata,-make-sure-stats.log-has-proper-ownership-Security-Onion-Solutionssecurity-onion#1477
 NSM:-change-filesystem-grep-Security-Onion-Solutionssecurity-onion#1488
+NSM:-nsm_server_user-add-should-check-to-see-if-user-account-exists-and-prompt-user-Security-Onion-Solutionssecurity-onion#1505
