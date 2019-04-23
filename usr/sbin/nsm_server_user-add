@@ -160,6 +160,14 @@ then
 	USER_NAME=${PROMPT_RET}
 fi
 
+# Verify user account does not already exist
+USER_EXISTS=$(mysql --defaults-file=/etc/mysql/debian.cnf -Dsecurityonion_db -e 'select * from user_info where username = "'$USER_NAME'";' ; echo "$?")
+if [ "$USER_EXISTS" != 0 ]
+then
+	echo_msg 0 "User account already exists! To re-enable the accout or update the password please run so-user-passwd."
+        exit
+fi
+
 # collect user pass
 if [ -z "${USER_PASS}" ]
 then
