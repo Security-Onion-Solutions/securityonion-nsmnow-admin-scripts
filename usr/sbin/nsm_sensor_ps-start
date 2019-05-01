@@ -466,7 +466,7 @@ do
 		[ -f "$LOG_FILE" ] && mv "$LOG_FILE" "$LOG_FILE".`date +%Y%m%d%H%M%S`
 		[ `ls "$LOG_FILE".* |wc -l` -gt 10 ] && ls "$LOG_FILE".* |head -1 |xargs rm -f
 
-		process_start "netsniff-ng" "-i $SENSOR_INTERFACE_SHORT -o $SENSOR_LOG_DIR/dailylogs/$TODAY/ --user `id -u $SENSOR_USER` --group `id -g $SENSOR_GROUP` -s --prefix snort.log. --verbose --ring-size $PCAP_RING_SIZE --interval $PCAP_SIZE $PCAP_OPTIONS $BPF_OPTION" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "$PROCESS_LOG_DIR/$SENSOR/netsniff-ng.log" "netsniff-ng (full packet data)"
+		process_start "netsniff-ng" "--no-hwtimestamp -i $SENSOR_INTERFACE_SHORT -o $SENSOR_LOG_DIR/dailylogs/$TODAY/ --user `id -u $SENSOR_USER` --group `id -g $SENSOR_GROUP` -s --prefix snort.log. --verbose --ring-size $PCAP_RING_SIZE --interval $PCAP_SIZE $PCAP_OPTIONS $BPF_OPTION" "$PROCESS_PID_DIR/$SENSOR/netsniff-ng.pid" "$PROCESS_LOG_DIR/$SENSOR/netsniff-ng.log" "netsniff-ng (full packet data)"
 
 		# If pcap_agent tries to start too soon, pcap logger will not have yet initialized and pcap_agent will fail.  Wait a few seconds for pcap logger to fully initialize.
 		sleep 5s

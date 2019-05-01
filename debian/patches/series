@@ -195,3 +195,4 @@ NSM:-wipe-Suricata-stats.log-using-truncate-rather-than-rm-Security-Onion-Soluti
 NSM:-when-(re)starting-Suricata,-make-sure-stats.log-has-proper-ownership-Security-Onion-Solutionssecurity-onion#1477
 NSM:-change-filesystem-grep-Security-Onion-Solutionssecurity-onion#1488
 NSM:-nsm_server_user-add-should-check-to-see-if-user-account-exists-and-prompt-user-Security-Onion-Solutionssecurity-onion#1505
+NSM:-add---no-hwtimestamp-to-netsniff-command-line-Security-Onion-Solutionssecurity-onion#1514

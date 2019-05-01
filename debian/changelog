@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion204) xenial; urgency=medium
+
+  * NSM: add --no-hwtimestamp to netsniff command line Security-Onion-Solutions/security-onion#1514 
+
+ -- Doug Burks <doug.burks@gmail.com>  Wed, 01 May 2019 17:32:45 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion203) xenial; urgency=medium
 
   * NSM: nsm_server_user-add should check to see if user account exists and prompt user Security-Onion-Solutions/security-onion#1505 
