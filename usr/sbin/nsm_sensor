@@ -103,36 +103,58 @@ do
 			;;
 		--add)
 			nsm_sensor_add "$@"
+			# don't continue parsing
+			break
 			;;
 		--del)
 			nsm_sensor_del "$@"
+			# don't continue parsing
+			break
 			;;
 		--edit)
 			nsm_sensor_edit "$@"
+			# don't continue parsing
+			break
 			;;
 		--clear)
 			nsm_sensor_clear "$@"
+			# don't continue parsing
+			break
 			;;
 		--clean)
 			nsm_sensor_clean "$@"
+			# don't continue parsing
+			break
 			;;
 		--start)
 			nsm_sensor_ps-start "$@"
+			# don't continue parsing
+			break
 			;;
 		--stop)
 			nsm_sensor_ps-stop "$@"
+			# don't continue parsing
+			break
 			;;
 		--restart)
 			nsm_sensor_ps-restart "$@"
+			# don't continue parsing
+			break
 			;;
 		--status)
 			nsm_sensor_ps-status "$@"
+			# don't continue parsing
+			break
 			;;
 		--backup-config)
 			nsm_sensor_backup-config "$@"
+			# don't continue parsing
+			break
 			;;
 		--backup-data)
 			nsm_sensor_backup-data "$@"
+			# don't continue parsing
+			break
 			;;
 		--skip-*|--only-*)
 			# safely ignore these keywords
