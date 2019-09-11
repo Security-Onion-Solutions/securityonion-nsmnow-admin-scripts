@@ -148,50 +148,78 @@ do
 		--only-barnyard2)
 			SKIP_INVERT=yes
 			SKIP_BARNYARD2=yes
+			SKIP_BRO=""
+			SKIP_OSSEC_AGENT=""
 			;;
 		--only-snort-alert)
 			SKIP_INVERT=yes
 			SKIP_SNORT_ALERT=yes
+			SKIP_BRO=""
+			SKIP_OSSEC_AGENT=""
 			;;
 		--only-pcap)
 			SKIP_INVERT=yes
 			SKIP_PCAP=yes
+			SKIP_BRO=""
+			SKIP_OSSEC_AGENT=""
 			;;
 		--only-argus)
 			SKIP_INVERT=yes
 			SKIP_ARGUS=yes
+			SKIP_BRO=""
+			SKIP_OSSEC_AGENT=""
 			;;
 		--only-prads)
 			SKIP_INVERT=yes
-            		SKIP_PRADS=yes
+			SKIP_PRADS=yes
+			SKIP_BRO=""
+			SKIP_OSSEC_AGENT=""
             		;;
 		--only-bro)
+			if [ "${SENSOR_NAME}" ]; then
+				echo_error_msg 0 "OOPS: bro is not in ${SENSOR_NAME}!"
+				exit 1
+			fi
 			SKIP_INVERT=yes
-            		SKIP_BRO=yes
+			SKIP_BRO=yes
             		;;
 		--only-pcap-agent)
 			SKIP_INVERT=yes
 			SKIP_PCAP_AGENT=yes
+			SKIP_BRO=""
+			SKIP_OSSEC_AGENT=""
 			;;
 		--only-sancp-agent)
 			SKIP_INVERT=yes
 			SKIP_SANCP_AGENT=yes
+			SKIP_BRO=""
+			SKIP_OSSEC_AGENT=""
 			;;
 		--only-snort-agent)
 			SKIP_INVERT=yes
 			SKIP_SNORT_AGENT=yes
+			SKIP_BRO=""
+			SKIP_OSSEC_AGENT=""
 			;;
 		--only-http-agent)
 			SKIP_INVERT=yes
 			SKIP_HTTP_AGENT=yes
+			SKIP_BRO=""
+			SKIP_OSSEC_AGENT=""
 			;;
 		--only-pads-agent)
 			SKIP_INVERT=yes
-            		SKIP_PADS_AGENT=yes
+			SKIP_PADS_AGENT=yes
+			SKIP_BRO=""
+			SKIP_OSSEC_AGENT=""
             		;;
 		--only-ossec-agent)
+			if [ "${SENSOR_NAME}" ]; then
+				echo_error_msg 0 "OOPS: ossec-agent is not in ${SENSOR_NAME}!"
+				exit 1
+			fi
 			SKIP_INVERT=yes
-            		SKIP_OSSEC_AGENT=yes
+			SKIP_OSSEC_AGENT=yes
             		;;
 		--skip-barnyard2)
 			SKIP_BARNYARD2=yes
@@ -206,10 +234,10 @@ do
 			SKIP_ARGUS=yes
 			;;
 		--skip-prads)
-            		SKIP_PRADS=yes
+			SKIP_PRADS=yes
             		;;
 		--skip-bro)
-            		SKIP_BRO=yes
+			SKIP_BRO=yes
             		;;
 		--skip-pcap-agent)
 			SKIP_PCAP_AGENT=yes
@@ -224,10 +252,10 @@ do
 			SKIP_HTTP_AGENT=yes
 			;;
 		--skip-pads-agent)
-            		SKIP_PADS_AGENT=yes
+			SKIP_PADS_AGENT=yes
             		;;
 		--skip-ossec-agent)
-            		SKIP_OSSEC_AGENT=yes
+			SKIP_OSSEC_AGENT=yes
             		;;
 		--server*)
 			# any server directive is clearly meant for the server
