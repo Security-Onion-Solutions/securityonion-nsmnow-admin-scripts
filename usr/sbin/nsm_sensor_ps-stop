@@ -292,10 +292,14 @@ then
 	SENSOR_NAME=$(sensortab_names_get_on_auto "1")
 fi
 
-# see if any sensors are disabled
-for i in $SENSOR_NAME; do
-	if grep -q "#$i" /etc/nsm/sensortab; then
-		echo "$i disabled, exiting."
+# see if any sensors are disabled or nonexistent
+for SENSOR in $SENSOR_NAME; do
+	if grep -q -P "#$SENSOR\t" /etc/nsm/sensortab; then
+		echo "$SENSOR disabled, exiting."
+		exit 1
+	fi
+	if ! grep -q -P "$SENSOR\t" /etc/nsm/sensortab; then
+		echo "$SENSOR not found, exiting."
 		exit 1
 	fi
 done

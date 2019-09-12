@@ -198,3 +198,4 @@ NSM:-nsm_server_user-add-should-check-to-see-if-user-account-exists-and-prompt-u
 NSM:-add---no-hwtimestamp-to-netsniff-command-line-Security-Onion-Solutionssecurity-onion#1514
 NSM:-nsm_server_user-add-should-require-usernames-to-be-alphanumeric-Security-Onion-Solutionssecurity-onion#1627
 package-issues-645-1637-1118
+make-checks-more-consistent-Security-Onion-Solutionssecurity-onion#645
