@@ -1,0 +1,653 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion206) xenial; urgency=medium
+ .
+   * package issues 645 1637 1118
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: https://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor
+@@ -103,36 +103,58 @@ do
+ 			;;
+ 		--add)
+ 			nsm_sensor_add "$@"
++			# don't continue parsing
++			break
+ 			;;
+ 		--del)
+ 			nsm_sensor_del "$@"
++			# don't continue parsing
++			break
+ 			;;
+ 		--edit)
+ 			nsm_sensor_edit "$@"
++			# don't continue parsing
++			break
+ 			;;
+ 		--clear)
+ 			nsm_sensor_clear "$@"
++			# don't continue parsing
++			break
+ 			;;
+ 		--clean)
+ 			nsm_sensor_clean "$@"
++			# don't continue parsing
++			break
+ 			;;
+ 		--start)
+ 			nsm_sensor_ps-start "$@"
++			# don't continue parsing
++			break
+ 			;;
+ 		--stop)
+ 			nsm_sensor_ps-stop "$@"
++			# don't continue parsing
++			break
+ 			;;
+ 		--restart)
+ 			nsm_sensor_ps-restart "$@"
++			# don't continue parsing
++			break
+ 			;;
+ 		--status)
+ 			nsm_sensor_ps-status "$@"
++			# don't continue parsing
++			break
+ 			;;
+ 		--backup-config)
+ 			nsm_sensor_backup-config "$@"
++			# don't continue parsing
++			break
+ 			;;
+ 		--backup-data)
+ 			nsm_sensor_backup-data "$@"
++			# don't continue parsing
++			break
+ 			;;
+ 		--skip-*|--only-*)
+ 			# safely ignore these keywords
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -148,50 +148,78 @@ do
+ 		--only-barnyard2)
+ 			SKIP_INVERT=yes
+ 			SKIP_BARNYARD2=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-snort-alert)
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_ALERT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-pcap)
+ 			SKIP_INVERT=yes
+ 			SKIP_PCAP=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-argus)
+ 			SKIP_INVERT=yes
+ 			SKIP_ARGUS=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-prads)
+ 			SKIP_INVERT=yes
+-            		SKIP_PRADS=yes
++			SKIP_PRADS=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+             		;;
+ 		--only-bro)
++			if [ "${SENSOR_NAME}" ]; then
++				echo_error_msg 0 "OOPS: bro is not in ${SENSOR_NAME}!"
++				exit 1
++			fi
+ 			SKIP_INVERT=yes
+-            		SKIP_BRO=yes
++			SKIP_BRO=yes
+             		;;
+ 		--only-pcap-agent)
+ 			SKIP_INVERT=yes
+ 			SKIP_PCAP_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-sancp-agent)
+ 			SKIP_INVERT=yes
+ 			SKIP_SANCP_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-snort-agent)
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-http-agent)
+ 			SKIP_INVERT=yes
+ 			SKIP_HTTP_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-pads-agent)
+ 			SKIP_INVERT=yes
+-            		SKIP_PADS_AGENT=yes
++			SKIP_PADS_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+             		;;
+ 		--only-ossec-agent)
++			if [ "${SENSOR_NAME}" ]; then
++				echo_error_msg 0 "OOPS: ossec-agent is not in ${SENSOR_NAME}!"
++				exit 1
++			fi
+ 			SKIP_INVERT=yes
+-            		SKIP_OSSEC_AGENT=yes
++			SKIP_OSSEC_AGENT=yes
+             		;;
+ 		--skip-barnyard2)
+ 			SKIP_BARNYARD2=yes
+@@ -206,10 +234,10 @@ do
+ 			SKIP_ARGUS=yes
+ 			;;
+ 		--skip-prads)
+-            		SKIP_PRADS=yes
++			SKIP_PRADS=yes
+             		;;
+ 		--skip-bro)
+-            		SKIP_BRO=yes
++			SKIP_BRO=yes
+             		;;
+ 		--skip-pcap-agent)
+ 			SKIP_PCAP_AGENT=yes
+@@ -224,10 +252,10 @@ do
+ 			SKIP_HTTP_AGENT=yes
+ 			;;
+ 		--skip-pads-agent)
+-            		SKIP_PADS_AGENT=yes
++			SKIP_PADS_AGENT=yes
+             		;;
+ 		--skip-ossec-agent)
+-            		SKIP_OSSEC_AGENT=yes
++			SKIP_OSSEC_AGENT=yes
+             		;;
+ 		--server*)
+ 			# any server directive is clearly meant for the server
+@@ -266,22 +294,30 @@ if [ -z "$SENSOR_NAME" ]
+ then
+ 	SENSOR_NAME=$(sensortab_names_get_on_auto "1")
+ fi
+-	
++
++# see if any sensors are disabled
++for i in $SENSOR_NAME; do
++	if grep -q "#$i" /etc/nsm/sensortab; then
++		echo "$i disabled, exiting."
++		exit 1
++	fi
++done
++
+ # invert skip as appropriate
+ if [ -n "$SKIP_INVERT" ]
+ then
+ 	[ -z "$SKIP_PCAP_AGENT" ]	&& SKIP_PCAP_AGENT=yes		|| SKIP_PCAP_AGENT=""
+-	[ -z "$SKIP_SANCP_AGENT" ]	&& SKIP_SANCP_AGENT=yes	|| SKIP_SANCP_AGENT=""
+-	[ -z "$SKIP_SNORT_AGENT" ]	&& SKIP_SNORT_AGENT=yes	|| SKIP_SNORT_AGENT=""
++	[ -z "$SKIP_SANCP_AGENT" ]	&& SKIP_SANCP_AGENT=yes		|| SKIP_SANCP_AGENT=""
++	[ -z "$SKIP_SNORT_AGENT" ]	&& SKIP_SNORT_AGENT=yes		|| SKIP_SNORT_AGENT=""
+ 	[ -z "$SKIP_HTTP_AGENT" ]	&& SKIP_HTTP_AGENT=yes		|| SKIP_HTTP_AGENT=""
+ 	[ -z "$SKIP_PADS_AGENT" ]	&& SKIP_PADS_AGENT=yes		|| SKIP_PADS_AGENT=""
+-	[ -z "$SKIP_OSSEC_AGENT" ]	&& SKIP_OSSEC_AGENT=yes	|| SKIP_OSSEC_AGENT=""
+-	[ -z "$SKIP_SNORT_ALERT" ]	&& SKIP_SNORT_ALERT=yes	|| SKIP_SNORT_ALERT=""
++	[ -z "$SKIP_OSSEC_AGENT" ]	&& SKIP_OSSEC_AGENT=yes		|| SKIP_OSSEC_AGENT=""
++	[ -z "$SKIP_SNORT_ALERT" ]	&& SKIP_SNORT_ALERT=yes		|| SKIP_SNORT_ALERT=""
+ 	[ -z "$SKIP_BARNYARD2" ]	&& SKIP_BARNYARD2=yes		|| SKIP_BARNYARD2=""
+ 	[ -z "$SKIP_PCAP" ]		&& SKIP_PCAP=yes		|| SKIP_PCAP=""
+ 	[ -z "$SKIP_ARGUS" ]		&& SKIP_ARGUS=yes		|| SKIP_ARGUS=""
+ 	[ -z "$SKIP_PRADS" ]		&& SKIP_PRADS=yes		|| SKIP_PRADS=""
+-	[ -z "$SKIP_BRO" ]		&& SKIP_BRO=yes		|| SKIP_BRO=""
++	[ -z "$SKIP_BRO" ]		&& SKIP_BRO=yes			|| SKIP_BRO=""
+ fi
+ 
+ #
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -145,50 +145,78 @@ do
+ 		--only-barnyard2)
+ 			SKIP_INVERT=yes
+ 			SKIP_BARNYARD2=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-snort-alert)
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_ALERT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-pcap)
+ 			SKIP_INVERT=yes
+ 			SKIP_PCAP=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-argus)
+ 			SKIP_INVERT=yes
+ 			SKIP_ARGUS=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-prads)
+ 			SKIP_INVERT=yes
+-            		SKIP_PRADS=yes
++			SKIP_PRADS=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+             		;;
+ 		--only-bro)
++			if [ "${SENSOR_NAME}" ]; then
++				echo_error_msg 0 "OOPS: bro is not in ${SENSOR_NAME}!"
++				exit 1
++			fi
+ 			SKIP_INVERT=yes
+-            		SKIP_BRO=yes
++			SKIP_BRO=yes
+             		;;
+ 		--only-pcap-agent)
+ 			SKIP_INVERT=yes
+ 			SKIP_PCAP_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-sancp-agent)
+ 			SKIP_INVERT=yes
+ 			SKIP_SANCP_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-snort-agent)
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-http-agent)
+ 			SKIP_INVERT=yes
+ 			SKIP_HTTP_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-pads-agent)
+ 			SKIP_INVERT=yes
+-            		SKIP_PADS_AGENT=yes
++			SKIP_PADS_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+             		;;
+ 		--only-ossec-agent)
++			if [ "${SENSOR_NAME}" ]; then
++				echo_error_msg 0 "OOPS: ossec-agent is not in ${SENSOR_NAME}!"
++				exit 1
++			fi
+ 			SKIP_INVERT=yes
+-            		SKIP_OSSEC_AGENT=yes
++			SKIP_OSSEC_AGENT=yes
+             		;;
+ 		--skip-barnyard2)
+ 			SKIP_BARNYARD2=yes
+@@ -203,10 +231,10 @@ do
+ 			SKIP_ARGUS=yes
+ 			;;
+ 		--skip-prads)
+-            		SKIP_PRADS=yes
++			SKIP_PRADS=yes
+             		;;
+ 		--skip-bro)
+-            		SKIP_BRO=yes
++			SKIP_BRO=yes
+             		;;
+ 		--skip-pcap-agent)
+ 			SKIP_PCAP_AGENT=yes
+@@ -221,10 +249,10 @@ do
+ 			SKIP_HTTP_AGENT=yes
+ 			;;
+ 		--skip-pads-agent)
+-            		SKIP_PADS_AGENT=yes
++			SKIP_PADS_AGENT=yes
+             		;;
+ 		--skip-ossec-agent)
+-            		SKIP_OSSEC_AGENT=yes
++			SKIP_OSSEC_AGENT=yes
+             		;;
+ 		--server*)
+ 			# any server directive is clearly meant for the server
+@@ -264,6 +292,14 @@ then
+ 	SENSOR_NAME=$(sensortab_names_get_on_auto "1")
+ fi
+ 
++# see if any sensors are disabled
++for i in $SENSOR_NAME; do
++	if grep -q "#$i" /etc/nsm/sensortab; then
++		echo "$i disabled, exiting."
++		exit 1
++	fi
++done
++
+ # invert skip as appropriate
+ if [ -n "$SKIP_INVERT" ]
+ then
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-status
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-status
+@@ -145,50 +145,78 @@ do
+ 		--only-barnyard2)
+ 			SKIP_INVERT=yes
+ 			SKIP_BARNYARD2=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-snort-alert)
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_ALERT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-pcap)
+ 			SKIP_INVERT=yes
+ 			SKIP_PCAP=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-argus)
+ 			SKIP_INVERT=yes
+ 			SKIP_ARGUS=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-prads)
+ 			SKIP_INVERT=yes
+-            		SKIP_PRADS=yes
++			SKIP_PRADS=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+             		;;
+ 		--only-bro)
++			if [ "${SENSOR_NAME}" ]; then
++				echo_error_msg 0 "OOPS: bro is not in ${SENSOR_NAME}!"
++				exit 1
++			fi
+ 			SKIP_INVERT=yes
+-            		SKIP_BRO=yes
++			SKIP_BRO=yes
+             		;;
+ 		--only-pcap-agent)
+ 			SKIP_INVERT=yes
+ 			SKIP_PCAP_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-sancp-agent)
+ 			SKIP_INVERT=yes
+ 			SKIP_SANCP_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-snort-agent)
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-http-agent)
+ 			SKIP_INVERT=yes
+ 			SKIP_HTTP_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-pads-agent)
+ 			SKIP_INVERT=yes
+-            		SKIP_PADS_AGENT=yes
++			SKIP_PADS_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+             		;;
+ 		--only-ossec-agent)
++			if [ "${SENSOR_NAME}" ]; then
++				echo_error_msg 0 "OOPS: ossec-agent is not in ${SENSOR_NAME}!"
++				exit 1
++			fi
+ 			SKIP_INVERT=yes
+-            		SKIP_OSSEC_AGENT=yes
++			SKIP_OSSEC_AGENT=yes
+             		;;
+ 		--skip-barnyard2)
+ 			SKIP_BARNYARD2=yes
+@@ -203,10 +231,10 @@ do
+ 			SKIP_ARGUS=yes
+ 			;;
+ 		--skip-prads)
+-            		SKIP_PRADS=yes
++			SKIP_PRADS=yes
+             		;;
+ 		--skip-bro)
+-            		SKIP_BRO=yes
++			SKIP_BRO=yes
+             		;;
+ 		--skip-pcap-agent)
+ 			SKIP_PCAP_AGENT=yes
+@@ -221,10 +249,10 @@ do
+ 			SKIP_HTTP_AGENT=yes
+ 			;;
+ 		--skip-pads-agent)
+-            		SKIP_PADS_AGENT=yes
++			SKIP_PADS_AGENT=yes
+             		;;
+ 		--skip-ossec-agent)
+-            		SKIP_OSSEC_AGENT=yes
++			SKIP_OSSEC_AGENT=yes
+             		;;
+ 		--server*)
+ 			# any server directive is clearly meant for the server
+@@ -264,21 +292,29 @@ then
+ 	SENSOR_NAME=$(sensortab_names_get_on_auto "1")
+ fi
+ 	
++# see if any sensors are disabled
++for i in $SENSOR_NAME; do
++	if grep -q "#$i" /etc/nsm/sensortab; then
++		echo "$i disabled, exiting."
++		exit 1
++	fi
++done
++
+ # invert skip as appropriate
+ if [ -n "$SKIP_INVERT" ]
+ then
+ 	[ -z "$SKIP_PCAP_AGENT" ]	&& SKIP_PCAP_AGENT=yes		|| SKIP_PCAP_AGENT=""
+-	[ -z "$SKIP_SANCP_AGENT" ]	&& SKIP_SANCP_AGENT=yes	|| SKIP_SANCP_AGENT=""
+-	[ -z "$SKIP_SNORT_AGENT" ]	&& SKIP_SNORT_AGENT=yes	|| SKIP_SNORT_AGENT=""
++	[ -z "$SKIP_SANCP_AGENT" ]	&& SKIP_SANCP_AGENT=yes		|| SKIP_SANCP_AGENT=""
++	[ -z "$SKIP_SNORT_AGENT" ]	&& SKIP_SNORT_AGENT=yes		|| SKIP_SNORT_AGENT=""
+ 	[ -z "$SKIP_HTTP_AGENT" ]	&& SKIP_HTTP_AGENT=yes		|| SKIP_HTTP_AGENT=""
+ 	[ -z "$SKIP_PADS_AGENT" ]	&& SKIP_PADS_AGENT=yes		|| SKIP_PADS_AGENT=""
+-	[ -z "$SKIP_OSSEC_AGENT" ]	&& SKIP_OSSEC_AGENT=yes	|| SKIP_OSSEC_AGENT=""
+-	[ -z "$SKIP_SNORT_ALERT" ]	&& SKIP_SNORT_ALERT=yes	|| SKIP_SNORT_ALERT=""
++	[ -z "$SKIP_OSSEC_AGENT" ]	&& SKIP_OSSEC_AGENT=yes		|| SKIP_OSSEC_AGENT=""
++	[ -z "$SKIP_SNORT_ALERT" ]	&& SKIP_SNORT_ALERT=yes		|| SKIP_SNORT_ALERT=""
+ 	[ -z "$SKIP_BARNYARD2" ]	&& SKIP_BARNYARD2=yes		|| SKIP_BARNYARD2=""
+ 	[ -z "$SKIP_PCAP" ]		&& SKIP_PCAP=yes		|| SKIP_PCAP=""
+ 	[ -z "$SKIP_ARGUS" ]		&& SKIP_ARGUS=yes		|| SKIP_ARGUS=""
+ 	[ -z "$SKIP_PRADS" ]		&& SKIP_PRADS=yes		|| SKIP_PRADS=""
+-	[ -z "$SKIP_BRO" ]		&& SKIP_BRO=yes		|| SKIP_BRO=""
++	[ -z "$SKIP_BRO" ]		&& SKIP_BRO=yes			|| SKIP_BRO=""
+ fi
+ 
+ #
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-stop
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-stop
+@@ -145,50 +145,78 @@ do
+ 		--only-barnyard2)
+ 			SKIP_INVERT=yes
+ 			SKIP_BARNYARD2=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-snort-alert)
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_ALERT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-pcap)
+ 			SKIP_INVERT=yes
+ 			SKIP_PCAP=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-argus)
+ 			SKIP_INVERT=yes
+ 			SKIP_ARGUS=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-prads)
+ 			SKIP_INVERT=yes
+-            		SKIP_PRADS=yes
++			SKIP_PRADS=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+             		;;
+ 		--only-bro)
++			if [ "${SENSOR_NAME}" ]; then
++				echo_error_msg 0 "OOPS: bro is not in ${SENSOR_NAME}!"
++				exit 1
++			fi
+ 			SKIP_INVERT=yes
+-            		SKIP_BRO=yes
++			SKIP_BRO=yes
+             		;;
+ 		--only-pcap-agent)
+ 			SKIP_INVERT=yes
+ 			SKIP_PCAP_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-sancp-agent)
+ 			SKIP_INVERT=yes
+ 			SKIP_SANCP_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-snort-agent)
+ 			SKIP_INVERT=yes
+ 			SKIP_SNORT_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-http-agent)
+ 			SKIP_INVERT=yes
+ 			SKIP_HTTP_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+ 			;;
+ 		--only-pads-agent)
+ 			SKIP_INVERT=yes
+-            		SKIP_PADS_AGENT=yes
++			SKIP_PADS_AGENT=yes
++			SKIP_BRO=""
++			SKIP_OSSEC_AGENT=""
+             		;;
+ 		--only-ossec-agent)
++			if [ "${SENSOR_NAME}" ]; then
++				echo_error_msg 0 "OOPS: ossec-agent is not in ${SENSOR_NAME}!"
++				exit 1
++			fi
+ 			SKIP_INVERT=yes
+-            		SKIP_OSSEC_AGENT=yes
++			SKIP_OSSEC_AGENT=yes
+             		;;
+ 		--skip-barnyard2)
+ 			SKIP_BARNYARD2=yes
+@@ -203,10 +231,10 @@ do
+ 			SKIP_ARGUS=yes
+ 			;;
+ 		--skip-prads)
+-            		SKIP_PRADS=yes
++			SKIP_PRADS=yes
+             		;;
+ 		--skip-bro)
+-            		SKIP_BRO=yes
++			SKIP_BRO=yes
+             		;;
+ 		--skip-pcap-agent)
+ 			SKIP_PCAP_AGENT=yes
+@@ -221,10 +249,10 @@ do
+ 			SKIP_HTTP_AGENT=yes
+ 			;;
+ 		--skip-pads-agent)
+-            		SKIP_PADS_AGENT=yes
++			SKIP_PADS_AGENT=yes
+             		;;
+ 		--skip-ossec-agent)
+-            		SKIP_OSSEC_AGENT=yes
++			SKIP_OSSEC_AGENT=yes
+             		;;
+ 		--server*)
+ 			# any server directive is clearly meant for the server
+@@ -263,22 +291,30 @@ if [ -z "$SENSOR_NAME" ]
+ then
+ 	SENSOR_NAME=$(sensortab_names_get_on_auto "1")
+ fi
++
++# see if any sensors are disabled
++for i in $SENSOR_NAME; do
++	if grep -q "#$i" /etc/nsm/sensortab; then
++		echo "$i disabled, exiting."
++		exit 1
++	fi
++done
+ 	
+ # invert skip as appropriate
+ if [ -n "$SKIP_INVERT" ]
+ then
+ 	[ -z "$SKIP_PCAP_AGENT" ]	&& SKIP_PCAP_AGENT=yes		|| SKIP_PCAP_AGENT=""
+-	[ -z "$SKIP_SANCP_AGENT" ]	&& SKIP_SANCP_AGENT=yes	|| SKIP_SANCP_AGENT=""
+-	[ -z "$SKIP_SNORT_AGENT" ]	&& SKIP_SNORT_AGENT=yes	|| SKIP_SNORT_AGENT=""
++	[ -z "$SKIP_SANCP_AGENT" ]	&& SKIP_SANCP_AGENT=yes		|| SKIP_SANCP_AGENT=""
++	[ -z "$SKIP_SNORT_AGENT" ]	&& SKIP_SNORT_AGENT=yes		|| SKIP_SNORT_AGENT=""
+ 	[ -z "$SKIP_HTTP_AGENT" ]	&& SKIP_HTTP_AGENT=yes		|| SKIP_HTTP_AGENT=""
+ 	[ -z "$SKIP_PADS_AGENT" ]	&& SKIP_PADS_AGENT=yes		|| SKIP_PADS_AGENT=""
+-	[ -z "$SKIP_OSSEC_AGENT" ]	&& SKIP_OSSEC_AGENT=yes	|| SKIP_OSSEC_AGENT=""
+-	[ -z "$SKIP_SNORT_ALERT" ]	&& SKIP_SNORT_ALERT=yes	|| SKIP_SNORT_ALERT=""
++	[ -z "$SKIP_OSSEC_AGENT" ]	&& SKIP_OSSEC_AGENT=yes		|| SKIP_OSSEC_AGENT=""
++	[ -z "$SKIP_SNORT_ALERT" ]	&& SKIP_SNORT_ALERT=yes		|| SKIP_SNORT_ALERT=""
+ 	[ -z "$SKIP_BARNYARD2" ]	&& SKIP_BARNYARD2=yes		|| SKIP_BARNYARD2=""
+ 	[ -z "$SKIP_PCAP" ]		&& SKIP_PCAP=yes		|| SKIP_PCAP=""
+ 	[ -z "$SKIP_ARGUS" ]		&& SKIP_ARGUS=yes		|| SKIP_ARGUS=""
+ 	[ -z "$SKIP_PRADS" ]		&& SKIP_PRADS=yes		|| SKIP_PRADS=""
+-	[ -z "$SKIP_BRO" ]		&& SKIP_BRO=yes		|| SKIP_BRO=""
++	[ -z "$SKIP_BRO" ]		&& SKIP_BRO=yes			|| SKIP_BRO=""
+ fi
+ 
+ #

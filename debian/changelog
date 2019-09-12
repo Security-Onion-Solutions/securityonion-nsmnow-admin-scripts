@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion206) xenial; urgency=medium
+
+  * package issues 645 1637 1118 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 12 Sep 2019 13:20:42 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion205) xenial; urgency=medium
 
   * NSM: nsm_server_user-add should require usernames to be alphanumeric Security-Onion-Solutions/security-onion#1627 
