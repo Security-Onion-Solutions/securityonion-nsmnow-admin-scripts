@@ -375,7 +375,7 @@ sensor_cleandisk()
 				        CUR_USAGE=$(df -P $SENSOR_DIR | tail -1 | awk '{print $5}' | tr -d %)
 				done
 				# if we're out of pcaps to delete, then increment variable
-				if [ `ls $SENSOR/dailylogs/$TODAY/snort.log.* | wc -l` -le 1 ]; then
+				if [ `find $SENSOR/dailylogs/$TODAY/ -iname 'snort.log.*' | wc -l` -le 1 ]; then
 					echo_msg 1 "${RED}no old pcaps available to clean up in $SENSOR/dailylogs/"
 					let SENSORS_WITH_NO_PCAPS_TO_DELETE++
 				fi
