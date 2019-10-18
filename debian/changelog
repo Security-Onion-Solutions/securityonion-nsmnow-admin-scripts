@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion208) xenial; urgency=medium
+
+  * NSM: replace pcap ls with find Security-Onion-Solutions/security-onion#1654 
+
+ -- Doug Burks <doug.burks@gmail.com>  Fri, 18 Oct 2019 08:29:34 -0400
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion207) xenial; urgency=medium
 
   * make checks more consistent Security-Onion-Solutions/security-onion#645 

@@ -199,3 +199,4 @@ NSM:-add---no-hwtimestamp-to-netsniff-command-line-Security-Onion-Solutionssecur
 NSM:-nsm_server_user-add-should-require-usernames-to-be-alphanumeric-Security-Onion-Solutionssecurity-onion#1627
 package-issues-645-1637-1118
 make-checks-more-consistent-Security-Onion-Solutionssecurity-onion#645
+NSM:-replace-pcap-ls-with-find-Security-Onion-Solutionssecurity-onion#1654
