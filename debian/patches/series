@@ -200,3 +200,9 @@ NSM:-nsm_server_user-add-should-require-usernames-to-be-alphanumeric-Security-On
 package-issues-645-1637-1118
 make-checks-more-consistent-Security-Onion-Solutionssecurity-onion#645
 NSM:-replace-pcap-ls-with-find-Security-Onion-Solutionssecurity-onion#1654
+first-round-of-changes-for-zeek-migration
+remove-unnecessary-zeek-warnings
+clean-up-more-zeek-warnings
+migrate-from-broctl.cfg-to-zeekctl.cfg
+change-from-Bro-to-Zeek
+update-copyright

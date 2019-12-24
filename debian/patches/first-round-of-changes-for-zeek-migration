@@ -1,0 +1,289 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion209) xenial; urgency=medium
+ .
+   * first round of changes for zeek migration
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: https://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/broctl
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/broctl
+@@ -1,6 +1,6 @@
+ #!/bin/bash
+ #
+-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
++# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+@@ -22,7 +22,7 @@ if [ "$(id -u)" != 0 ]; then
+         exit 1
+ fi
+ 
+-# /etc/nsm/securityonion.conf defines the limited user that we use for starting broctl
++# /etc/nsm/securityonion.conf defines the limited user that we use for starting zeekctl
+ SO_CONF="/etc/nsm/securityonion.conf"
+ 
+ # Add new Bro entries to SO_CONF if necessary
+@@ -36,5 +36,5 @@ fi
+ # load in user config
+ . $SO_CONF
+ 
+-# Run "broctl" as Bro user and pass along arguments
+-su $BRO_USER -c "/opt/bro/bin/broctl $@"
++# Run "zeekctl" as Bro user and pass along arguments
++su $BRO_USER -c "/opt/bro/bin/zeekctl $@"
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-daily-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-daily-restart
+@@ -1,6 +1,6 @@
+ #!/bin/bash
+ #
+-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
++# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-restart
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-restart
+@@ -403,14 +403,14 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "
+         fi
+ 	
+         # Stop Bro as root in case it was previously running as root
+-	/opt/bro/bin/broctl stop 2>&1 | grep -v "warning: new bro version detected"
++	/opt/bro/bin/zeekctl stop 2>&1 | grep -v "warning: new bro version detected"
+ 
+         # set ownership of Bro directories
+ 	chown -R $BRO_USER:$BRO_GROUP /nsm/bro/logs /nsm/bro/spool >/dev/null 2>&1
+ 	chown $BRO_USER:$BRO_GROUP /nsm/bro/extracted >/dev/null 2>&1
+ 
+         # set capabilities on Bro binaries
+-        setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/bro
++        setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/zeek
+         setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/capstats
+ 
+ 	# update Dir settings if Bro 2.4 was a fresh installation
+@@ -418,10 +418,10 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "
+ 	sed -i 's|LogDir = /opt/bro/logs|LogDir = /nsm/bro/logs|g' /opt/bro/etc/broctl.cfg
+ 
+         # Update Bro config
+-        su $BRO_USER -c '/opt/bro/bin/broctl install' 2>&1 | grep -v "warning: new bro version detected"
++        su $BRO_USER -c '/opt/bro/bin/zeekctl install' 2>&1 | grep -v "warning: new bro version detected"
+ 
+ 	# Start Bro
+-        su $BRO_USER -c '/opt/bro/bin/broctl start' 2>&1 | grep -v "warning: new bro version detected"
++        su $BRO_USER -c '/opt/bro/bin/zeekctl start' 2>&1 | grep -v "warning: new bro version detected"
+ fi
+ 
+ for SENSOR in $SENSOR_NAME
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-start
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-start
+@@ -405,7 +405,7 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "
+ 	chown $BRO_USER:$BRO_GROUP /nsm/bro/extracted >/dev/null 2>&1
+ 
+ 	# set capabilities on Bro binaries
+-	setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/bro
++	setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/zeek
+ 	setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/capstats
+ 
+ 	# update Dir settings if Bro 2.4 was a fresh installation
+@@ -413,10 +413,10 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "
+ 	sed -i 's|LogDir = /opt/bro/logs|LogDir = /nsm/bro/logs|g' /opt/bro/etc/broctl.cfg
+ 
+ 	# Update Bro config
+-	su $BRO_USER -c '/opt/bro/bin/broctl install' 2>&1 | grep -v "warning: new bro version detected"
++	su $BRO_USER -c '/opt/bro/bin/zeekctl install' 2>&1 | grep -v "warning: new bro version detected"
+ 
+ 	# Start Bro
+-	su $BRO_USER -c '/opt/bro/bin/broctl start' 2>&1 | grep -v "warning: new bro version detected"
++	su $BRO_USER -c '/opt/bro/bin/zeekctl start' 2>&1 | grep -v "warning: new bro version detected"
+ fi
+ 
+ for SENSOR in $SENSOR_NAME
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-status
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-status
+@@ -360,11 +360,11 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "
+ 	chown $BRO_USER:$BRO_GROUP /nsm/bro/extracted >/dev/null 2>&1
+ 
+         # set capabilities on Bro binaries
+-        setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/bro
++        setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/zeek
+         setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/capstats
+ 
+         # Update Bro config
+-        su $BRO_USER -c '/opt/bro/bin/broctl status' 2>&1 | grep -v "warning: new bro version detected"
++        su $BRO_USER -c '/opt/bro/bin/zeekctl status' 2>&1 | grep -v "warning: new bro version detected"
+ fi
+ 
+ for SENSOR in $SENSOR_NAME
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_sensor_ps-stop
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_sensor_ps-stop
+@@ -356,14 +356,14 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "
+         echo_msg 0 "Stopping: Bro"
+ 
+         # Stop Bro as root in case it was previously running as root
+-	/opt/bro/bin/broctl stop 2>&1 | grep -v "warning: new bro version detected"
++	/opt/bro/bin/zeekctl stop 2>&1 | grep -v "warning: new bro version detected"
+ 
+         # set ownership of Bro directories
+ 	chown -R $BRO_USER:$BRO_GROUP /nsm/bro/logs /nsm/bro/spool >/dev/null 2>&1
+ 	chown $BRO_USER:$BRO_GROUP /nsm/bro/extracted >/dev/null 2>&1
+ 
+         # set capabilities on Bro binaries
+-        setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/bro
++        setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/zeek
+         setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/capstats
+ 
+ fi
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/nsm_server_configure_sshd
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/nsm_server_configure_sshd
+@@ -1,6 +1,6 @@
+ #!/bin/bash
+ #
+-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
++# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/so-bro-cron
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/so-bro-cron
+@@ -1,6 +1,6 @@
+ #!/bin/bash
+ #
+-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
++# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+@@ -43,9 +43,9 @@ if ! [ -f /opt/bro/etc/node.cfg ]; then
+ 	exit 0
+ fi
+ 
+-if ! [ -x /opt/bro/bin/broctl ]; then
++if ! [ -x /opt/bro/bin/zeekctl ]; then
+ 	exit 0
+ fi
+ 
+-# Run "broctl cron" as Bro user
+-su ${BRO_USER} -c '/opt/bro/bin/broctl cron'
++# Run "zeekctl cron" as Bro user
++su ${BRO_USER} -c '/opt/bro/bin/zeekctl cron'
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/so-clear-backlog
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/so-clear-backlog
+@@ -1,6 +1,6 @@
+ #!/bin/bash
+ #
+-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
++# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/so-netsniff-ng-cron
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/so-netsniff-ng-cron
+@@ -1,6 +1,6 @@
+ #!/bin/bash
+ #
+-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
++# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/so-nsm-common
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/so-nsm-common
+@@ -1,6 +1,6 @@
+ #!/bin/bash
+ #
+-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
++# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/so-nsm-watchdog
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/so-nsm-watchdog
+@@ -1,6 +1,6 @@
+ #!/bin/bash
+ #
+-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
++# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/so-sensor-backup-config
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/so-sensor-backup-config
+@@ -1,6 +1,6 @@
+ #!/bin/bash
+ #
+-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
++# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/so-server-backup-config
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/so-server-backup-config
+@@ -1,6 +1,6 @@
+ #!/bin/bash
+ #
+-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
++# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+ #
+ # This program is free software: you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+--- /dev/null
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/zeekctl
+@@ -0,0 +1,40 @@
++#!/bin/bash
++#
++# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
++#
++# This program is free software: you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation, either version 3 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program.  If not, see <http://www.gnu.org/licenses/>.
++
++# Ensure we're running as root
++if [ "$(id -u)" != 0 ]; then
++        echo "ERROR: This script must run as root.  Hint..." 1>&2
++        echo "  sudo $0 $@" 1>&2
++        exit 1
++fi
++
++# /etc/nsm/securityonion.conf defines the limited user that we use for starting zeekctl
++SO_CONF="/etc/nsm/securityonion.conf"
++
++# Add new Bro entries to SO_CONF if necessary
++if ! grep BRO_USER $SO_CONF >/dev/null; then
++	echo >> $SO_CONF
++	echo "# BRO_USER specifies the user account used to start Bro." >> $SO_CONF
++	echo "BRO_USER=sguil"	>> $SO_CONF
++	echo "BRO_GROUP=sguil"	>> $SO_CONF
++fi
++
++# load in user config
++. $SO_CONF
++
++# Run "zeekctl" as Bro user and pass along arguments
++su $BRO_USER -c "/opt/bro/bin/zeekctl $@"

@@ -353,17 +353,17 @@ if [ "$OSSEC_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_OSSEC_AGENT" ]; then
 fi
 
 if [ "$BRO_ENABLED" == "yes" ] && [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
-        echo_msg 0 "Stopping: Bro"
+        echo_msg 0 "Stopping: Zeek"
 
         # Stop Bro as root in case it was previously running as root
-	/opt/bro/bin/broctl stop 2>&1 | grep -v "warning: new bro version detected"
+	/opt/bro/bin/zeekctl stop 2>&1 | grep -v "warning: new .* version detected" | grep -v "Warning: ZeekControl plugin uses legacy BroControl API. Use" | grep -v "'import ZeekControl.plugin' instead of 'import BroControl.plugin'" | grep -v "^$"
 
         # set ownership of Bro directories
 	chown -R $BRO_USER:$BRO_GROUP /nsm/bro/logs /nsm/bro/spool >/dev/null 2>&1
 	chown $BRO_USER:$BRO_GROUP /nsm/bro/extracted >/dev/null 2>&1
 
         # set capabilities on Bro binaries
-        setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/bro
+        setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/zeek
         setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/capstats
 
 fi

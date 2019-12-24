@@ -392,7 +392,7 @@ if [ "$OSSEC_AGENT_ENABLED" == "yes" ] && [ -z "$SKIP_OSSEC_AGENT" ]; then
 fi
 
 if [ "$BRO_ENABLED" == "yes" ] && [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/sensortab>/dev/null ; then
-	echo_msg 0 "Starting: Bro"
+	echo_msg 0 "Starting: Zeek"
 
 	# If Bro is in cluster mode, replace IP address with "localhost"
 	if grep "^type=manager$" /opt/bro/etc/node.cfg >/dev/null 2>&1; then
@@ -405,18 +405,19 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/se
 	chown $BRO_USER:$BRO_GROUP /nsm/bro/extracted >/dev/null 2>&1
 
 	# set capabilities on Bro binaries
-	setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/bro
+	setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/zeek
 	setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/capstats
 
 	# update Dir settings if Bro 2.4 was a fresh installation
-	sed -i 's|SpoolDir = /opt/bro/spool|SpoolDir = /nsm/bro/spool|g' /opt/bro/etc/broctl.cfg
-	sed -i 's|LogDir = /opt/bro/logs|LogDir = /nsm/bro/logs|g' /opt/bro/etc/broctl.cfg
+	sed -i 's|SpoolDir = /opt/bro/spool|SpoolDir = /nsm/bro/spool|g' /opt/bro/etc/zeekctl.cfg
+	sed -i 's|LogDir = /opt/bro/logs|LogDir = /nsm/bro/logs|g' /opt/bro/etc/zeekctl.cfg
 
 	# Update Bro config
-	su $BRO_USER -c '/opt/bro/bin/broctl install' 2>&1 | grep -v "warning: new bro version detected"
+	su $BRO_USER -c '/opt/bro/bin/zeekctl install' 2>&1 | grep -v "warning: new .* version detected" | grep -v "Warning: ZeekControl plugin uses legacy BroControl API. Use" | grep -v "'import ZeekControl.plugin' instead of 'import BroControl.plugin'" | grep -v "^$"
 
 	# Start Bro
-	su $BRO_USER -c '/opt/bro/bin/broctl start' 2>&1 | grep -v "warning: new bro version detected"
+	su $BRO_USER -c '/opt/bro/bin/zeekctl start' 2>&1 | grep -v "warning: new .* version detected" | grep -v "Warning: ZeekControl plugin uses legacy BroControl API. Use" | grep -v "'import ZeekControl.plugin' instead of 'import BroControl.plugin'" | grep -v "^$"
+
 fi
 
 for SENSOR in $SENSOR_NAME

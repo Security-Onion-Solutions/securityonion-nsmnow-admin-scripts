@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2014,2015,2016,2017,2018 Security Onion Solutions, LLC
+# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,9 +43,9 @@ if ! [ -f /opt/bro/etc/node.cfg ]; then
 	exit 0
 fi
 
-if ! [ -x /opt/bro/bin/broctl ]; then
+if ! [ -x /opt/bro/bin/zeekctl ]; then
 	exit 0
 fi
 
-# Run "broctl cron" as Bro user
-su ${BRO_USER} -c '/opt/bro/bin/broctl cron'
+# Run "zeekctl cron" as Bro user
+su ${BRO_USER} -c '/opt/bro/bin/zeekctl cron'
