@@ -48,4 +48,4 @@ if ! [ -x /opt/bro/bin/zeekctl ]; then
 fi
 
 # Run "zeekctl cron" as Bro user
-su ${BRO_USER} -c '/opt/bro/bin/zeekctl cron 2>&1 | grep -v "Warning: ZeekControl plugin uses legacy BroControl API. Use" | grep -v "'import ZeekControl.plugin' instead of 'import BroControl.plugin'" '
+su ${BRO_USER} -c '/opt/bro/bin/zeekctl cron 2>&1 | grep -v "Warning: ZeekControl plugin uses legacy BroControl API. Use" | grep -v "import BroControl.plugin" | grep -v "^$" '

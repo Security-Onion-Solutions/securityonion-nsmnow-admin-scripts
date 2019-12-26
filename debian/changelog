@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion220) xenial; urgency=medium
+
+  * more zeek cleanup 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 26 Dec 2019 16:56:46 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion219) xenial; urgency=medium
 
   * clean up zeek warnings 
