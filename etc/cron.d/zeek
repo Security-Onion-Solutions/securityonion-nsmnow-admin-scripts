@@ -1,0 +1,8 @@
+# /etc/cron.d/zeek
+#
+# crontab entry to monitor Zeek processes
+
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+0-59/5 * * * * root /usr/sbin/so-zeek-cron >> /var/log/nsm/so-zeek-cron.log 2>&1

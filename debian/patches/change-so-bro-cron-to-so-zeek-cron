@@ -1,0 +1,155 @@
+Description: <short summary of the patch>
+ TODO: Put a short summary on the line above and replace this paragraph
+ with a longer explanation of this change. Complete the meta-information
+ with other relevant fields (see below for details). To make it easier, the
+ information below has been extracted from the changelog. Adjust it or drop
+ it.
+ .
+ securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion217) xenial; urgency=medium
+ .
+   * change so-bro-cron to so-zeek-cron
+Author: Doug Burks <doug.burks@gmail.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: https://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- securityonion-nsmnow-admin-scripts-20120724.orig/etc/cron.d/bro
++++ /dev/null
+@@ -1,8 +0,0 @@
+-# /etc/cron.d/bro
+-#
+-# crontab entry to monitor Bro processes
+-
+-SHELL=/bin/sh
+-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+-
+-0-59/5 * * * * root /usr/sbin/so-bro-cron >> /var/log/nsm/so-bro-cron.log 2>&1
+--- /dev/null
++++ securityonion-nsmnow-admin-scripts-20120724/etc/cron.d/zeek
+@@ -0,0 +1,8 @@
++# /etc/cron.d/zeek
++#
++# crontab entry to monitor Zeek processes
++
++SHELL=/bin/sh
++PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
++
++0-59/5 * * * * root /usr/sbin/so-zeek-cron >> /var/log/nsm/so-zeek-cron.log 2>&1
+--- securityonion-nsmnow-admin-scripts-20120724.orig/usr/sbin/so-bro-cron
++++ /dev/null
+@@ -1,51 +0,0 @@
+-#!/bin/bash
+-#
+-# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
+-#
+-# This program is free software: you can redistribute it and/or modify
+-# it under the terms of the GNU General Public License as published by
+-# the Free Software Foundation, either version 3 of the License, or
+-# (at your option) any later version.
+-#
+-# This program is distributed in the hope that it will be useful,
+-# but WITHOUT ANY WARRANTY; without even the implied warranty of
+-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-# GNU General Public License for more details.
+-#
+-# You should have received a copy of the GNU General Public License
+-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-
+-. /usr/sbin/so-nsm-common
+-
+-SO_CONF="/etc/nsm/securityonion.conf"
+-
+-# Add new Bro entries to SO_CONF if necessary
+-if ! grep BRO_USER ${SO_CONF} >/dev/null; then
+-	echo >> ${SO_CONF}
+-	echo "# BRO_USER specifies the user account used to start Bro." >> ${SO_CONF}
+-	echo "BRO_USER=sguil"	>> ${SO_CONF}
+-	echo "BRO_GROUP=sguil"	>> ${SO_CONF}
+-fi
+-
+-# load in user config
+-. ${SO_CONF}
+-
+-# check for errors and exit if necessary
+-if ! [ "${BRO_ENABLED}" == "yes" ]; then
+-	exit 0
+-fi
+-
+-if ! getent passwd ${BRO_USER} >/dev/null 2>&1; then
+-	exit 0
+-fi
+-
+-if ! [ -f /opt/bro/etc/node.cfg ]; then
+-	exit 0
+-fi
+-
+-if ! [ -x /opt/bro/bin/zeekctl ]; then
+-	exit 0
+-fi
+-
+-# Run "zeekctl cron" as Bro user
+-su ${BRO_USER} -c '/opt/bro/bin/zeekctl cron'
+--- /dev/null
++++ securityonion-nsmnow-admin-scripts-20120724/usr/sbin/so-zeek-cron
+@@ -0,0 +1,51 @@
++#!/bin/bash
++#
++# Copyright 2014,2015,2016,2017,2018,2019,2020 Security Onion Solutions, LLC
++#
++# This program is free software: you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation, either version 3 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program.  If not, see <http://www.gnu.org/licenses/>.
++
++. /usr/sbin/so-nsm-common
++
++SO_CONF="/etc/nsm/securityonion.conf"
++
++# Add new Bro entries to SO_CONF if necessary
++if ! grep BRO_USER ${SO_CONF} >/dev/null; then
++	echo >> ${SO_CONF}
++	echo "# BRO_USER specifies the user account used to start Bro." >> ${SO_CONF}
++	echo "BRO_USER=sguil"	>> ${SO_CONF}
++	echo "BRO_GROUP=sguil"	>> ${SO_CONF}
++fi
++
++# load in user config
++. ${SO_CONF}
++
++# check for errors and exit if necessary
++if ! [ "${BRO_ENABLED}" == "yes" ]; then
++	exit 0
++fi
++
++if ! getent passwd ${BRO_USER} >/dev/null 2>&1; then
++	exit 0
++fi
++
++if ! [ -f /opt/bro/etc/node.cfg ]; then
++	exit 0
++fi
++
++if ! [ -x /opt/bro/bin/zeekctl ]; then
++	exit 0
++fi
++
++# Run "zeekctl cron" as Bro user
++su ${BRO_USER} -c '/opt/bro/bin/zeekctl cron'

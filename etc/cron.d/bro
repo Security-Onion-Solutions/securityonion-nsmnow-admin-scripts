@@ -1,8 +1,0 @@
-# /etc/cron.d/bro
-#
-# crontab entry to monitor Bro processes
-
-SHELL=/bin/sh
-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-
-0-59/5 * * * * root /usr/sbin/so-bro-cron >> /var/log/nsm/so-bro-cron.log 2>&1
