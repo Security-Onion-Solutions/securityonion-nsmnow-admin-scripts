@@ -403,7 +403,7 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "$SKIP_BRO" ] && [ "$ACTION" == "process_
         fi
 	
         # Stop Bro as root in case it was previously running as root
-	/opt/bro/bin/zeekctl stop 2>&1 | grep -v "warning: new .* version detected" | grep -v "Warning: ZeekControl plugin uses legacy BroControl API. Use" | grep -v "'import ZeekControl.plugin' instead of 'import BroControl.plugin'" | grep -v "^$"
+	/opt/bro/bin/zeekctl stop 2>&1 | grep -v "warning: new .* version detected" | grep -v "Warning: ZeekControl plugin uses legacy BroControl API. Use" | grep -v "'import ZeekControl.plugin' instead of 'import BroControl.plugin'" | grep -v "^$" | grep -v "^Warning: Plugin 'af_packet' uses deprecated method 'broctl_config'; use 'zeekctl_config' instead$"
 
         # set ownership of Bro directories
 	chown -R $BRO_USER:$BRO_GROUP /nsm/bro/logs /nsm/bro/spool >/dev/null 2>&1
@@ -418,10 +418,10 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "$SKIP_BRO" ] && [ "$ACTION" == "process_
 	sed -i 's|LogDir = /opt/bro/logs|LogDir = /nsm/bro/logs|g' /opt/bro/etc/zeekctl.cfg
 
         # Update Bro config
-        su $BRO_USER -c '/opt/bro/bin/zeekctl install' 2>&1 | grep -v "warning: new .* version detected" | grep -v "Warning: ZeekControl plugin uses legacy BroControl API. Use" | grep -v "'import ZeekControl.plugin' instead of 'import BroControl.plugin'" | grep -v "^$"
+        su $BRO_USER -c '/opt/bro/bin/zeekctl install' 2>&1 | grep -v "warning: new .* version detected" | grep -v "Warning: ZeekControl plugin uses legacy BroControl API. Use" | grep -v "'import ZeekControl.plugin' instead of 'import BroControl.plugin'" | grep -v "^$" | grep -v "^Warning: Plugin 'af_packet' uses deprecated method 'broctl_config'; use 'zeekctl_config' instead$"
 
 	# Start Bro
-        su $BRO_USER -c '/opt/bro/bin/zeekctl start' 2>&1 | grep -v "warning: new .* version detected" | grep -v "Warning: ZeekControl plugin uses legacy BroControl API. Use" | grep -v "'import ZeekControl.plugin' instead of 'import BroControl.plugin'" | grep -v "^$"
+        su $BRO_USER -c '/opt/bro/bin/zeekctl start' 2>&1 | grep -v "warning: new .* version detected" | grep -v "Warning: ZeekControl plugin uses legacy BroControl API. Use" | grep -v "'import ZeekControl.plugin' instead of 'import BroControl.plugin'" | grep -v "^$" | grep -v "^Warning: Plugin 'af_packet' uses deprecated method 'broctl_config'; use 'zeekctl_config' instead$"
 
 fi
 

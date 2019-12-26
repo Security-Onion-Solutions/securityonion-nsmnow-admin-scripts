@@ -364,7 +364,7 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/se
         setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/capstats
 
         # Update Bro config
-        su $BRO_USER -c '/opt/bro/bin/zeekctl status' 2>&1 | grep -v "warning: new .* version detected" | grep -v "Warning: ZeekControl plugin uses legacy BroControl API. Use" | grep -v "'import ZeekControl.plugin' instead of 'import BroControl.plugin'" | grep -v "^$"
+        su $BRO_USER -c '/opt/bro/bin/zeekctl status' 2>&1 | grep -v "warning: new .* version detected" | grep -v "Warning: ZeekControl plugin uses legacy BroControl API. Use" | grep -v "'import ZeekControl.plugin' instead of 'import BroControl.plugin'" | grep -v "^$" | grep -v "^Warning: Plugin 'af_packet' uses deprecated method 'broctl_config'; use 'zeekctl_config' instead$"
 
 fi
 
