@@ -408,7 +408,7 @@ if [ "$BRO_ENABLED" == "yes" ] && [ -z "$SKIP_BRO" ] && grep -v "^#" /etc/nsm/se
 	setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/zeek
 	setcap cap_net_raw,cap_net_admin=eip /opt/bro/bin/capstats
 
-	# update Dir settings if Bro 2.4 was a fresh installation
+	# move SpoolDir and LogDir to /nsm
 	sed -i 's|SpoolDir = /opt/bro/spool|SpoolDir = /nsm/bro/spool|g' /opt/bro/etc/zeekctl.cfg
 	sed -i 's|LogDir = /opt/bro/logs|LogDir = /nsm/bro/logs|g' /opt/bro/etc/zeekctl.cfg
 
