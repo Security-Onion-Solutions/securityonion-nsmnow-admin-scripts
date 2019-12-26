@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion218) xenial; urgency=medium
+
+  * fix perms 
+
+ -- Doug Burks <doug.burks@gmail.com>  Thu, 26 Dec 2019 15:23:52 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion217) xenial; urgency=medium
 
   * change so-bro-cron to so-zeek-cron 
