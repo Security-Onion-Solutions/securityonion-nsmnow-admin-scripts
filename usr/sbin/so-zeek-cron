@@ -47,5 +47,9 @@ if ! [ -x /opt/bro/bin/zeekctl ]; then
 	exit 0
 fi
 
+if ! grep -qv "^#" /etc/nsm/sensortab; then 
+	exit 0
+fi
+
 # Run "zeekctl cron" as Bro user
 su ${BRO_USER} -c '/opt/bro/bin/zeekctl cron 2>&1 | grep -v "Warning: ZeekControl plugin uses legacy BroControl API. Use" | grep -v "import BroControl.plugin" | grep -v "^$" '
