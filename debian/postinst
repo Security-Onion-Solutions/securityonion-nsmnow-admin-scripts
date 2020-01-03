@@ -30,7 +30,7 @@ case "$1" in
 	fi
 
 	# clean up old cron jobs if they exist
-	for FILE in /etc/cron.d/sensor-backup-config /etc/cron.d/server-backup-config; do
+	for FILE in /etc/cron.d/sensor-backup-config /etc/cron.d/server-backup-config /etc/cron.d/bro; do
 		if [ -f $FILE ]; then
 			echo "Removing old cron job ${FILE}"
 			rm ${FILE} || echo "Error removing ${FILE}"
