@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion223) xenial; urgency=medium
+
+  * filter out warnings in broctl and zeekctl 
+
+ -- Doug Burks <doug.burks@gmail.com>  Mon, 06 Jan 2020 09:30:01 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion222) xenial; urgency=medium
 
   * update so-zeek-cron to avoid running on boxes with no sensors 

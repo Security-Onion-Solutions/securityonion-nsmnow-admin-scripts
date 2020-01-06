@@ -37,4 +37,4 @@ fi
 . $SO_CONF
 
 # Run "zeekctl" as Bro user and pass along arguments
-su $BRO_USER -c "/opt/bro/bin/zeekctl $@"
+su $BRO_USER -c "/opt/bro/bin/zeekctl $@" 2>&1 | grep -v "warning: new .* version detected" | grep -v "Warning: ZeekControl plugin uses legacy BroControl API. Use" | grep -v "'import ZeekControl.plugin' instead of 'import BroControl.plugin'" | grep -v "^$" | grep -v "^Warning: Plugin 'af_packet' uses deprecated method 'broctl_config'; use 'zeekctl_config' instead$"

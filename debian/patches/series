@@ -212,3 +212,4 @@ change-so-bro-cron-to-so-zeek-cron
 clean-up-zeek-warnings
 more-zeek-cleanup
 update-so-zeek-cron-to-avoid-running-on-boxes-with-no-sensors
+filter-out-warnings-in-broctl-and-zeekctl
