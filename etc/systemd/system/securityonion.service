@@ -7,7 +7,7 @@ Wants=network-online.target
 Type=forking
 ExecStart=/usr/sbin/so-boot
 Restart=on-abort
-TimeoutStartSec=300
+TimeoutStartSec=600
 
 [Install]
 WantedBy=multi-user.target

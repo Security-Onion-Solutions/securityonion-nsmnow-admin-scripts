@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion224) xenial; urgency=medium
+
+  * NSM: increase timeout in /etc/systemd/system/securityonion.service Security-Onion-Solutions/security-onion#1708 
+
+ -- Doug Burks <doug.burks@gmail.com>  Tue, 14 Jan 2020 17:40:43 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion223) xenial; urgency=medium
 
   * filter out warnings in broctl and zeekctl 
