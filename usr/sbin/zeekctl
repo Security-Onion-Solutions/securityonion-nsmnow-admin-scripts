@@ -36,5 +36,15 @@ fi
 # load in user config
 . $SO_CONF
 
-# Run "zeekctl" as Bro user and pass along arguments
-su $BRO_USER -c "/opt/bro/bin/zeekctl $@" 2>&1 | grep -v "warning: new .* version detected" | grep -v "Warning: ZeekControl plugin uses legacy BroControl API. Use" | grep -v "'import ZeekControl.plugin' instead of 'import BroControl.plugin'" | grep -v "^$" | grep -v "^Warning: Plugin 'af_packet' uses deprecated method 'broctl_config'; use 'zeekctl_config' instead$"
+# Run "zeekctl" as Bro user and pass along arguments if necessary
+if [ $# -eq 0 ]; then
+
+	# No arguments were passed, so just run zeekctl interactively
+	su $BRO_USER -c "/opt/bro/bin/zeekctl"
+
+else
+
+	# Arguments were passed, so pass those arguments to zeekctl and try to clean up the output
+	su $BRO_USER -c "/opt/bro/bin/zeekctl $@" 2>&1 | grep -v "warning: new .* version detected" | grep -v "Warning: ZeekControl plugin uses legacy BroControl API. Use" | grep -v "'import ZeekControl.plugin' instead of 'import BroControl.plugin'" | grep -v "^$" | grep -v "^Warning: Plugin 'af_packet' uses deprecated method 'broctl_config'; use 'zeekctl_config' instead$"
+
+fi

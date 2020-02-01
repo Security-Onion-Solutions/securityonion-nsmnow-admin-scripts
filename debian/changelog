@@ -1,3 +1,9 @@
+securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion225) xenial; urgency=medium
+
+  * NSM: broctl and zeekctl need to check if parameters were passed Security-Onion-Solutions/security-onion#1713
+
+ -- Doug Burks <doug.burks@gmail.com>  Sat, 01 Feb 2020 05:14:47 -0500
+
 securityonion-nsmnow-admin-scripts (20120724-0ubuntu0securityonion224) xenial; urgency=medium
 
   * NSM: increase timeout in /etc/systemd/system/securityonion.service Security-Onion-Solutions/security-onion#1708 
