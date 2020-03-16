@@ -603,7 +603,14 @@ do
 			UNI_DIR=$SENSOR_LOG_DIR/snort-$i
 			mkdir -p $UNI_DIR
 			chown $SENSOR_USER:$SENSOR_GROUP $UNI_DIR
-   			[ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && process_start "snort" "-c $SNORT_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -i $SENSOR_INTERFACE_SHORT $BPF_OPTION -l $UNI_DIR --perfmon-file $PERFMON $SNORT_OPTIONS --snaplen $MTU_FIN" "$PID" "$LOG" "snort-$i (alert data)"
+                        TASKSET=""
+                        if [ -n "$IDS_LB_CPUS" ]; then
+                                IDS_CORE=$(echo "$IDS_LB_CPUS" | cut -d, -f$i)
+				if [ "$IDS_CORE" -gt 0 2>/dev/null ]; then
+					TASKSET="taskset -c $IDS_CORE "
+				fi
+                        fi
+                        [ "$IDS_ENGINE_ENABLED" == "yes" ] && [ -z "$SKIP_SNORT_ALERT" ] && process_start "${TASKSET}snort" "-c $SNORT_CONFIG -u $SENSOR_USER -g $SENSOR_GROUP -i $SENSOR_INTERFACE_SHORT $BPF_OPTION -l $UNI_DIR --perfmon-file $PERFMON $SNORT_OPTIONS --snaplen $MTU_FIN" "$PID" "$LOG" "snort-$i (alert data)"
 		done
 	fi
 
