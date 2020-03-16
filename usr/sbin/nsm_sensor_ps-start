@@ -603,6 +603,8 @@ do
 			UNI_DIR=$SENSOR_LOG_DIR/snort-$i
 			mkdir -p $UNI_DIR
 			chown $SENSOR_USER:$SENSOR_GROUP $UNI_DIR
+			# NSM: add ability to pin snort via IDS_LB_CPUS Security-Onion-Solutions/security-onion#1729
+			# https://github.com/Security-Onion-Solutions/security-onion/issues/1729
                         TASKSET=""
                         if [ -n "$IDS_LB_CPUS" ]; then
                                 IDS_CORE=$(echo "$IDS_LB_CPUS" | cut -d, -f$i)
